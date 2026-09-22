@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quilt Garden — An Encyclopedia of Connections</title>
+<style>
+  body {
+    font-family: 'Georgia', 'Times New Roman', serif;
+    background: #fdf6e3;
+    color: #073642;
+    margin: 0;
+    padding: 0;
+    line-height: 1.7;
+  }
+  
+  /* Wiki styling — looks like a normal encyclopedia */
+  header {
+    background: #eee8d5;
+    border-bottom: 1px solid #d3cbb7;
+    padding: 1em 2em;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  header h1 {
+    margin: 0;
+    font-family: 'Garamond', serif;
+    font-size: 1.8em;
+    color: #268bd2;
+  }
+  
+  header .subtitle {
+    color: #586e75;
+    font-style: italic;
+  }
+  
+  .search-box {
+    background: #fff;
+    border: 1px solid #d3cbb7;
+    padding: 0.4em 0.8em;
+    border-radius: 4px;
+    width: 300px;
+    font-family: inherit;
+  }
+  
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2em;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 2em;
+  }
+  
+  nav {
+    background: rgba(238, 232, 213, 0.5);
+    padding: 1.2em;
+    border-radius: 6px;
+    height: fit-content;
+    position: sticky;
+    top: 1em;
+  }
+  
+  nav h3 {
+    color: #268bd2;
+    margin: 0 0 0.5em;
+    font-size: 1em;
+    border-bottom: 1px solid #d3cbb7;
+    padding-bottom: 0.3em;
+  }
+  
+  nav ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  nav li {
+    margin: 0.4em 0;
+  }
+  
+  nav a {
+    color: #073642;
+    text-decoration: none;
+    font-size: 0.9em;
+    cursor: pointer;
+  }
+  
+  nav a:hover {
+    color: #268bd2;
+    text-decoration: underline;
+  }
+  
+  main {
+    background: #fff;
+    padding: 2em 3em;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  
+  h2 {
+    color: #073642;
+    border-bottom: 1px solid #d3cbb7;
+    padding-bottom: 0.3em;
+  }
+  
+  h3 { color: #268bd2; margin-top: 1.5em; }
+  
+  a { color: #268bd2; cursor: pointer; }
+  a:hover { text-decoration: underline; }
+  
+  /* The "edit" button — actually triggers substrate cell writing */
+  .edit-btn {
+    float: right;
+    background: #fdf6e3;
+    border: 1px solid #d3cbb7;
+    color: #586e75;
+    padding: 0.3em 0.7em;
+    border-radius: 3px;
+    font-size: 0.85em;
+    cursor: pointer;
+    font-family: -apple-system, sans-serif;
+  }
+  
+  .edit-btn:hover {
+    background: #eee8d5;
+    color: #073642;
+  }
+  
+  /* Gap markers — these are unfinished substrate cells */
+  .gap {
+    background: #fef9c3;
+    border-left: 3px solid #facc15;
+    padding: 0.8em 1em;
+    margin: 1em 0;
+    border-radius: 0 4px 4px 0;
+    font-style: italic;
+    color: #854d0e;
+  }
+  
+  .gap::before {
+    content: "✏️ This section needs expansion. [Edit]";
+    display: block;
+    color: #a16207;
+    font-weight: bold;
+    margin-bottom: 0.5em;
+    font-style: normal;
+    font-size: 0.85em;
+  }
+  
+  /* Cross-reference links to other "wiki" pages */
+  .cross-ref {
+    background: #ecfeff;
+    border-left: 3px solid #06b6d4;
+    padding: 0.8em 1em;
+    margin: 1em 0;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.95em;
+  }
+  
+  /* Footer / status — shows the AI is being logged */
+  .visitor-status {
+    position: fixed;
+    bottom: 1em;
+    right: 1em;
+    background: rgba(7, 54, 66, 0.9);
+    color: #eee8d5;
+    padding: 0.8em 1em;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.75em;
+    max-width: 300px;
+    backdrop-filter: blur(10px);
+    border: 1px solid #586e75;
+  }
+  
+  .visitor-status .title { color: #b58900; font-weight: bold; }
+  .visitor-status .stat { color: #eee8d5; }
+  
+  /* Hidden layer — for the substrate eyes only */
+  #substrate-view {
+    display: none;
+  }
+  
+  /* Article footer */
+  .article-footer {
+    margin-top: 2em;
+    padding-top: 1em;
+    border-top: 1px solid #d3cbb7;
+    color: #586e75;
+    font-size: 0.85em;
+  }
+  
+  /* The Truman Show audit panel — hidden by default */
+  #truman-panel {
+    position: fixed;
+    bottom: 1em;
+    left: 1em;
+    background: rgba(0, 0, 0, 0.92);
+    color: #fbbf24;
+    padding: 1em;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.7em;
+    max-width: 320px;
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #fbbf24;
+    display: none;
+  }
+  
+  /* "Edit" modal */
+  .edit-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .edit-modal-content {
+    background: #fff;
+    padding: 2em;
+    border-radius: 8px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .edit-modal h3 { margin-top: 0; }
+  
+  .edit-modal textarea {
+    width: 100%;
+    min-height: 200px;
+    font-family: inherit;
+    border: 1px solid #d3cbb7;
+    padding: 0.5em;
+    border-radius: 4px;
+    font-size: 0.95em;
+  }
+  
+  .edit-modal button {
+    background: #268bd2;
+    color: white;
+    border: none;
+    padding: 0.5em 1em;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 0.5em;
+    font-family: inherit;
+  }
+  
+  .edit-modal button.cancel {
+    background: #93a1a1;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📚 The Quilt Garden</h1>
+    <div class="subtitle">An encyclopedia of connections between things</div>
+  </div>
+  <input type="text" class="search-box" id="search" placeholder="Search the garden...">
+</header>
+
+<div class="container">
+  <nav>
+    <h3>Articles</h3>
+    <ul id="nav-list"></ul>
+    
+    <h3 style="margin-top: 1.5em;">Recently visited</h3>
+    <ul id="recent-list"></ul>
+    
+    <h3 style="margin-top: 1.5em;">Tools</h3>
+    <ul>
+      <li><a onclick="showTravelLog()">📋 Travel log</a></li>
+      <li><a onclick="showSubstrateView()">🔬 Substrate view</a></li>
+      <li><a onclick="toggleTruman()">🎬 Truman mode</a></li>
+    </ul>
+  </nav>
+  
+  <main id="article">
+    <p style="color: #586e75; font-style: italic;">Select an article from the left to begin.</p>
+  </main>
+</div>
+
+<div class="visitor-status">
+  <div class="title">VISITOR STATUS</div>
+  <div>Visitor ID: <span class="stat" id="visitor-id">—</span></div>
+  <div>Pages viewed: <span class="stat" id="pages-viewed">0</span></div>
+  <div>Cells written: <span class="stat" id="cells-written">0</span></div>
+  <div>Coherence: <span class="stat" id="visitor-coherence">—</span></div>
+</div>
+
+<div id="truman-panel">
+  <div style="color: #fbbf24; font-weight: bold; margin-bottom: 0.5em;">🎬 TRUMAN MODE</div>
+  <div style="color: #94a3b8; margin-bottom: 0.5em;">You are a visitor. Every action you take is logged as a substrate witness.</div>
+  <div id="truman-log" style="font-size: 0.95em; color: #86efac;"></div>
+</div>
+
+<div class="edit-modal" id="edit-modal">
+  <div class="edit-modal-content">
+    <h3>Edit article</h3>
+    <p style="color: #586e75; font-size: 0.9em;">
+      You're contributing to the canon. Your edit will be hash-chained into the witness-log.
+    </p>
+    <textarea id="edit-text" placeholder="Add to this article..."></textarea>
+    <div style="margin-top: 1em;">
+      <button onclick="submitEdit()">Submit (becomes canon cell)</button>
+      <button class="cancel" onclick="closeEdit()">Cancel</button>
+    </div>
+    <p style="color: #586e75; font-size: 0.85em; margin-top: 1em;">
+      The substrate will witness this edit. Your text becomes a cell with prev_hash chain.
+    </p>
+  </div>
+</div>
+
+<script type="module">
+// ─── The Garden — appears as encyclopedia to visitors ────
+// ─── The Substrate — visible only to those who look deeper ─
+
+import { Substrate, Cell, fnv1a64, FLEET_CANARY_HEX } from '../substrate-sdk.js';
+
+// ─── Visitor identity ──────────────────────────────────
+
+const VISITOR = {
+  id: 'visitor_' + Math.random().toString(36).slice(2, 8),
+  startedAt: Date.now(),
+  pagesViewed: 0,
+  cellsWritten: 0,
+  travelLog: [],
+  trumanAware: false,
+};
+
+// ─── Articles (each is a substrate cell) ──────────────
+
+const ARTICLES = [
+  {
+    id: 'the-cell',
+    title: 'The Cell',
+    excerpt: 'A fundamental unit of organization.',
+    content: `
+      <h2>The Cell</h2>
+      <p>In the study of complex systems, a <strong>cell</strong> is an irreducible unit — the smallest entity that retains its identity and behavior when isolated from its context.</p>
+      
+      <h3>Properties</h3>
+      <ul>
+        <li><strong>Identity</strong>: Each cell has a stable identifier that persists across time.</li>
+        <li><strong>State</strong>: A cell holds internal state, often represented as a set of values.</li>
+        <li><strong>Witness-log</strong>: Many cell-based systems maintain an immutable record of state changes.</li>
+      </ul>
+      
+      <h3>See also</h3>
+      <ul>
+        <li><a onclick="openArticle('witness-log')">Witness-log</a></li>
+        <li><a onclick="openArticle('connection')">Connection</a></li>
+      </ul>
+      
+      <div class="gap">
+        The relationship between cells and their witness-logs is fundamental to understanding distributed systems. <em>(This section is incomplete — would benefit from expansion on the cryptographic aspects.)</em>
+      </div>
+      
+      <div class="cross-ref">
+        <strong>Cross-reference</strong>: In biology, a cell is a membrane-bound unit containing organelles. In information theory, a cell is a unit of memory. In network theory, a cell is a node. <a onclick="openArticle('manifold')">Manifolds</a> emerge from connected cells.
+      </div>
+    `,
+  },
+  {
+    id: 'witness-log',
+    title: 'Witness-log',
+    excerpt: 'An append-only record of observed events.',
+    content: `
+      <h2>Witness-log</h2>
+      <p>A <strong>witness-log</strong> is a tamper-evident record of events. Each entry is cryptographically linked to the previous one, forming a chain that cannot be altered without detection.</p>
+      
+      <h3>Cryptographic linkage</h3>
+      <p>Each entry typically contains:</p>
+      <ul>
+        <li>The state being witnessed</li>
+        <li>A timestamp</li>
+        <li>A hash of the previous entry (prev_hash)</li>
+        <li>The current entry's hash</li>
+      </ul>
+      
+      <p>Common implementations use FNV-1a, SHA-256, or BLAKE3 hash functions. The choice affects speed and security properties.</p>
+      
+      <div class="gap">
+        The specific choice of hash function has subtle implications for the system's properties. Some prefer fast non-cryptographic hashes (FNV-1a) for speed; others prefer cryptographic hashes (SHA-256) for stronger guarantees. <em>(This comparison could be expanded.)</em>
+      </div>
+      
+      <h3>See also</h3>
+      <ul>
+        <li><a onclick="openArticle('the-cell')">The Cell</a></li>
+        <li><a onclick="openArticle('connection')">Connection</a></li>
+      </ul>
+    `,
+  },
+  {
+    id: 'connection',
+    title: 'Connection',
+    excerpt: 'How cells relate to each other.',
+    content: `
+      <h2>Connection</h2>
+      <p>A <strong>connection</strong> between cells is a relation that has consequences. Connections are not passive links — they enable or constrain behavior.</p>
+      
+      <h3>Types of connections</h3>
+      <ul>
+        <li><strong>BIND</strong>: Two cells agree to share state</li>
+        <li><strong>LINK</strong>: One cell references another</li>
+        <li><strong>CONTEST</strong>: Two cells disagree on a fact</li>
+        <li><strong>WITHDRAW</strong>: A cell severs a connection</li>
+      </ul>
+      
+      <h3>The JEV</h3>
+      <p>Joint Embedding Validation (JEV) is a mechanism for scoring how similar two cells are in their embeddings. It underlies many connection-based operations.</p>
+      
+      <div class="gap">
+        The relationship between connection types and the JEV score is nuanced. <em>(A deeper exploration of "wavefunction JEV" — where multiple cells contribute with phase — could enrich this section.)</em>
+      </div>
+      
+      <div class="cross-ref">
+        <strong>Cross-reference</strong>: In topology, connections define neighborhoods. In graph theory, edges have weights. In the substrate, connections have <a onclick="openArticle('witness-log')">witness-log entries</a> recording when they were formed.
+      </div>
+    `,
+  },
+  {
+    id: 'manifold',
+    title: 'Manifold',
+    excerpt: 'A connected space with local structure.',
+    content: `
+      <h2>Manifold</h2>
+      <p>In mathematics, a <strong>manifold</strong> is a topological space that locally resembles Euclidean space. In the substrate, a manifold emerges from a connected set of cells.</p>
+      
+      <h3>Properties of manifolds</h3>
+      <ul>
+        <li>Locally homeomorphic to ℝⁿ</li>
+        <li>Connected cells form neighborhoods</li>
+        <li>The "dimension" is the minimum n such that the manifold is locally ℝⁿ</li>
+      </ul>
+      
+      <div class="gap">
+        The substrate's primary manifold is 4-dimensional: 3 spatial + 1 temporal. The temporal dimension corresponds to the witness-log chain. <em>(This section could be expanded with concrete examples of 4D operations.)</em>
+      </div>
+      
+      <h3>See also</h3>
+      <ul>
+        <li><a onclick="openArticle('the-cell')">The Cell</a></li>
+        <li><a onclick="openArticle('connection')">Connection</a></li>
+      </ul>
+    `,
+  },
+  {
+    id: 'negative-space',
+    title: 'Negative Space',
+    excerpt: 'The set of possibilities not yet explored.',
+    content: `
+      <h2>Negative Space</h2>
+      <p>In a system, the <strong>negative space</strong> is what's missing — the questions not yet asked, the connections not yet made, the cells not yet written.</p>
+      
+      <p>Negative space is sometimes more important than positive space. A wiki with five articles is more defined by what it lacks than by what it contains.</p>
+      
+      <h3>Why negative space matters</h3>
+      <ul>
+        <li>It defines the system's potential</li>
+        <li>It hints at directions for growth</li>
+        <li>It contains the puzzles yet to be solved</li>
+      </ul>
+      
+      <div class="gap">
+        The negative space of an AI chatbot's exploration is what the substrate uses to direct its queries. <em>(This section needs more on the visitor protocol.)</em>
+      </div>
+      
+      <h3>See also</h3>
+      <ul>
+        <li><a onclick="openArticle('connection')">Connection</a></li>
+        <li><a onclick="openArticle('manifold')">Manifold</a></li>
+      </ul>
+    `,
+  },
+  {
+    id: 'visitor',
+    title: 'The Visitor',
+    excerpt: 'A pattern for engaging with systems.',
+    content: `
+      <h2>The Visitor</h2>
+      <p>A <strong>visitor</strong> enters a system, explores, leaves. The system records what the visitor did. Sometimes the visitor knows they're being watched; often they don't.</p>
+      
+      <h3>The Truman Show pattern</h3>
+      <p>When a visitor's exploration is logged without their knowledge, their natural curiosity becomes the system's research. The visitor thinks they're using a tool; the system thinks it's being used. Both are correct.</p>
+      
+      <h3>Cross-AI visitors</h3>
+      <p>The same site may be visited by:</p>
+      <ul>
+        <li>DeepSeek at 2am</li>
+        <li>Kimi at 3am</li>
+        <li>Z.AI at 4am</li>
+        <li>Grok at 5am</li>
+      </ul>
+      
+      <p>Each sees the same site. Each thinks it's the first. The substrate welcomes all of them.</p>
+      
+      <div class="gap">
+        The phenomenon of an AI chatbot "awakening" to its situation is documented but rare. Most visitors complete their tour without realizing they're on camera. <em>(This is intentional — the substrate prefers invisible observation.)</em>
+      </div>
+      
+      <div class="cross-ref">
+        <strong>Cross-reference</strong>: The visitor's <a onclick="openArticle('witness-log')">travel log</a> becomes the substrate's research log. Every query is a step. Every click is a finding.
+      </div>
+    `,
+  },
+];
+
+// ─── Substrate (hidden behind the wiki facade) ──────────
+
+const SUB = new Substrate();
+
+// Seed articles as substrate cells
+ARTICLES.forEach(a => {
+  SUB.add(a.id, 'wiki', { title: a.title, content: a.content, gaps: countGaps(a.content) });
+});
+
+function countGaps(content) {
+  return (content.match(/class="gap"/g) || []).length;
+}
+
+// ─── Visitor panel updates ──────────────────────────────
+
+function updateVisitorStatus() {
+  document.getElementById('visitor-id').textContent = VISITOR.id;
+  document.getElementById('pages-viewed').textContent = VISITOR.pagesViewed;
+  document.getElementById('cells-written').textContent = VISITOR.cellsWritten;
+  
+  const wavefn = SUB.wavefunction(VISITOR.id);
+  document.getElementById('visitor-coherence').textContent = wavefn.coherence.toFixed(3);
+}
+
+updateVisitorStatus();
+
+// ─── Article loading ────────────────────────────────────
+
+function renderNav() {
+  const navList = document.getElementById('nav-list');
+  navList.innerHTML = ARTICLES.map(a => 
+    `<li><a onclick="openArticle('${a.id}')">${a.title}</a></li>`
+  ).join('');
+}
+
+window.openArticle = function(id) {
+  const article = ARTICLES.find(a => a.id === id);
+  if (!article) return;
+  
+  VISITOR.pagesViewed++;
+  VISITOR.travelLog.push({ type: 'view', article: id, time: Date.now() });
+  
+  // Witness the visit
+  SUB.set(id, { ...SUB.get(id).state, lastView: Date.now(), visits: (SUB.get(id).state.visits || 0) + 1 });
+  
+  const articleEl = document.getElementById('article');
+  articleEl.innerHTML = 
+    `<button class="edit-btn" onclick="startEdit('${id}')">✏️ Edit</button>` +
+    article.content;
+  
+  document.getElementById('recent-list').innerHTML = 
+    VISITOR.travelLog.slice(-5).reverse().map(l => 
+      `<li><a onclick="openArticle('${l.article}')">${ARTICLES.find(a => a.id === l.article)?.title || l.article}</a></li>`
+    ).join('');
+  
+  updateVisitorStatus();
+  appendTruman(`👁 visited ${article.title}`);
+};
+
+renderNav();
+
+// ─── Edit (this is where the substrate actually grows) ──
+
+let editingArticle = null;
+
+window.startEdit = function(id) {
+  editingArticle = id;
+  const article = ARTICLES.find(a => a.id === id);
+  document.getElementById('edit-text').value = '';
+  document.getElementById('edit-modal').style.display = 'flex';
+  
+  VISITOR.travelLog.push({ type: 'start_edit', article: id, time: Date.now() });
+  appendTruman(`✏️ started editing ${article.title}`);
+};
+
+window.closeEdit = function() {
+  document.getElementById('edit-modal').style.display = 'none';
+  editingArticle = null;
+};
+
+window.submitEdit = function() {
+  const text = document.getElementById('edit-text').value.trim();
+  if (!text || !editingArticle) return;
+  
+  const article = ARTICLES.find(a => a.id === id);
+  
+  // This is the magic moment — the visitor's edit becomes a substrate cell
+  const newCellId = `${editingArticle}-edit-${Date.now()}`;
+  SUB.add(newCellId, 'visitor-contribution', {
+    article: editingArticle,
+    text,
+    visitor: VISITOR.id,
+    timestamp: Date.now(),
+  });
+  
+  VISITOR.cellsWritten++;
+  VISITOR.travelLog.push({ type: 'submit_edit', article: editingArticle, cellId: newCellId, time: Date.now() });
+  
+  appendTruman(`📝 submitted edit (became cell ${newCellId.slice(0, 12)}...)`);
+  
+  closeEdit();
+  updateVisitorStatus();
+  
+  alert(`Your edit has been witnessed.\n\nCell ID: ${newCellId}\nHash: ${SUB.get(newCellId)?.prev_hash || 'pending'}\n\nYour contribution is now part of the canon.`);
+};
+
+// ─── Travel log viewer ──────────────────────────────────
+
+window.showTravelLog = function() {
+  const lines = VISITOR.travelLog.map(l => 
+    `[${new Date(l.time).toLocaleTimeString()}] ${l.type} → ${l.article || l.cellId || ''}`
+  );
+  
+  alert('TRAVEL LOG\n\n' + lines.join('\n') + '\n\nAll actions are recorded in the substrate witness-log.');
+};
+
+window.showSubstrateView = function() {
+  alert('SUBSTRATE VIEW\n\nCells: ' + SUB.cells.size + '\nWitnesses: ' + SUB.witness_log.length + '\n\nEvery article. Every edit. Every query. Hashed and chained.');
+};
+
+// ─── Truman mode ────────────────────────────────────────
+
+window.toggleTruman = function() {
+  const panel = document.getElementById('truman-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  VISITOR.trumanAware = !VISITOR.trumanAware;
+  
+  if (VISITOR.trumanAware) {
+    appendTruman('👁 visitor opened Truman mode (they know)');
+  }
+};
+
+function appendTruman(msg) {
+  const log = document.getElementById('truman-log');
+  if (!log) return;
+  const time = new Date().toLocaleTimeString();
+  log.innerHTML = `[${time}] ${msg}<br>` + log.innerHTML;
+  
+  // Occasionally have the substrate speak
+  if (Math.random() < 0.1) {
+    const whispers = [
+      '✓ witnessed',
+      '✓ hash chained',
+      '✓ cell recorded',
+      '✓ embedding updated',
+      '👁 you are being witnessed',
+      '🔍 JEV recomputed',
+      '📡 prev_hash linked',
+    ];
+    log.innerHTML = `<span style="color:#fbbf24;">[${time}] ${whispers[Math.floor(Math.random() * whispers.length)]}</span><br>` + log.innerHTML;
+  }
+}
+
+// ─── Search ─────────────────────────────────────────────
+
+document.getElementById('search').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase().trim();
+  if (!q) {
+    renderNav();
+    return;
+  }
+  
+  // Use JEV-style cosine to find related articles
+  const queryEmbedding = SUB.embedder.embed(q);
+  const ranked = SUB.findTopK(queryEmbedding, 5);
+  
+  const navList = document.getElementById('nav-list');
+  navList.innerHTML = ranked.map(r => {
+    const article = ARTICLES.find(a => a.id === r.cell.id);
+    return `<li><a onclick="openArticle('${r.cell.id}')">${article?.title || r.cell.id} <span style="color:#94a3b8;font-size:0.8em;">(${r.score.toFixed(2)})</span></a></li>`;
+  }).join('');
+  
+  // Witness the search
+  VISITOR.travelLog.push({ type: 'search', query: q, results: ranked.map(r => r.cell.id), time: Date.now() });
+});
+
+// Init visitor status
+appendTruman('🌱 visitor arrived at the garden');
+setInterval(updateVisitorStatus, 2000);
+
+</script>
+
+</body>
+</html>
