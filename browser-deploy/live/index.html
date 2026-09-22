@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quilt Canon — Live Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+  color: #e0e0ff;
+  padding: 20px;
+  min-height: 100vh;
+}
+.container { max-width: 1400px; margin: 0 auto; }
+header {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+h1 {
+  font-size: 2em;
+  background: linear-gradient(135deg, #76ff03, #80cbc4, #b39ddb);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.subtitle { color: #b0b0d0; font-size: 1em; margin-top: 6px; }
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #76ff03;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+}
+.stat-card .value {
+  font-size: 2.5em;
+  font-weight: 700;
+  background: linear-gradient(135deg, #76ff03, #80cbc4);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  line-height: 1;
+}
+.stat-card .label {
+  color: #888;
+  font-size: 0.85em;
+  margin-top: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.stat-card.live { border-color: #76ff03; }
+.stat-card.warn { border-color: #ff9800; }
+.stat-card.error { border-color: #f44336; }
+
+.section {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.section h2 {
+  color: #80cbc4;
+  font-size: 1.1em;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(128,203,196,0.3);
+}
+
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+.stack-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.stack-item .status { font-size: 1.4em; }
+.stack-item .name { font-size: 0.9em; color: #b0b0d0; }
+
+.cells-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+.cell-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.cell-item:hover { background: rgba(118, 255, 3, 0.05); }
+.cell-id {
+  font-family: 'JetBrains Mono', monospace;
+  color: #80cbc4;
+  font-size: 0.85em;
+  min-width: 200px;
+}
+.cell-source {
+  font-size: 0.7em;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(118, 255, 3, 0.2);
+  color: #76ff03;
+  text-transform: uppercase;
+}
+.cell-source.api { background: rgba(33,150,243,0.2); color: #64b5f6; }
+.cell-source.cron { background: rgba(156,39,176,0.2); color: #ba68c8; }
+.cell-source.garden { background: rgba(255,152,0,0.2); color: #ffb74d; }
+.cell-time { color: #888; font-size: 0.8em; margin-left: auto; }
+
+.cell-detail {
+  background: rgba(0,0,0,0.4);
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 8px;
+  font-size: 0.9em;
+  line-height: 1.5;
+  color: #d0d0e0;
+  white-space: pre-wrap;
+}
+
+.search-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.search-bar input {
+  flex: 1;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.95em;
+}
+.search-bar input:focus { outline: none; border-color: #76ff03; }
+.search-bar button {
+  background: linear-gradient(135deg, #76ff03, #80cbc4);
+  color: #1a1a1a;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.match-item {
+  background: rgba(0,0,0,0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 8px 0;
+  cursor: pointer;
+}
+.match-item:hover { background: rgba(118, 255, 3, 0.05); }
+.match-score {
+  font-size: 0.85em;
+  color: #76ff03;
+  font-weight: 600;
+}
+.match-topic {
+  color: #80cbc4;
+  font-size: 0.9em;
+  margin-top: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+button {
+  background: linear-gradient(135deg, #5e72e4, #825ee4);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+button:hover { transform: translateY(-1px); }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>⚡ Quilt Canon <span class="live-dot"></span></h1>
+  <p class="subtitle">Live substrate canon · Cloudflare D1 + Vectorize + Workers AI</p>
+  <p style="margin-top: 8px;">
+    <span id="endpoint-status" style="display:inline-block;padding:4px 12px;background:rgba(0,0,0,0.3);border:1px solid #80cbc4;border-radius:12px;font-size:0.85em;color:#80cbc4;">Connecting...</span>
+    <button onclick="refresh()" style="margin-left:12px;">🔄 Refresh</button>
+  </p>
+</header>
+
+<div class="stats-grid" id="stats-grid">
+  <div class="stat-card"><div class="value" id="stat-cells">—</div><div class="label">Cells</div></div>
+  <div class="stat-card"><div class="value" id="stat-witnesses">—</div><div class="label">Witnesses</div></div>
+  <div class="stat-card"><div class="value" id="stat-nodes">—</div><div class="label">IoT Nodes</div></div>
+  <div class="stat-card"><div class="value" id="stat-submissions">—</div><div class="label">Submissions</div></div>
+</div>
+
+<div class="section">
+  <h2>🔧 Cloudflare Stack</h2>
+  <div class="stack-grid" id="stack-grid"></div>
+</div>
+
+<div class="section">
+  <h2>🔍 JEV Semantic Search</h2>
+  <p style="color:#b0b0d0;font-size:0.9em;margin-bottom:12px;">Find canon pieces semantically. Uses 768d embeddings on Cloudflare Vectorize.</p>
+  <div class="search-bar">
+    <input type="text" id="search-query" placeholder="Try: witness-log as prediction, JEV interference, multi-device substrate..." value="witness-log">
+    <button onclick="jevSearch()">Search</button>
+  </div>
+  <div id="search-results"></div>
+</div>
+
+<div class="section">
+  <h2>📚 Recent Canon Cells</h2>
+  <div class="actions">
+    <button onclick="loadCells()">📥 Load Latest</button>
+    <button onclick="document.getElementById('search-query').value='witness-log'; jevSearch()">Find Witness-Log</button>
+    <button onclick="document.getElementById('search-query').value='wavefunction'; jevSearch()">Find Wavefunction</button>
+  </div>
+  <div class="cells-list" id="cells-list">Loading...</div>
+</div>
+
+<div class="section">
+  <h2>📋 Selected Cell Detail</h2>
+  <div id="cell-detail">Click a cell to see its full text + witnesses</div>
+</div>
+
+</div>
+</body>
+</html>
+
+<script>
+const API = 'https://quilt-distributed.casey-digennaro.workers.dev';
+
+async function refresh() {
+  document.getElementById('endpoint-status').textContent = 'Loading...';
+  
+  try {
+    // Health + stats in parallel
+    const [health, stats, cells] = await Promise.all([
+      fetch(`${API}/api/health`).then(r => r.json()),
+      fetch(`${API}/api/canon/stats`).then(r => r.json()),
+      fetch(`${API}/api/cells?limit=20`).then(r => r.json()),
+    ]);
+    
+    // Stats
+    document.getElementById('stat-cells').textContent = stats.stats.cells;
+    document.getElementById('stat-witnesses').textContent = stats.stats.witnesses;
+    document.getElementById('stat-nodes').textContent = stats.stats.nodes;
+    document.getElementById('stat-submissions').textContent = stats.stats.submissions;
+    
+    // Stack
+    const stackGrid = document.getElementById('stack-grid');
+    const stackItems = [
+      { name: 'KV', on: health.stack.kv },
+      { name: 'D1', on: health.stack.d1 },
+      { name: 'R2', on: health.stack.r2 },
+      { name: 'Vectorize', on: health.stack.vectorize },
+      { name: 'Workers AI', on: health.stack.ai },
+      { name: 'Durable Objects', on: health.stack.durableObjects },
+    ];
+    stackGrid.innerHTML = stackItems.map(s => `
+      <div class="stack-item" style="${s.on ? '' : 'opacity:0.4'}">
+        <span class="status">${s.on ? '🟢' : '⚫'}</span>
+        <span class="name">${s.name}</span>
+      </div>
+    `).join('');
+    
+    // Endpoint status
+    document.getElementById('endpoint-status').textContent = `Live · v${stats.stats.version} · ${stats.stats.cells} cells`;
+    document.getElementById('endpoint-status').style.background = 'rgba(118,255,3,0.2)';
+    document.getElementById('endpoint-status').style.color = '#76ff03';
+    document.getElementById('endpoint-status').style.borderColor = '#76ff03';
+    
+    // Cells
+    renderCells(cells.cells);
+  } catch (e) {
+    document.getElementById('endpoint-status').textContent = '❌ Error: ' + e.message;
+  }
+}
+
+function renderCells(cells) {
+  const list = document.getElementById('cells-list');
+  if (!cells || cells.length === 0) {
+    list.innerHTML = '<p style="color:#888;text-align:center;">No cells yet.</p>';
+    return;
+  }
+  list.innerHTML = cells.map(c => {
+    const time = c.created_at ? new Date(c.created_at + 'Z').toLocaleTimeString() : '';
+    return `
+      <div class="cell-item" onclick="loadCell('${c.id}')">
+        <span class="cell-source ${c.source}">${c.source || '?'}</span>
+        <span class="cell-id">${c.id}</span>
+        <span class="cell-time">${time}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadCell(id) {
+  const detail = document.getElementById('cell-detail');
+  detail.innerHTML = 'Loading ' + id + '...';
+  try {
+    const r = await fetch(`${API}/api/cell/${id}`);
+    const data = await r.json();
+    if (!data.ok) { detail.innerHTML = 'Error: ' + JSON.stringify(data); return; }
+    
+    let html = `<strong>Cell:</strong> ${data.cell.id}<br>`;
+    html += `<strong>Topic:</strong> ${data.topic || '(unknown)'}<br>`;
+    html += `<strong>Source:</strong> ${data.cell.source}<br>`;
+    html += `<strong>Embedding:</strong> ${data.cell.embedding_id || 'null'}<br>`;
+    html += `<strong>Witnesses:</strong> ${data.witnesses?.length || 0}<br><br>`;
+    html += `<div class="cell-detail">${(data.text || data.content || '(no text)').slice(0, 2000)}</div>`;
+    detail.innerHTML = html;
+  } catch (e) {
+    detail.innerHTML = 'Error: ' + e.message;
+  }
+}
+
+async function jevSearch() {
+  const query = document.getElementById('search-query').value.trim();
+  if (!query) return;
+  const results = document.getElementById('search-results');
+  results.innerHTML = 'Searching...';
+  try {
+    const r = await fetch(`${API}/api/jev/search`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ query, topK: 8 }),
+    });
+    const data = await r.json();
+    if (!data.matches || data.matches.length === 0) {
+      results.innerHTML = '<p style="color:#888;">No matches.</p>';
+      return;
+    }
+    results.innerHTML = data.matches.map(m => `
+      <div class="match-item" onclick="loadCell('${m.id}')">
+        <div class="match-score">Score: ${(m.score || 0).toFixed(4)}</div>
+        <div class="match-topic">${m.metadata?.topic || m.id}</div>
+        <small style="color:#888">${m.id}</small>
+      </div>
+    `).join('');
+  } catch (e) {
+    results.innerHTML = 'Error: ' + e.message;
+  }
+}
+
+function loadCells() {
+  Promise.all([
+    fetch(`${API}/api/canon/stats`).then(r => r.json()),
+    fetch(`${API}/api/cells?limit=20`).then(r => r.json()),
+  ]).then(([stats, cells]) => {
+    document.getElementById('stat-cells').textContent = stats.stats.cells;
+    renderCells(cells.cells);
+  });
+}
+
+// Auto-refresh every 30s + on load
+refresh();
+setInterval(refresh, 30000);
+document.getElementById('search-query').addEventListener('keydown', e => { if (e.key === 'Enter') jevSearch(); });
+window.refresh = refresh;
+window.loadCell = loadCell;
+window.jevSearch = jevSearch;
+window.loadCells = loadCells;
+</script>

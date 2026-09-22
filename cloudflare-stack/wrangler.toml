@@ -46,7 +46,7 @@ crons = ["*/5 * * * *"]
 
 # ─── Vars ──────────────────────────────────────────────
 [vars]
-QUILT_VERSION = "0.6.0"
+QUILT_VERSION = "0.7.0"
 CANARY_HASH = "0x024a555471370b18d"
 ML_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast"
 EMBED_MODEL = "@cf/baai/bge-base-en-v1.5"

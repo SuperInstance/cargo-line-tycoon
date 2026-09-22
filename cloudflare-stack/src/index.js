@@ -368,7 +368,7 @@ export default {
       if (path === '/api/cell' && req.method === 'POST') {
         const body = await req.json();
         const cellId = body.id || 'cell_' + Date.now();
-        const stateJson = JSON.stringify(body.state || {});
+        const stateJson = typeof body.state === 'string' ? body.state : JSON.stringify(body.state || {});
         const prevHash = body.prev_hash || ('0x' + '0'.repeat(16));
         
         // Compute hash
@@ -439,14 +439,54 @@ export default {
         const cell = await env.DB.prepare('SELECT * FROM cells WHERE id = ?').bind(cellId).first();
         if (!cell) return error('not found', 404);
         
-        // Try to load full content from R2
+        // Parse state JSON for easy access (handle both single and double-encoded)
+        let parsed = null;
+        try {
+          parsed = JSON.parse(cell.state || '{}');
+          // If still a string after first parse, parse again (double-encoded legacy)
+          if (typeof parsed === 'string') {
+            try { parsed = JSON.parse(parsed); } catch (e) { parsed = null; }
+          }
+        } catch (e) {}
+        
+        // Try to load full content from R2 (cron/{cellId}.md or cells/{cellId}.md)
         let content = null;
         if (env.MODELS) {
-          const obj = await env.MODELS.get(`cells/${cellId}.md`);
+          let obj = await env.MODELS.get(`cron/${cellId}.md`);
+          if (!obj) obj = await env.MODELS.get(`cells/${cellId}.md`);
           if (obj) content = await obj.text();
         }
         
-        return jsonResponse({ ok: true, cell, content });
+        // Also load witness chain
+        let witnesses = [];
+        try {
+          const ws = await env.DB.prepare('SELECT * FROM witnesses WHERE cell_id = ? ORDER BY timestamp ASC').bind(cellId).all();
+          witnesses = ws.results || [];
+        } catch (e) {}
+        
+        return jsonResponse({ 
+          ok: true, 
+          cell, 
+          text: parsed?.text || content || null,
+          topic: parsed?.topic || null,
+          metadata: parsed || null,
+          content,
+          witnesses,
+        });
+      }
+      
+      // ─── Quick text-only cell fetch ─────────────────
+      const textMatch = path.match(/^\/api\/cell\/([^/]+)\/text$/);
+      if (textMatch && req.method === 'GET') {
+        const cellId = textMatch[1];
+        const cell = await env.DB.prepare('SELECT state FROM cells WHERE id = ?').bind(cellId).first();
+        if (!cell) return error('not found', 404);
+        try {
+          const parsed = JSON.parse(cell.state || '{}');
+          return jsonResponse({ ok: true, cellId, text: parsed.text, topic: parsed.topic });
+        } catch (e) {
+          return error('parse error: ' + e.message, 500);
+        }
       }
       
       // ─── List cells ────────────────────────────────
@@ -748,7 +788,8 @@ export default {
         if (!content) return;
         
         const cellId = `cron-${Date.now()}`;
-        const stateJson = JSON.stringify({ text: content, topic, source: 'cron' });
+        const stateCronObj = { text: content, topic, source: 'cron' };
+        const stateJson = JSON.stringify(stateCronObj);
         const hash = '0x' + (await fnv1a64(cellId + stateJson)).toString(16).padStart(16, '0');
         
         await env.DB.prepare(
@@ -756,17 +797,23 @@ export default {
         ).bind(cellId, 'canon', stateJson, '0x' + '0'.repeat(16), Date.now(), 'cron').run();
         
         // Embed
+        let embeddingId = null;
         try {
           const emb = await env.AI.run(env.EMBED_MODEL || '@cf/baai/bge-base-en-v1.5', {
             text: content.slice(0, 1000),
           });
           const vec = emb.data?.[0] || emb.embedding || emb;
+          embeddingId = 'emb-' + (await fnv1a64(content.slice(0, 100))).toString(16).padStart(8, '0') + '-' + cellId.slice(-8);
           await env.JEV_INDEX.insert([{
             id: cellId,
             values: vec,
             metadata: { type: 'canon', topic, source: 'cron' },
           }]);
-        } catch (e) {}
+          // Update D1 with embedding_id
+          await env.DB.prepare('UPDATE cells SET embedding_id = ? WHERE id = ?').bind(embeddingId, cellId).run();
+        } catch (e) {
+          console.error('Cron embed error:', e);
+        }
         
         // Archive
         await env.MODELS.put(`cron/${cellId}.md`, content);

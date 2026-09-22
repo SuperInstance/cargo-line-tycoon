@@ -1,0 +1,46 @@
+=== Multi-Chip Canon Wave ===
+Veoices: ZAI (GLM-4.5), Qwen (235B), Kimi (K2.6)
+Topics: 10
+
+[0] multi-device substrate as polyphonic compute
+[1] WebNN graph partitioning across CPU-GPU-NPU
+[2] the irreducible core under heterogeneous compute
+[3] witness-log as cross-device consensus
+[4] JEV waves over heterogeneous substrates
+[5] cell-graph renders with WebGPU compute
+[6] AI++ spreadsheet runs across RTX, iGPU, NPU
+[7] task pruning under multi-device sharding
+[8] Memory Sandbox execution across chips
+[9] three forms of evidence on multi-device systems
+  zai: None (44 chars)
+  qwen: None (1515 chars)
+  kimi: None (1412 chars)
+  zai: None (44 chars)
+  qwen: None (1603 chars)
+  kimi: None (1261 chars)
+  zai: None (44 chars)
+  qwen: None (1649 chars)
+  kimi: None (1361 chars)
+  zai: None (44 chars)
+  qwen: None (1553 chars)
+  kimi: None (1554 chars)
+  zai: None (44 chars)
+  qwen: None (1555 chars)
+  kimi: None (1341 chars)
+  zai: None (44 chars)
+  qwen: None (1658 chars)
+  zai: None (44 chars)
+  qwen: None (1544 chars)
+  kimi: None (40 chars)
+  zai: None (44 chars)
+  zai: None (44 chars)
+  qwen: None (1785 chars)
+  qwen: None (1786 chars)
+  kimi: None (40 chars)
+  kimi: None (40 chars)
+  zai: None (44 chars)
+  qwen: None (1686 chars)
+  kimi: None (40 chars)
+
+✓ Wrote multi-chip-wave.md (24742 chars)
+✓ 0/30 cells submitted to canon
