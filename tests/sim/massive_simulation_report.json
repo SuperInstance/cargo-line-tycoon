@@ -1,0 +1,29 @@
+{
+  "total_obs": 596487,
+  "total_cells": 32,
+  "total_rejections": 5876,
+  "injection_rate": 0.009851011002754461,
+  "polyformal_cells": 32,
+  "patches_shipped": 7,
+  "wall_time_sec": 74.894,
+  "throughput_obs_per_sec": 7964.416375143535,
+  "feature_tally": {
+    "add-storm-event": 4208,
+    "add-currency": 4241,
+    "fix-trade-route": 4208,
+    "add-pirate-event": 4204,
+    "add-fuel-cost": 4213,
+    "add-new-port": 4234,
+    "add-trade-agreement": 4284
+  },
+  "opcode_distribution": {
+    "ATTEST": 54158,
+    "CONTEST": 53257,
+    "MERGER": 53593,
+    "REVOKE": 53722,
+    "WITHDRAW": 53811,
+    "DELEGATE": 53792
+  },
+  "avg_chain_length": 18456.59375,
+  "max_chain_length": 21163
+}

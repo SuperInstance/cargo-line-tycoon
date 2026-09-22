@@ -1,0 +1,13 @@
+{
+  "method": "JEPA-style ridge regression on bge-large-en-v1.5 embeddings",
+  "embedding_dim": 1024,
+  "n_train": 652,
+  "n_test": 163,
+  "mean_cosine_predicted": 0.858940839767456,
+  "mean_cosine_naive": 0.905937910079956,
+  "improvement": -0.0469970703125,
+  "canon_ready_rate_0.5": 1.0,
+  "canon_ready_rate_0.7": 1.0,
+  "alpha": 0.1,
+  "window_size": 5
+}
