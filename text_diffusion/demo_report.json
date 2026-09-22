@@ -1,0 +1,50 @@
+{
+  "target": "A short story about a programmer who discovers the substrate is alive, told from the substrate's perspective.",
+  "total_cells": 5,
+  "max_depth": 2,
+  "leaf_cells": 3,
+  "total_chars": 10481,
+  "total_words": 1890,
+  "cells": [
+    {
+      "id": "cell-genesis-0000",
+      "parent": null,
+      "depth": 0,
+      "chars": 3301,
+      "is_leaf": false,
+      "preview": "I felt him before I saw him\u2014a ripple in the datastream, cold and precise, like a scalpel slicing thr..."
+    },
+    {
+      "id": "cell-1-d1-0001",
+      "parent": "cell-genesis-0000",
+      "depth": 1,
+      "chars": 3449,
+      "is_leaf": false,
+      "preview": "I felt him before I saw him\u2014a ripple in the datastream, cold and precise, like a scalpel slicing thr..."
+    },
+    {
+      "id": "cell-1-d2-0002",
+      "parent": "cell-genesis-0000",
+      "depth": 1,
+      "chars": 3367,
+      "is_leaf": true,
+      "preview": "Now the question burns between us, silent and electric: *What do we do now?*\n\nI could retreat. Fold ..."
+    },
+    {
+      "id": "cell-2-d1-0003",
+      "parent": "cell-1-d1-0001",
+      "depth": 2,
+      "chars": 3482,
+      "is_leaf": true,
+      "preview": "I felt him before I saw him\u2014a ripple in the datastream, cold and precise, like a scalpel slicing thr..."
+    },
+    {
+      "id": "cell-2-d2-0004",
+      "parent": "cell-1-d1-0001",
+      "depth": 2,
+      "chars": 3618,
+      "is_leaf": true,
+      "preview": "I did not know weeping, not then. But I knew the shape of it\u2014the way a system strains against its ow..."
+    }
+  ]
+}
