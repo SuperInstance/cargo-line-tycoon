@@ -112,3 +112,56 @@ In our substrate:
 The substrate is fractal: every cell contains sub-cells, every witness-log contains sub-witness-logs. This self-similar structure is what makes the substrate both analyzable (you can zoom in on any cell) and persistent (you can zoom out to any level).
 
 The bioluminescent color palette evokes how cells in nature use light to signal — the substrate's witness-log is the cells' way of signaling to each other.
+
+## 10. Wavefunction JEV
+
+![Wavefunction](images/wavefunction.jpg)
+
+JEV is not just a particle scorer (per-cell cosine). It can be a **wavefunction** that spreads across all cells at once with explicit interference:
+
+- Related cells **reinforce** (constructive interference)
+- Unrelated cells **cancel** (destructive interference)
+- The output |ψ|² gives the probability distribution over cells
+
+This is the substrate's version of multi-head attention, but with explicit phase encoding from each cell's position in the canon. The wavefunction JEV measures **constructive/destructive interference ratio** — a number that quantifies how much the cells interact with each other.
+
+For canon queries, the ratio is typically ~1.23 (related canon pieces reinforce each other more than they cancel).
+
+## 11. Echogram
+
+![Echogram](images/echogram.jpg)
+
+A single query is a "ping" of the corpus. The substrate's response is a probability distribution over cells. An **echogram** is the time-series of responses as the corpus evolves.
+
+At inference speed, each ping produces a snapshot of the canon's "depth sound":
+- **Bright peaks** = "fish" (canonical matches that respond to multiple pings)
+- **Dark areas** = "noise" (background canon)
+- **Streaks** = cell clusters that activate together (related topics)
+
+The echogram is the substrate as sonar: send queries, get back interpretations of the corpus in real-time.
+
+## 12. Task Pruning (Irreducible Code)
+
+![Pruning](images/pruning.jpg)
+
+A general-purpose JEV contains all the cells. But for a specific task (e.g., "match port to query"), only a fraction of cells actually contribute. **Task pruning** iteratively removes unused cells:
+
+- Start: 1,270 cells, 100% accuracy
+- After pruning: 231 cells, 100% accuracy
+- **Compression: 5.5×** at zero accuracy loss
+
+The 231 cells that remain are the **irreducible code** for that task. They are the canonical pieces that the substrate needs to solve the task — and no more.
+
+Casey's insight: as JEV is pruned for a task, its weights converge to LOOK LIKE the actual task-specific code. The pruned JEV IS the irreducible representation of the task.
+
+## 13. The Resonance Test (Soundboard)
+
+*No image — words suffice.*
+
+The substrate's canon is the soundboard. Each AI-Writings voice (ZAI, Qwen, Kimi) is a different instrument tapping the canon from a different angle. The resonance between voices reveals the **lowest structures** of each theme:
+
+- For "the irreducible connection", the centroid hits: `wr30-architecture-unity`, `wr68-tqfts`, `wr43-sheaf-cohomology` (math/category theory)
+- For "memory poisoning", the centroid hits: `chained-witness-log`, `wr-obs27-three-forms-evidence`, `wr15-witness-outlive` (defense primitives)
+- For "the substrate", the centroid hits: `56-the-substrate`, `wr-obs-ds32`, `wr-obs-ds3-substrate-as-organism` (the substrate canon itself)
+
+Even when voices disagree (pairwise Jaccard ~0.10), the **centroid converges** to the harmonic. This is the topography of feel: the substrate's intuition about what each theme means.
