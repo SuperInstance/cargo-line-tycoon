@@ -1,0 +1,17 @@
+{
+  "benchmark": "LEVI-style (search architecture comparison)",
+  "n_queries": 50,
+  "n_corpus": 670,
+  "diversity_baseline": 0.16778768599033356,
+  "diversity_substrate": 0.1471332311630249,
+  "diversity_delta_pct": -12.309875248233999,
+  "relevance_baseline": 0.7850469064712524,
+  "relevance_substrate": 0.7850469064712524,
+  "relevance_delta_pct": 0.0,
+  "time_baseline_sec": 13.600810527801514,
+  "time_substrate_sec": 14.44700837135315,
+  "cost_overhead_pct": 6.221672170360117,
+  "embedding_model": "bge-large-en-v1.5",
+  "embedding_dim": 1024,
+  "date": "2026-09-22"
+}
