@@ -1,0 +1,23 @@
+name = "quilt-distributed-coordinator"
+main = "src/index.js"
+compatibility_date = "2026-09-22"
+
+[vars]
+QUILT_VERSION = "0.5.0"
+QUILT_NODE_REGISTRY = "live"
+
+[[kv_namespaces]]
+binding = "NODES"
+id = "quilt_nodes_v1"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "quilt_sessions_v1"
+
+[[kv_namespaces]]
+binding = "SUBMISSIONS"
+id = "quilt_submissions_v1"
+
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDurableObject"

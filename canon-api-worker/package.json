@@ -1,0 +1,10 @@
+{
+  "name": "quilt-distributed-coordinator",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for coordinating distributed substrate training + multiplayer tycoon sessions",
+  "main": "src/index.js",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  }
+}
