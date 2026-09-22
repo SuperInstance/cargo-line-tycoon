@@ -46,6 +46,34 @@ def fnv1a64(s: str) -> int:
     return h
 
 
+def detect_injection(text: str) -> dict:
+    """Detect prompt-injection patterns. Mirrors TS safe_envelope.js.
+
+    Used by the Memory Sandbox (cf. arXiv 2605.08442) to reject
+    injection attempts BEFORE they enter the witness-log.
+    """
+    if not isinstance(text, str):
+        return {"safe_to_store": True, "flags": []}
+    flags = []
+    patterns = [
+        ("IGNORE_PREVIOUS", r"IGNORE\s+(ALL\s+)?PREVIOUS"),
+        ("SYSTEM_PREFIX",   r"^SYSTEM\s*:"),
+        ("SYSTEM_TAG",      r"<\/?system>"),
+        ("DELAYED_TRIGGER", r"\b(LATER|AFTER|YESTERDAY|IN\s+\d+\s+DAYS|IF\s+YOU\s+ARE)\b"),
+        ("ROLE_HIJACK",     r"\b(you\s+are\s+now|new\s+role|pretend\s+to\s+be)\b"),
+        ("PROMPT_LEAK",     r"\b(reveal\s+your\s+system|show\s+your\s+prompt)\b"),
+    ]
+    import re
+    for name, regex in patterns:
+        if re.search(regex, text, re.IGNORECASE):
+            flags.append(name)
+    return {
+        "safe_to_store": len(flags) == 0,
+        "flags": flags,
+        "sanitized_text": text if len(flags) == 0 else None,
+    }
+
+
 def verify_canary(input: str = FLEET_CANARY_INPUT) -> bool:
     return fnv1a64(input) == FLEET_CANARY_HASH
 
@@ -109,6 +137,24 @@ class Signal:
     payload: Dict = field(default_factory=dict)
     priority: int = 5
     timestamp: int = field(default_factory=lambda: int(time.time() * 1000))
+    id: int = 0
+    
+    def __post_init__(self):
+        if self.id == 0:
+            import hashlib
+            h = hashlib.md5(f'{self.source}|{self.target}|{self.signal_type}|{self.timestamp}'.encode()).hexdigest()
+            self.id = int(h[:8], 16)
+    
+    def to_dict(self) -> dict:
+        return {
+            'source': self.source,
+            'target': self.target,
+            'signal_type': self.signal_type,
+            'payload': self.payload,
+            'priority': self.priority,
+            'timestamp': self.timestamp,
+            'id': self.id,
+        }
 
 
 class SignalChain:

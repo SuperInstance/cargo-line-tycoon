@@ -1,0 +1,45 @@
+{
+  "session_id": "cape-horn-2026-09-22",
+  "topic": "Geography of Cape Horn",
+  "curriculum": {
+    "tier": 1,
+    "framing": "socratic",
+    "objectives": ["identify Cape Horn on map", "explain Drake Passage"]
+  },
+  "agents": [
+    {"id": "director", "name": "Director", "role": "director", "persona": "Socratic moderator; asks questions before answering"},
+    {"id": "teacher_athena", "name": "Captain Athena", "role": "teacher", "persona": "Maritime captain; knows the cape from her own voyages"},
+    {"id": "ta_atlas", "name": "Mr Atlas", "role": "assistant", "persona": "Cartographer; brings maps and diagrams"}
+  ],
+  "students": [
+    {"id": "student_001", "name": "Sailor Sam", "tier": 1, "learning_goal": "find Cape Horn on a globe"},
+    {"id": "student_002", "name": "Navigator Nico", "tier": 2, "learning_goal": "compute sailing time around the Horn"},
+    {"id": "student_003", "name": "Curious Cleo", "tier": 2, "learning_goal": "understand the Roaring Forties"}
+  ],
+  "scenes": [
+    {"id": "s1", "title": "Where is Cape Horn?", "order": 1, "start_time": 0, "objective": "Identify geographic location"},
+    {"id": "s2", "title": "What makes the Horn dangerous?", "order": 2, "start_time": 600, "objective": "Explain storm patterns"},
+    {"id": "s3", "title": "How do you sail around it?", "order": 3, "start_time": 1200, "objective": "Discuss routing strategies"},
+    {"id": "s4", "title": "What did we learn?", "order": 4, "start_time": 1800, "objective": "Summarize and reflect"}
+  ],
+  "actions": [
+    {"agent_id": "director", "type": "speak", "content": "Welcome to Cape Horn. Show me on the map.", "scene_id": "s1", "timestamp": 1},
+    {"agent_id": "teacher_athena", "type": "speak", "content": "Cape Horn is the southernmost tip of South America.", "scene_id": "s1", "timestamp": 30},
+    {"agent_id": "ta_atlas", "type": "highlight", "content": "Drake Passage", "scene_id": "s1", "timestamp": 60},
+    {"agent_id": "teacher_athena", "type": "draw", "content": "South America map with arrow at the Horn", "scene_id": "s1", "timestamp": 90},
+    {"agent_id": "director", "type": "quiz", "content": "What's at 56°S, 67°W?", "scene_id": "s2", "timestamp": 605},
+    {"agent_id": "student_001", "type": "speak", "content": "Cape Horn!", "scene_id": "s2", "timestamp": 625},
+    {"agent_id": "teacher_athena", "type": "speak", "content": "Yes. And what makes it dangerous?", "scene_id": "s2", "timestamp": 660},
+    {"agent_id": "ta_atlas", "type": "audio_play", "content": "Roaring Forties wind recording", "scene_id": "s2", "timestamp": 700},
+    {"agent_id": "student_003", "type": "cite", "content": "Strong westerlies, no landmass to slow them", "scene_id": "s2", "timestamp": 740},
+    {"agent_id": "teacher_athena", "type": "draw", "content": "Prevailing wind diagram", "scene_id": "s2", "timestamp": 800},
+    {"agent_id": "director", "type": "discuss", "content": "When would you round the Horn and when would you use the Strait of Magellan?", "scene_id": "s3", "timestamp": 1205},
+    {"agent_id": "student_002", "type": "speak", "content": "Use Magellan if you're small and the weather's bad", "scene_id": "s3", "timestamp": 1240},
+    {"agent_id": "teacher_athena", "type": "poll", "content": "Which route did 19th century clippers prefer?", "scene_id": "s3", "timestamp": 1280},
+    {"agent_id": "ta_atlas", "type": "embed", "content": "Historical route map overlay", "scene_id": "s3", "timestamp": 1320},
+    {"agent_id": "director", "type": "speak", "content": "Let's review. What did we learn?", "scene_id": "s4", "timestamp": 1805},
+    {"agent_id": "student_001", "type": "speak", "content": "Cape Horn is at 56°S", "scene_id": "s4", "timestamp": 1830},
+    {"agent_id": "student_003", "type": "speak", "content": "Roaring Forties make it dangerous", "scene_id": "s4", "timestamp": 1850},
+    {"agent_id": "teacher_athena", "type": "speak", "content": "And you can use Magellan instead. Great session.", "scene_id": "s4", "timestamp": 1900}
+  ]
+}

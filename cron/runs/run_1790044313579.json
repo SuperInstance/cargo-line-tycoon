@@ -1,0 +1,367 @@
+{
+  "timestamp": 1790044313573,
+  "witness_log_file": "/tmp/test_dense_witness.json",
+  "n_students": 100,
+  "n_observations": 208,
+  "n_features_requested": 12,
+  "top_features": [
+    {
+      "feature": "sound_effects",
+      "votes": 23,
+      "pct": 0.23
+    },
+    {
+      "feature": "crew_schedule",
+      "votes": 22,
+      "pct": 0.22
+    },
+    {
+      "feature": "language_selector",
+      "votes": 21,
+      "pct": 0.21
+    },
+    {
+      "feature": "weather_routing",
+      "votes": 18,
+      "pct": 0.18
+    },
+    {
+      "feature": "currency_converter",
+      "votes": 18,
+      "pct": 0.18
+    },
+    {
+      "feature": "cargo_tier_picker",
+      "votes": 15,
+      "pct": 0.15
+    },
+    {
+      "feature": "time_zone_display",
+      "votes": 15,
+      "pct": 0.15
+    },
+    {
+      "feature": "fuel_estimator",
+      "votes": 14,
+      "pct": 0.14
+    },
+    {
+      "feature": "piracy_zone_map",
+      "votes": 13,
+      "pct": 0.13
+    },
+    {
+      "feature": "background_music",
+      "votes": 13,
+      "pct": 0.13
+    },
+    {
+      "feature": "speed_optimization",
+      "votes": 13,
+      "pct": 0.13
+    },
+    {
+      "feature": "route_alternatives",
+      "votes": 13,
+      "pct": 0.13
+    }
+  ],
+  "patches_shipped": [
+    {
+      "feature": "sound_effects",
+      "consensus_pct": 0.23,
+      "supporters": [
+        "student_11",
+        "student_14",
+        "student_24",
+        "student_26",
+        "student_27",
+        "student_33",
+        "student_34",
+        "student_38",
+        "student_43",
+        "student_45",
+        "student_48",
+        "student_60",
+        "student_61",
+        "student_63",
+        "student_66",
+        "student_71",
+        "student_72",
+        "student_74",
+        "student_86",
+        "student_87",
+        "student_89",
+        "student_92",
+        "student_96"
+      ],
+      "patch_path": "/tmp/patch_sound_effects.ts",
+      "shipped_at": 1790044313572
+    },
+    {
+      "feature": "crew_schedule",
+      "consensus_pct": 0.22,
+      "supporters": [
+        "student_7",
+        "student_9",
+        "student_13",
+        "student_19",
+        "student_22",
+        "student_24",
+        "student_31",
+        "student_32",
+        "student_42",
+        "student_47",
+        "student_48",
+        "student_59",
+        "student_60",
+        "student_65",
+        "student_68",
+        "student_77",
+        "student_82",
+        "student_83",
+        "student_85",
+        "student_89",
+        "student_90",
+        "student_98"
+      ],
+      "patch_path": "/tmp/patch_crew_schedule.ts",
+      "shipped_at": 1790044313572
+    },
+    {
+      "feature": "language_selector",
+      "consensus_pct": 0.21,
+      "supporters": [
+        "student_0",
+        "student_1",
+        "student_2",
+        "student_10",
+        "student_13",
+        "student_16",
+        "student_18",
+        "student_19",
+        "student_23",
+        "student_30",
+        "student_35",
+        "student_46",
+        "student_47",
+        "student_50",
+        "student_55",
+        "student_73",
+        "student_78",
+        "student_79",
+        "student_83",
+        "student_90",
+        "student_91"
+      ],
+      "patch_path": "/tmp/patch_language_selector.ts",
+      "shipped_at": 1790044313572
+    },
+    {
+      "feature": "weather_routing",
+      "consensus_pct": 0.18,
+      "supporters": [
+        "student_2",
+        "student_7",
+        "student_9",
+        "student_20",
+        "student_22",
+        "student_26",
+        "student_30",
+        "student_39",
+        "student_56",
+        "student_57",
+        "student_66",
+        "student_74",
+        "student_76",
+        "student_82",
+        "student_87",
+        "student_90",
+        "student_97",
+        "student_98"
+      ],
+      "patch_path": "/tmp/patch_weather_routing.ts",
+      "shipped_at": 1790044313572
+    },
+    {
+      "feature": "currency_converter",
+      "consensus_pct": 0.18,
+      "supporters": [
+        "student_6",
+        "student_17",
+        "student_23",
+        "student_31",
+        "student_33",
+        "student_34",
+        "student_42",
+        "student_58",
+        "student_62",
+        "student_64",
+        "student_67",
+        "student_68",
+        "student_69",
+        "student_77",
+        "student_85",
+        "student_88",
+        "student_94",
+        "student_99"
+      ],
+      "patch_path": "/tmp/patch_currency_converter.ts",
+      "shipped_at": 1790044313572
+    },
+    {
+      "feature": "cargo_tier_picker",
+      "consensus_pct": 0.15,
+      "supporters": [
+        "student_5",
+        "student_7",
+        "student_9",
+        "student_21",
+        "student_24",
+        "student_30",
+        "student_35",
+        "student_36",
+        "student_37",
+        "student_55",
+        "student_63",
+        "student_72",
+        "student_76",
+        "student_79",
+        "student_86"
+      ],
+      "patch_path": "/tmp/patch_cargo_tier_picker.ts",
+      "shipped_at": 1790044313572
+    },
+    {
+      "feature": "time_zone_display",
+      "consensus_pct": 0.15,
+      "supporters": [
+        "student_8",
+        "student_21",
+        "student_38",
+        "student_40",
+        "student_53",
+        "student_58",
+        "student_59",
+        "student_68",
+        "student_70",
+        "student_72",
+        "student_81",
+        "student_84",
+        "student_85",
+        "student_91",
+        "student_92"
+      ],
+      "patch_path": "/tmp/patch_time_zone_display.ts",
+      "shipped_at": 1790044313572
+    },
+    {
+      "feature": "fuel_estimator",
+      "consensus_pct": 0.14,
+      "supporters": [
+        "student_15",
+        "student_16",
+        "student_27",
+        "student_28",
+        "student_34",
+        "student_36",
+        "student_44",
+        "student_50",
+        "student_51",
+        "student_56",
+        "student_70",
+        "student_77",
+        "student_80",
+        "student_86"
+      ],
+      "patch_path": "/tmp/patch_fuel_estimator.ts",
+      "shipped_at": 1790044313573
+    },
+    {
+      "feature": "piracy_zone_map",
+      "consensus_pct": 0.13,
+      "supporters": [
+        "student_0",
+        "student_2",
+        "student_3",
+        "student_20",
+        "student_22",
+        "student_23",
+        "student_28",
+        "student_29",
+        "student_45",
+        "student_64",
+        "student_71",
+        "student_78",
+        "student_96"
+      ],
+      "patch_path": "/tmp/patch_piracy_zone_map.ts",
+      "shipped_at": 1790044313573
+    },
+    {
+      "feature": "background_music",
+      "consensus_pct": 0.13,
+      "supporters": [
+        "student_4",
+        "student_10",
+        "student_12",
+        "student_20",
+        "student_27",
+        "student_47",
+        "student_51",
+        "student_54",
+        "student_57",
+        "student_60",
+        "student_63",
+        "student_69",
+        "student_71"
+      ],
+      "patch_path": "/tmp/patch_background_music.ts",
+      "shipped_at": 1790044313573
+    },
+    {
+      "feature": "speed_optimization",
+      "consensus_pct": 0.13,
+      "supporters": [
+        "student_10",
+        "student_14",
+        "student_25",
+        "student_32",
+        "student_50",
+        "student_52",
+        "student_56",
+        "student_69",
+        "student_74",
+        "student_75",
+        "student_93",
+        "student_94",
+        "student_95"
+      ],
+      "patch_path": "/tmp/patch_speed_optimization.ts",
+      "shipped_at": 1790044313573
+    },
+    {
+      "feature": "route_alternatives",
+      "consensus_pct": 0.13,
+      "supporters": [
+        "student_13",
+        "student_25",
+        "student_33",
+        "student_41",
+        "student_43",
+        "student_49",
+        "student_58",
+        "student_59",
+        "student_61",
+        "student_64",
+        "student_70",
+        "student_76",
+        "student_82"
+      ],
+      "patch_path": "/tmp/patch_route_alternatives.ts",
+      "shipped_at": 1790044313573
+    }
+  ],
+  "consensus_threshold": 0.05,
+  "total_features_in_canon": 0
+}

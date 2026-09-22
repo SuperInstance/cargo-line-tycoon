@@ -1,6 +1,6 @@
 [package]
 name = "cargo-line-tycoon-substrate"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 description = "Polyformal Quilt substrate for cargo-line-tycoon - Rust port"
 license = "MIT"
@@ -12,4 +12,5 @@ categories = ["data-structures"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
+regex = "1"
 serde_json = "1"

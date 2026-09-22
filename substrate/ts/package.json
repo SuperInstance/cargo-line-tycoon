@@ -1,6 +1,6 @@
 {
   "name": "@superinstance/cargo-line-tycoon-substrate",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Polyformal Quilt substrate for cargo-line-tycoon. FNV-1a 64-bit canary + signal-chain + cell algebra. Same hashes across TS/Rust/C/Python.",
   "main": "src/index.js",
   "types": "src/index.d.ts",

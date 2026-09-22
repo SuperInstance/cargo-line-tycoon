@@ -1,0 +1,45 @@
+{
+  "locale": "ja",
+  "framing": "whakaako",
+  "tier_1": {
+    "title": "海と港 (Sea and Port)",
+    "description": "Identify the ports of Japan and the waters they face. Each agent-student pair names a port together.",
+    "lessons": [
+      {
+        "id": "ja_t1_l1",
+        "name": "Identify Japanese ports",
+        "grading": "agents must demonstrate they can also identify ports the student names back",
+        "opcode_sequence": ["BIND(port)", "LINK(neighbor)", "TELL", "ACK", "ROTATE"]
+      }
+    ]
+  },
+  "tier_2": {
+    "title": "海流 (Currents)",
+    "description": "Understand the currents and routes. The agent tells the story of one route; the student tells one back.",
+    "lessons": [
+      {
+        "id": "ja_t2_l1",
+        "name": "Map a current",
+        "grading": "agents must produce a story AND receive one — the cell-graph has equal inbound and outbound on student-room",
+        "opcode_sequence": ["TELL", "RECEIVE", "WITHDRAW", "BIND(new_topic)"]
+      }
+    ]
+  },
+  "tier_3": {
+    "title": "海図 (Charts)",
+    "description": "Read historical charts. The teacher learns a chart the student brings; the student learns a chart the teacher brings.",
+    "lessons": [
+      {
+        "id": "ja_t3_l1",
+        "name": "Decode a historical chart",
+        "grading": "witness-log must show bidirectional attribution — same number of outbound citations in each direction",
+        "opcode_sequence": ["BIND(chart)", "EFFECT(decode)", "TELL", "ROTATE"]
+      }
+    ]
+  },
+  "framing_specifics": {
+    "primary_opcode": "WITHDRAW",
+    "secondary_opcode": "MERGER",
+    "rotation_rule": "every agent pair must exchange equally within a scene"
+  }
+}

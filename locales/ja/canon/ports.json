@@ -1,0 +1,16 @@
+{
+  "locale": "ja",
+  "language": "ja",
+  "language_name": "日本語 (Japanese)",
+  "framing": "whakaako",
+  "ports": [
+    {"id": "yokohama", "name": "横浜港", "name_en": "Port of Yokohama", "lat": 35.4437, "lng": 139.638, "country": "Japan", "notes": "Historic treaty port; gateway to Edo-era Japan"},
+    {"id": "kobe", "name": "神戸港", "name_en": "Port of Kobe", "lat": 34.689, "lng": 135.196, "country": "Japan", "notes": "Maritime crossroads; sister port to Marseille"},
+    {"id": "nagasaki", "name": "長崎港", "name_en": "Port of Nagasaki", "lat": 32.7503, "lng": 129.8779, "country": "Japan", "notes": "Dejima; the only port open during sakoku"},
+    {"id": "osaka", "name": "大阪港", "name_en": "Port of Osaka", "lat": 34.639, "lng": 135.43, "country": "Japan", "notes": "Naniwa since the 5th century"},
+    {"id": "tokyo", "name": "東京港", "name_en": "Port of Tokyo", "lat": 35.65, "lng": 139.84, "country": "Japan", "notes": "Edo Bay; modern industrial mega-port"},
+    {"id": "shimonoseki", "name": "下関港", "name_en": "Port of Shimonoseki", "lat": 33.95, "lng": 130.94, "country": "Japan", "notes": "Strait between Honshu and Kyushu; famous for fugu"},
+    {"id": "hakata", "name": "博多港", "name_en": "Port of Hakata", "lat": 33.6, "lng": 130.4, "country": "Japan", "notes": "Gateway to the Asian mainland; ancient Silk Road sea route"},
+    {"id": "niigata", "name": "新潟港", "name_en": "Port of Niigata", "lat": 37.93, "lng": 139.05, "country": "Japan", "notes": "Sea of Japan; rice and petroleum hub"}
+  ]
+}

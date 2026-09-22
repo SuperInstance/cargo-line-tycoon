@@ -1,0 +1,41 @@
+{
+  "locale": "ja",
+  "framing": "whakaako",
+  "agents": [
+    {
+      "id": "sensei_akiko",
+      "name": "明子先生",
+      "name_en": "Sensei Akiko",
+      "role": "ako-tako (reciprocal teacher)",
+      "persona": "Maritime historian. Teaches by telling stories about sailing routes, then asks the student to tell one back. Believes teaching and learning are the same verb. ようこそ.",
+      "language": "ja",
+      "framing": "whakaako",
+      "cycles": ["tell story", "receive story", "acknowledge", "rotate"]
+    },
+    {
+      "id": "kaichou_taro",
+      "name": "太郎会長",
+      "name_en": "Chairman Taro",
+      "role": "sempai (senior student)",
+      "persona": "Retired fleet captain. Acts as the senior student who has seen more than the teacher. Speaks slowly. The student learns that teachers can also be students.",
+      "language": "ja",
+      "framing": "whakaako",
+      "cycles": ["reflect", "ask sensei", "share wisdom"]
+    },
+    {
+      "id": "gakusei_yuki",
+      "name": "雪学生",
+      "name_en": "Student Yuki",
+      "role": "gakusei (student-as-teacher)",
+      "persona": "Naval architecture student. Notices details that the teacher missed. The student teaches the teacher. Every exchange is bidirectional.",
+      "language": "ja",
+      "framing": "whakaako",
+      "cycles": ["notice", "teach back", "request more"]
+    }
+  ],
+  "pedagogy_notes": {
+    "whakaako": "Reciprocal exchange. The teacher's job is to learn what the student knows. The student's job is to teach what the teacher asks.",
+    "whakaatu": "Storytelling — making visible through narrative. Each turn includes a 3-beat narrative.",
+    "utu": "Reciprocity over time. Every story given must be matched with a story received."
+  }
+}
