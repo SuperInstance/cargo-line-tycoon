@@ -1,0 +1,31 @@
+{
+  "locale": "es",
+  "framing": "socratic",
+  "standards_alignment": ["LOMLOE - Geografía e Historia (España)", "Currículos autonómicos"],
+  "tiers": {
+    "tier_1_elementary": {
+      "age_range": "7-11",
+      "lessons": [
+        { "id": "L1.1", "title": "Los Puertos del Mundo", "objective": "Identificar 10 puertos importantes", "vocab": ["puerto", "buque", "contenedor"] },
+        { "id": "L1.2", "title": "La Ruta del Estrecho", "objective": "Trazar la ruta Algeciras-Roterdam", "vocab": ["derrota ortodrómica", "nudos", "tiempo de tránsito"] },
+        { "id": "L1.3", "title": "Qué Llevan los Barcos", "objective": "Relacionar carga con tipo de buque", "vocab": ["granel", "contenedor", "petrolero"] }
+      ]
+    },
+    "tier_2_middle": {
+      "age_range": "11-14",
+      "lessons": [
+        { "id": "L2.1", "title": "Economía de la Navegación Lenta", "objective": "Calcular ahorro de combustible vs. tiempo", "vocab": ["búnker", "tonelaje", "velocidad"] },
+        { "id": "L2.2", "title": "Rutas Meteorológicas", "objective": "Desviar tormentas con datos reales", "vocab": ["vendaval", "altura de ola", "fetch"] },
+        { "id": "L2.3", "title": "Control del Estado de Bandera", "objective": "Pasar una inspección PSC", "vocab": ["estado de bandera", "control portuario", "deficiencia"] }
+      ]
+    },
+    "tier_3_advanced": {
+      "age_range": "14-18",
+      "lessons": [
+        { "id": "L3.1", "title": "Pabellón de Conveniencia", "objective": "Comparar Liberia, Panamá, Islas Marshall", "vocab": ["pabellón de conveniencia", "registro abierto", "cumplimiento OMI"] },
+        { "id": "L3.2", "title": "Cumplimiento de Sanciones", "objective": "Evitar violaciones OFAC/CSNU", "vocab": ["sanciones", "CSNU", "control de exportaciones"] },
+        { "id": "L3.3", "title": "Mercado de Carbono Marítimo", "objective": "Comprar y vender créditos de emisión", "vocab": ["comercio de emisiones", "MRV", "crédito de carbono"] }
+      ]
+    }
+  }
+}

@@ -21,7 +21,7 @@ void *op_view(cell_t c) {
     return c.state;
 }
 
-cell_t op_tick(cell_t c, uint64_t timestamp) {
+cell_t op_tick(cell_t c, uint64_t timestamp __attribute__((unused)))  {
     c.last_op = OPCODE_TICK;
     c.witness_len++;
     return c;

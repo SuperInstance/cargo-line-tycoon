@@ -1,0 +1,24 @@
+{
+  "locale": "es",
+  "framing": "socratic",
+  "region": "Iberia & Latin America",
+  "ports": [
+    { "id": "algeciras", "name": "Puerto de Algeciras", "lat": 36.1391, "lng": -5.4536, "country": "ES", "annual_teus": 4700000, "notable": ["Puerta al Mediterráneo, Estrecho de Gibraltar"], "tier": 1 },
+    { "id": "valencia", "name": "Puerto de Valencia", "lat": 39.4428, "lng": -0.3173, "country": "ES", "annual_teus": 5400000, "notable": ["Mayor puerto de contenedores de España"], "tier": 1 },
+    { "id": "barcelona", "name": "Puerto de Barcelona", "lat": 41.3517, "lng": 2.1583, "country": "ES", "annual_teus": 3500000, "notable": ["Hub logístico del sur de Europa"], "tier": 1 },
+    { "id": "las_palmas", "name": "Puerto de Las Palmas", "lat": 28.1235, "lng": -15.4363, "country": "ES", "annual_teus": 2700000, "notable": ["Encrucijada atlántica, repostaje"], "tier": 1, "cultural_note": "Encuentro de rutas marítimas entre Europa, África y América desde el siglo XV" },
+    { "id": "bilbao", "name": "Puerto de Bilbao", "lat": 43.3614, "lng": -2.9264, "country": "ES", "annual_teus": 2500000, "notable": ["Industria siderúrgica española"], "tier": 2 },
+    { "id": "cartagena_indias", "name": "Puerto de Cartagena de Indias", "lat": 10.4124, "lng": -75.5511, "country": "CO", "annual_teus": 3000000, "notable": ["Puerto histórico del Caribe"], "tier": 2, "cultural_note": "Desde donde zarparon los galeones hacia Cartagena de Indias" },
+    { "id": "veracruz", "name": "Puerto de Veracruz", "lat": 19.1738, "lng": -96.1342, "country": "MX", "annual_teus": 1200000, "notable": ["Principal puerto del Golfo de México"], "tier": 2, "cultural_note": "Fundado en 1519; 'cuatro veces heroica'" },
+    { "id": "panama", "name": "Puerto de Panamá (Balboa)", "lat": 8.9667, "lng": -79.5500, "country": "PA", "annual_teus": 2100000, "notable": ["Entrada del Pacífico al Canal de Panamá"], "tier": 1 }
+  ],
+  "vessel_types": [
+    { "id": "remolcador", "name": "Remolcador", "size_tier": "small", "uses": ["asistencia portuaria"] },
+    { "id": "feeder", "name": "Buque feeder", "size_tier": "small", "uses": ["cabotaje"] },
+    { "id": "panamax", "name": "Panamax", "size_tier": "medium", "uses": ["Atlántico"] },
+    { "id": "ulcv", "name": "ULCV", "size_tier": "large", "uses": ["Asia-Europa"] },
+    { "id": "petrolero", "name": "Petrolero", "size_tier": "large", "uses": ["transporte de crudo"] },
+    { "id": "granelero", "name": "Granelero", "size_tier": "medium", "uses": ["cereales, mineral"] }
+  ],
+  "example_cargo": ["aceite de oliva", "vino", "manufactura textil", "automóviles", "fruta tropical", "café"]
+}

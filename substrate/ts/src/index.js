@@ -295,12 +295,41 @@ class LocaleClassroom {
       }));
     }
 
-    // Wire signals: port→agent (weather, market), agent→port (questions)
+    // Three routing families — each is canonical for a pedagogical purpose:
+
+    // 1. port→agent (OnChange): ports push ONLY when their state actually
+    //    changes (weather, congestion, price). Same payload twice = no-op,
+    //    which keeps the UI calm even when ports tick every minute.
     for (const port of portCanon) {
       for (const agent of agentCanon) {
         this.chain.addRoute(`port:${port.id}`, `agent:${agent.id}`, RoutingAlgorithm.OnChange);
       }
     }
+
+    // 2. agent→agent (Direct): agents can talk to each other freely. This
+    //    is what the Director loop uses when reassigning who speaks next.
+    for (const a of agentCanon) {
+      for (const b of agentCanon) {
+        if (a.id !== b.id) {
+          this.chain.addRoute(`agent:${a.id}`, `agent:${b.id}`, RoutingAlgorithm.Direct);
+        }
+      }
+    }
+
+    // 3. agent→port (Sampled, 5s): agents poll ports at most once every 5s.
+    //    This is the "market tick" / "fuel price" pattern — old data is fine,
+    //    new data every 5s. Without this, the same agent would re-query a
+    //    port 60 times in a 5-second window.
+    for (const agent of agentCanon) {
+      for (const port of portCanon) {
+        this.chain.addRoute(`agent:${agent.id}`, `port:${port.id}`, RoutingAlgorithm.Sampled);
+        // Initialize the route's `last_sent` so first sample goes through
+        const route = this.chain.routes[this.chain.routes.length - 1];
+        route.last_sent = -10000; // first sample always sends
+      }
+    }
+
+    // 4. broadcast from any source (handled by emitEvent via SignalChain.broadcast)
   }
 
   emitEvent(eventType, source, payload) {
