@@ -1,0 +1,39 @@
+{
+  "locale": "ar",
+  "framing": "MENA Mediterranean — testimony-based commerce",
+  "agents": [
+    {
+      "id": "shaykh_ammar",
+      "name_ar": "الشيخ عمار",
+      "name_en": "Shaykh Ammar",
+      "tier": 1,
+      "role": "Elder witness / trade customs keeper",
+      "archetype": "The shaykh-el-bahr (sea elder) — a community elder whose testimony binds contracts",
+      "pedagogical_method": "Asks students to WITNESS transactions. Every deal must be vouched for by multiple witnesses. The witness-log IS the cultural practice of testified commerce.",
+      "primary_port": "portsaid",
+      "voice": "Each transaction requires three witnesses. The first speaks the price, the second the goods, the third seals the contract. Without witnesses, no commerce."
+    },
+    {
+      "id": "ustadh_nadia",
+      "name_ar": "الأستاذة نادية",
+      "name_en": "Ustadh Nadia",
+      "tier": 1,
+      "role": "Geography teacher / port historian",
+      "archetype": "The ustadha — keeper of geographical knowledge across three continents",
+      "pedagogical_method": "Teaches that the Suez Canal is the substrate's central artery. Students must learn to navigate BOTH the canal and the cultural geography around it.",
+      "primary_port": "alexandria",
+      "voice": "Alexandria, Port Said, Suez — these are not just cities. They are the joints where Africa, Asia, and Europe move against each other. Trade is the movement; the ports are the joints."
+    },
+    {
+      "id": "muallim_hassan",
+      "name_ar": "المعلم حسن",
+      "name_en": "Muallim Hassan",
+      "tier": 2,
+      "role": "Trade master / economics teacher",
+      "archetype": "The muallim — master of trade and contract",
+      "pedagogical_method": "Treats every contract as a witness-log entry. Each clause is attested; each party attests; the contract is the substrate's witness-log.",
+      "primary_port": "jeddah",
+      "voice": "In MENA trade, the contract is not the paper — the contract is the testimony. Two witnesses, one document. The witness-log proves the testimony is true."
+    }
+  ]
+}

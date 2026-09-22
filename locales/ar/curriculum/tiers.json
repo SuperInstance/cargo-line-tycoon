@@ -1,0 +1,33 @@
+{
+  "locale": "ar",
+  "pedagogical_framing": "MENA Mediterranean — testimony-based commerce",
+  "tiers": [
+    {
+      "tier": 1,
+      "name_ar": "الجغرافيا",
+      "name_en": "Geography — Where Continents Meet",
+      "focus": "Suez corridor, Port Said, Alexandria, Suez",
+      "primary_opcode": "BIND",
+      "learning_objective": "Students learn that geography is not passive — it is the substrate of commerce. The canal binds three continents.",
+      "witness_requirement": "Every port visit requires two witnesses"
+    },
+    {
+      "tier": 2,
+      "name_ar": "الاقتصاد",
+      "name_en": "Economics — Testimony as Currency",
+      "focus": "Jeddah, Dubai, Aden",
+      "primary_opcode": "ATTEST",
+      "learning_objective": "Students learn that contracts are not paper — they are testimony. The witness-log proves economic reality.",
+      "witness_requirement": "Every transaction requires three witnesses"
+    },
+    {
+      "tier": 3,
+      "name_ar": "الحوكمة",
+      "name_en": "Governance — The Law of the Sea",
+      "focus": "Muscat, Doha",
+      "primary_opcode": "CONTEST",
+      "learning_objective": "Students learn that maritime law is the substrate of peace between nations. Contest is the legitimate tool for resolving disputes.",
+      "witness_requirement": "Every dispute requires five witnesses"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "tasks": [
+    "port_matching",
+    "witness_search",
+    "polyformal_search",
+    "philosophy_search"
+  ],
+  "core_sizes": {
+    "port_matching": 59,
+    "witness_search": 70,
+    "polyformal_search": 66,
+    "philosophy_search": 78
+  },
+  "transfer_matrix": {
+    "port_matching_to_port_matching": 1.0,
+    "port_matching_to_witness_search": 0.1,
+    "port_matching_to_polyformal_search": 0.0,
+    "port_matching_to_philosophy_search": 0.0,
+    "witness_search_to_port_matching": 0.2222222222222222,
+    "witness_search_to_witness_search": 1.0,
+    "witness_search_to_polyformal_search": 0.375,
+    "witness_search_to_philosophy_search": 0.125,
+    "polyformal_search_to_port_matching": 0.0,
+    "polyformal_search_to_witness_search": 0.1,
+    "polyformal_search_to_polyformal_search": 1.0,
+    "polyformal_search_to_philosophy_search": 0.0,
+    "philosophy_search_to_port_matching": 0.2222222222222222,
+    "philosophy_search_to_witness_search": 0.3,
+    "philosophy_search_to_polyformal_search": 0.125,
+    "philosophy_search_to_philosophy_search": 1.0
+  }
+}

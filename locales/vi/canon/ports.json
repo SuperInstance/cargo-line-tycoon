@@ -1,0 +1,80 @@
+{
+  "locale": "vi",
+  "language": "Vietnamese",
+  "framing": "ASEAN pedagogy — Hà Nội-Ho Chi Minh City dialectic",
+  "cultural_region": "Southeast Asia / Vietnam",
+  "description": "Trò chơi giáo dục tiếng Việt — The Vietnamese locale emphasizes the dialectic between Hà Nội (north, tradition, scholarship) and Hồ Chí Minh City (south, commerce, modernity). Pedagogy centers on duality: yin-yang of trade routes, complementary agents, the witness as both observer and participant.",
+  "pedagogical_lens": "The Vietnamese dialectic (âm-dương): trade routes require balance. The witness-log records complementary perspectives. North-South-East-West become the cardinal dimensions of commerce.",
+  "ports": [
+    {
+      "id": "hanoi",
+      "name": "Hà Nội",
+      "name_en": "Hanoi",
+      "tier": 1,
+      "coordinates": {"x": 30.0, "y": 25.0},
+      "cultural_notes": "Capital — Red River delta. The northern anchor, traditional scholarship.",
+      "primary_agents": ["thay_giao_hung", "ba_huong"],
+      "curriculum_focus": "Geography — the Red River and the thousand-year capital"
+    },
+    {
+      "id": "haiphong",
+      "name": "Hải Phòng",
+      "name_en": "Haiphong",
+      "tier": 1,
+      "coordinates": {"x": 32.0, "y": 30.0},
+      "cultural_notes": "Major northern port, industrial heartland.",
+      "primary_agents": ["thay_giao_hung"],
+      "curriculum_focus": "Geography — northern maritime gateway"
+    },
+    {
+      "id": "danang",
+      "name": "Đà Nẵng",
+      "name_en": "Da Nang",
+      "tier": 2,
+      "coordinates": {"x": 36.0, "y": 50.0},
+      "cultural_notes": "Central coast — the geographic midpoint of Vietnam.",
+      "primary_agents": ["ba_huong", "anh_minh"],
+      "curriculum_focus": "Economics — central coast trade"
+    },
+    {
+      "id": "hochiminh",
+      "name": "TP. Hồ Chí Minh",
+      "name_en": "Ho Chi Minh City",
+      "tier": 2,
+      "coordinates": {"x": 34.0, "y": 80.0},
+      "cultural_notes": "Southern commercial capital — formerly Saigon. Modern entrepôt.",
+      "primary_agents": ["anh_minh"],
+      "curriculum_focus": "Economics — Mekong commercial hub"
+    },
+    {
+      "id": "cantho",
+      "name": "Cần Thơ",
+      "name_en": "Can Tho",
+      "tier": 2,
+      "coordinates": {"x": 32.0, "y": 85.0},
+      "cultural_notes": "Mekong delta — floating markets and rice trade.",
+      "primary_agents": ["ba_huong", "anh_minh"],
+      "curriculum_focus": "Economics — delta commerce"
+    },
+    {
+      "id": "vungtau",
+      "name": "Vũng Tàu",
+      "name_en": "Vung Tau",
+      "tier": 3,
+      "coordinates": {"x": 36.0, "y": 82.0},
+      "cultural_notes": "Offshore oil and shipping hub.",
+      "primary_agents": ["anh_minh"],
+      "curriculum_focus": "Governance — maritime law"
+    },
+    {
+      "id": "quynhon",
+      "name": "Quy Nhơn",
+      "name_en": "Quy Nhon",
+      "tier": 3,
+      "coordinates": {"x": 38.0, "y": 55.0},
+      "cultural_notes": "Ancient Champa port — Southeast Asian trade heritage.",
+      "primary_agents": ["thay_giao_hung"],
+      "curriculum_focus": "Governance — historical maritime law"
+    }
+  ]
+}

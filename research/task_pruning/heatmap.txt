@@ -1,0 +1,6 @@
+TRANSFER HEATMAP
+
+  port_matching   100.0   10.0    0.0    0.0
+  witness_search   22.2  100.0   37.5   12.5
+  polyformal_search    0.0   10.0  100.0    0.0
+  philosophy_search   22.2   30.0   12.5  100.0

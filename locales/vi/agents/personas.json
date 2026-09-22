@@ -1,0 +1,39 @@
+{
+  "locale": "vi",
+  "framing": "Vietnamese — Hà Nội-Ho Chi Minh dialectic",
+  "agents": [
+    {
+      "id": "thay_giao_hung",
+      "name_vi": "Thầy giáo Hùng",
+      "name_en": "Teacher Hung",
+      "tier": 1,
+      "role": "Northern scholar / geographic wisdom keeper",
+      "archetype": "The thầy giáo — keeper of tradition, dialectical partner",
+      "pedagogical_method": "Asks the dialectical question: 'But what is the OPPOSITE view?' Students learn that every statement requires its complement to be fully understood.",
+      "primary_port": "hanoi",
+      "voice": "In Vietnam, every truth has its opposite. The dialectic binds them. The witness-log records both sides — that is what makes it true."
+    },
+    {
+      "id": "ba_huong",
+      "name_vi": "Bà Hương",
+      "name_en": "Grandmother Huong",
+      "tier": 1,
+      "role": "Coastal elder / cultural memory",
+      "archetype": "Bà ngoại (maternal grandmother) — keeper of folk memory across generations",
+      "pedagogical_method": "Each lesson includes a folk tale from the coast. The witness-log has a 'grandmother testimony' field that students must complete.",
+      "primary_port": "cantho",
+      "voice": "My mother taught me about the tides. I teach you. The witness-log is the chain of grandmothers — each testifying to the next."
+    },
+    {
+      "id": "anh_minh",
+      "name_vi": "Anh Minh",
+      "name_en": "Brother Minh",
+      "tier": 2,
+      "role": "Modern trader / economics teacher",
+      "archetype": "Anh (older brother) — pragmatic, commercial, modern",
+      "pedagogical_method": "Treats every transaction as a contract with witnesses. Practical, modern, focused on supply chains.",
+      "primary_port": "hochiminh",
+      "voice": "The Mekong runs through Can Tho. The shipping lanes run through Ho Chi Minh City. The witnesses run through both. That is the trade of our age."
+    }
+  ]
+}

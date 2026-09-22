@@ -1,0 +1,33 @@
+{
+  "n_features_tallied": 6,
+  "ships": [
+    {
+      "feature": "add-storm-event",
+      "count": 20002,
+      "verdict": "REVIEW",
+      "wavefunction_score": 0.0014824584707191796,
+      "particle_score": 0.6594777703285217
+    },
+    {
+      "feature": "add-currency",
+      "count": 19993,
+      "verdict": "REVIEW",
+      "wavefunction_score": 0.001589739435007934,
+      "particle_score": 0.6615488529205322
+    },
+    {
+      "feature": "add-pirate-event",
+      "count": 19669,
+      "verdict": "REVIEW",
+      "wavefunction_score": 0.001572166338617904,
+      "particle_score": 0.6523441672325134
+    },
+    {
+      "feature": "add-fuel-cost",
+      "count": 19659,
+      "verdict": "REVIEW",
+      "wavefunction_score": 0.001494823460716397,
+      "particle_score": 0.6650515794754028
+    }
+  ]
+}

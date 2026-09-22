@@ -1,0 +1,33 @@
+{
+  "locale": "vi",
+  "pedagogical_framing": "Vietnamese — dialectical pedagogy (âm-dương)",
+  "tiers": [
+    {
+      "tier": 1,
+      "name_vi": "Địa lý",
+      "name_en": "Geography — North-South-East-West",
+      "focus": "Hanoi, Haiphong, and the Red River",
+      "primary_opcode": "BIND",
+      "learning_objective": "Students learn that geography is dialectical — north and south are not opposites but complements.",
+      "witness_requirement": "Each port requires a northern and southern witness"
+    },
+    {
+      "tier": 2,
+      "name_vi": "Kinh tế",
+      "name_en": "Economics — Mekong-Commerce",
+      "focus": "Da Nang, Ho Chi Minh City, Can Tho",
+      "primary_opcode": "LINK",
+      "learning_objective": "Students learn that trade routes BIND the country — north-south, central-south, river-sea.",
+      "witness_requirement": "Each contract requires a yin and yang witness"
+    },
+    {
+      "tier": 3,
+      "name_vi": "Quản trị",
+      "name_en": "Governance — Maritime Law",
+      "focus": "Vung Tau, Quy Nhon",
+      "primary_opcode": "CONTEST",
+      "learning_objective": "Students learn that the law of the sea is the substrate's peace — every dispute resolved by witnesses.",
+      "witness_requirement": "Each dispute requires witnesses from both regions"
+    }
+  ]
+}

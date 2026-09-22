@@ -1,0 +1,90 @@
+{
+  "locale": "ar",
+  "language": "Arabic",
+  "framing": "MENA Mediterranean pedagogy (Suez corridor pedagogy)",
+  "cultural_region": "Middle East / North Africa / Eastern Mediterranean",
+  "description": "العاب تعليم اللغة - The Arabic locale centers on the Suez Canal as the historical and pedagogical focal point. Trade here is not just commerce — it is the meeting of civilizations (Africa, Asia, Europe). Pedagogy emphasizes the 'witness' as a community elder whose testimony binds contracts and resolves disputes.",
+  "pedagogical_lens": "The shahada-witness: testimony as the binding force. The MENA framing teaches that every transaction requires witnesses, every port requires trust networks, and the substrate's witness-log IS the cultural practice of testified commerce.",
+  "ports": [
+    {
+      "id": "portsaid",
+      "name": "بورسعيد",
+      "name_en": "Port Said",
+      "tier": 1,
+      "coordinates": {"x": 32.0, "y": 50.0},
+      "cultural_notes": "Northern entrance to the Suez Canal. Founded in 1859 with the canal itself.",
+      "primary_agents": ["shaykh_ammar", "ustadh_nadia"],
+      "curriculum_focus": "Geography — where three continents meet"
+    },
+    {
+      "id": "suez",
+      "name": "السويس",
+      "name_en": "Suez",
+      "tier": 1,
+      "coordinates": {"x": 35.0, "y": 55.0},
+      "cultural_notes": "Southern entrance to the canal. Ancient port from Pharaonic times.",
+      "primary_agents": ["shaykh_ammar", "muallim_hassan"],
+      "curriculum_focus": "Geography — water as connection"
+    },
+    {
+      "id": "alexandria",
+      "name": "الإسكندرية",
+      "name_en": "Alexandria",
+      "tier": 1,
+      "coordinates": {"x": 30.0, "y": 45.0},
+      "cultural_notes": "Library of Alexandria — knowledge preservation across cultures.",
+      "primary_agents": ["ustadh_nadia"],
+      "curriculum_focus": "Geography — Mediterranean crossroads"
+    },
+    {
+      "id": "jeddah",
+      "name": "جدة",
+      "name_en": "Jeddah",
+      "tier": 2,
+      "coordinates": {"x": 38.0, "y": 65.0},
+      "cultural_notes": "Gateway to Mecca. Major Red Sea port for centuries.",
+      "primary_agents": ["shaykh_ammar", "muallim_hassan"],
+      "curriculum_focus": "Economics — pilgrimage economy"
+    },
+    {
+      "id": "dubai",
+      "name": "دبي",
+      "name_en": "Dubai",
+      "tier": 2,
+      "coordinates": {"x": 45.0, "y": 60.0},
+      "cultural_notes": "Modern entrepôt — the world's busiest port for ship traffic.",
+      "primary_agents": ["muallim_hassan"],
+      "curriculum_focus": "Economics — global logistics hub"
+    },
+    {
+      "id": "aden",
+      "name": "عدن",
+      "name_en": "Aden",
+      "tier": 2,
+      "coordinates": {"x": 50.0, "y": 75.0},
+      "cultural_notes": "Strategic strait — Bab el-Mandeb. Where East meets West.",
+      "primary_agents": ["muallim_hassan", "ustadh_nadia"],
+      "curriculum_focus": "Economics — strategic geography"
+    },
+    {
+      "id": "muscat",
+      "name": "مسقط",
+      "name_en": "Muscat",
+      "tier": 3,
+      "coordinates": {"x": 55.0, "y": 65.0},
+      "cultural_notes": "Omani port — Indian Ocean trade for millennia.",
+      "primary_agents": ["muallim_hassan"],
+      "curriculum_focus": "Governance — trade agreements"
+    },
+    {
+      "id": "doha",
+      "name": "الدوحة",
+      "name_en": "Doha",
+      "tier": 3,
+      "coordinates": {"x": 42.0, "y": 58.0},
+      "cultural_notes": "Modern Qatari hub — LNG and shipping governance.",
+      "primary_agents": ["muallim_hassan"],
+      "curriculum_focus": "Governance — international maritime law"
+    }
+  ]
+}

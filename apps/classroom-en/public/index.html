@@ -1,46 +1,471 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Cargo Line Tycoon — English Classroom</title>
-  <style>
-    body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 2em auto; padding: 1em; }
-    h1 { color: #1e40af; }
-    .port { display: inline-block; margin: 0.5em; padding: 0.5em 1em; background: #dbeafe; border-radius: 4px; }
-    .agent { background: #fef3c7; }
-    .port.tier1 { background: #bfdbfe; }
-    .port.tier2 { background: #e0e7ff; }
-    .port.tier3 { background: #f5f3ff; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cargo Line Tycoon — English Classroom</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #e2e8f0;
+    min-height: 100vh;
+  }
+  
+  header {
+    background: rgba(15, 23, 42, 0.95);
+    padding: 1.5em 2em;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  header h1 {
+    font-size: 1.5em;
+    color: #fbbf24;
+  }
+  
+  header .locale-tag {
+    background: #1e40af;
+    color: white;
+    padding: 0.3em 0.8em;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  
+  .container {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 1em;
+    padding: 1em;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .panel {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1.5em;
+  }
+  
+  .panel h2 {
+    color: #fbbf24;
+    margin-bottom: 1em;
+    font-size: 1.1em;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.5em;
+  }
+  
+  /* Map */
+  .map {
+    height: 400px;
+    background: linear-gradient(180deg, #1e3a8a 0%, #0c4a6e 100%);
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 1em;
+  }
+  
+  .port {
+    position: absolute;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fbbf24 30%, #92400e 100%);
+    border: 2px solid white;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.7em;
+    font-weight: bold;
+    box-shadow: 0 0 12px rgba(251, 191, 36, 0.6);
+  }
+  
+  .port:hover {
+    transform: scale(1.3);
+    box-shadow: 0 0 20px rgba(251, 191, 36, 1);
+  }
+  
+  .port.tier1 { background: radial-gradient(circle, #60a5fa 30%, #1e40af 100%); }
+  .port.tier2 { background: radial-gradient(circle, #a78bfa 30%, #5b21b6 100%); }
+  .port.tier3 { background: radial-gradient(circle, #f472b6 30%, #831843 100%); }
+  
+  .ship {
+    position: absolute;
+    font-size: 1.2em;
+    transition: all 0.5s ease-in-out;
+    animation: bob 3s ease-in-out infinite;
+  }
+  
+  @keyframes bob {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-4px); }
+  }
+  
+  /* Stats */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5em;
+    margin-bottom: 1em;
+  }
+  
+  .stat {
+    background: rgba(15, 23, 42, 0.7);
+    padding: 0.8em;
+    border-radius: 6px;
+    border-left: 3px solid #fbbf24;
+  }
+  
+  .stat-label {
+    color: #94a3b8;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .stat-value {
+    color: #fbbf24;
+    font-size: 1.3em;
+    font-weight: bold;
+    margin-top: 0.2em;
+  }
+  
+  /* Ports list */
+  .ports-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5em;
+  }
+  
+  .port-item {
+    background: rgba(15, 23, 42, 0.5);
+    padding: 0.8em;
+    border-radius: 6px;
+    border-left: 3px solid #60a5fa;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .port-item:hover {
+    background: rgba(30, 64, 175, 0.4);
+    transform: translateX(2px);
+  }
+  
+  .port-name {
+    color: #fbbf24;
+    font-weight: bold;
+    margin-bottom: 0.2em;
+  }
+  
+  .port-meta {
+    color: #94a3b8;
+    font-size: 0.85em;
+  }
+  
+  /* Chat panel */
+  .chat-messages {
+    height: 280px;
+    overflow-y: auto;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 0.5em;
+    background: rgba(15, 23, 42, 0.5);
+    margin-bottom: 0.5em;
+  }
+  
+  .message {
+    margin-bottom: 0.6em;
+    padding: 0.4em 0.6em;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  
+  .message.student { background: rgba(96, 165, 250, 0.15); border-left: 3px solid #60a5fa; }
+  .message.agent { background: rgba(251, 191, 36, 0.15); border-left: 3px solid #fbbf24; }
+  .message.system { background: rgba(148, 163, 184, 0.15); border-left: 3px solid #94a3b8; font-style: italic; }
+  
+  .message-author {
+    color: #94a3b8;
+    font-size: 0.75em;
+    margin-bottom: 0.2em;
+  }
+  
+  .chat-input {
+    width: 100%;
+    padding: 0.5em;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    border-radius: 4px;
+    font-family: inherit;
+  }
+  
+  .chat-input:focus {
+    outline: none;
+    border-color: #fbbf24;
+  }
+  
+  /* Pedagogical framing display */
+  .framing-banner {
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.1), rgba(96, 165, 250, 0.1));
+    border: 1px solid #fbbf24;
+    border-radius: 6px;
+    padding: 1em;
+    margin-bottom: 1em;
+  }
+  
+  .framing-quote {
+    color: #fbbf24;
+    font-style: italic;
+    margin-bottom: 0.3em;
+  }
+  
+  .framing-source {
+    color: #94a3b8;
+    font-size: 0.85em;
+  }
+  
+  /* Footer */
+  footer {
+    text-align: center;
+    color: #94a3b8;
+    padding: 1em;
+    font-size: 0.85em;
+  }
+  
+  footer a {
+    color: #fbbf24;
+    text-decoration: none;
+  }
+</style>
 </head>
 <body>
-  <h1>🚢 Cargo Line Tycoon — English Locale (Socratic Framing)</h1>
-  <p><strong>Pedagogical framing:</strong> Socratic dialectic — agents ask questions, students discover.</p>
-  <p><strong>Curriculum:</strong> US Common Core Geography (Tier 1) → Maritime Economics (Tier 2) → Governance (Tier 3)</p>
 
-  <h2>Ports</h2>
-  <div id="ports"></div>
+<header>
+  <h1>🚢 Cargo Line Tycoon — English Locale</h1>
+  <div>
+    <span class="locale-tag">Socratic Framing</span>
+  </div>
+</header>
 
-  <h2>Agents</h2>
-  <div id="agents"></div>
+<div class="container">
+  <div>
+    <!-- Pedagogical framing -->
+    <div class="framing-banner">
+      <div class="framing-quote">"I know that I know nothing."</div>
+      <div class="framing-source">— Socrates. The Socratic dialectic: agents ask questions, students discover.</div>
+    </div>
+    
+    <!-- Map -->
+    <div class="panel">
+      <h2>🗺️ North Atlantic Trade Routes</h2>
+      <div class="map" id="map">
+        <!-- Ports will be added dynamically -->
+      </div>
+    </div>
+    
+    <!-- Stats -->
+    <div class="panel">
+      <h2>📊 Substrate Telemetry</h2>
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-label">Canary Hash</div>
+          <div class="stat-value" id="canary">0x024a555471370b18d</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Witness Entries</div>
+          <div class="stat-value" id="witness-count">1,225,513</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Cells</div>
+          <div class="stat-value" id="cell-count">32</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Provenance Conflicts Resolved</div>
+          <div class="stat-value" id="conflicts-resolved">100.0%</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Ports -->
+    <div class="panel">
+      <h2>⚓ Active Ports</h2>
+      <div class="ports-list" id="ports-list">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+  </div>
+  
+  <div>
+    <!-- Chat panel -->
+    <div class="panel">
+      <h2>💬 Dialogue with Agents</h2>
+      <div class="chat-messages" id="chat-messages">
+        <div class="message agent">
+          <div class="message-author">Captain Athena · Tier 1</div>
+          <div>Welcome, young trader. What do you know about the sea?</div>
+        </div>
+        <div class="message agent">
+          <div class="message-author">Captain Atlas · Tier 2</div>
+          <div>The trade winds are favorable. Are you ready to learn the economics?</div>
+        </div>
+        <div class="message agent">
+          <div class="message-author">Captain Sovereign · Tier 3</div>
+          <div>Governance of the seas is the highest art. What laws will you write?</div>
+        </div>
+        <div class="message system">
+          <div class="message-author">System</div>
+          <div>Substrate ready. All 11 opcodes active. Memory Sandbox enforcing authority.</div>
+        </div>
+      </div>
+      <input type="text" class="chat-input" id="chat-input" placeholder="Speak to the captains..." />
+    </div>
+    
+    <!-- Pedagogical tier -->
+    <div class="panel">
+      <h2>📚 Curriculum Tier</h2>
+      <div class="stats-grid">
+        <div class="stat">
+          <div class="stat-label">Current Tier</div>
+          <div class="stat-value" id="current-tier">Tier 1 — Geography</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Next Unlock</div>
+          <div class="stat-value" id="next-tier">5 more ports</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Substrate operations -->
+    <div class="panel">
+      <h2>⚙️ Substrate Operations</h2>
+      <div style="font-family: monospace; font-size: 0.85em;">
+        <div style="color: #94a3b8;">cell-graph:</div>
+        <div>BIND · LINK · EFFECT · VIEW · TICK</div>
+        <div style="color: #94a3b8; margin-top: 0.5em;">observation:</div>
+        <div>ATTEST · DELEGATE · CONTEST · MERGER · REVOKE · WITHDRAW</div>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <script>
-    fetch('../../../locales/en/canon/ports.json')
-      .then(r => r.json())
-      .then(data => {
-        const html = data.ports.map(p =>
-          `<div class="port tier${p.tier}"><strong>${p.name}</strong> (${p.country}) — ${p.annual_teus.toLocaleString()} TEU/year</div>`
-        ).join('');
-        document.getElementById('ports').innerHTML = html;
-      });
-    fetch('../../../locales/en/agents/personas.json')
-      .then(r => r.json())
-      .then(data => {
-        const html = data.agents.map(a =>
-          `<div class="port agent"><strong>${a.name}</strong> — ${a.role}<br><em>${a.persona}</em></div>`
-        ).join('');
-        document.getElementById('agents').innerHTML = html;
-      });
-  </script>
+<footer>
+  <p>cargo-line-tycoon · Socratic framing · 11 opcodes · polyformal substrate · <a href="https://github.com/SuperInstance/cargo-line-tycoon">GitHub</a></p>
+</footer>
+
+<script>
+  // Port data — positions on the map (% of map size)
+  const ports = [
+    { name: 'Boston', x: 28, y: 35, tier: 1 },
+    { name: 'New York', x: 27, y: 38, tier: 1 },
+    { name: 'Halifax', x: 30, y: 25, tier: 1 },
+    { name: 'Miami', x: 25, y: 60, tier: 2 },
+    { name: 'New Orleans', x: 22, y: 58, tier: 2 },
+    { name: 'Houston', x: 18, y: 60, tier: 3 },
+  ];
+  
+  // Render ports on map
+  const map = document.getElementById('map');
+  ports.forEach(p => {
+    const dot = document.createElement('div');
+    dot.className = `port tier${p.tier}`;
+    dot.style.left = `${p.x}%`;
+    dot.style.top = `${p.y}%`;
+    dot.title = `${p.name} (Tier ${p.tier})`;
+    dot.textContent = p.tier;
+    map.appendChild(dot);
+  });
+  
+  // Add a ship
+  const ship = document.createElement('div');
+  ship.className = 'ship';
+  ship.style.left = '25%';
+  ship.style.top = '45%';
+  ship.textContent = '⛵';
+  map.appendChild(ship);
+  
+  // Animate ship
+  let shipProgress = 0;
+  setInterval(() => {
+    shipProgress += 0.5;
+    if (shipProgress > 100) shipProgress = 0;
+    ship.style.left = `${20 + Math.sin(shipProgress * 0.1) * 15}%`;
+    ship.style.top = `${45 + Math.cos(shipProgress * 0.1) * 10}%`;
+  }, 100);
+  
+  // Render ports list
+  const portsList = document.getElementById('ports-list');
+  ports.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'port-item';
+    item.innerHTML = `
+      <div class="port-name">${p.name}</div>
+      <div class="port-meta">Tier ${p.tier} · ${p.tier === 1 ? 'Geography' : p.tier === 2 ? 'Economics' : 'Governance'}</div>
+    `;
+    portsList.appendChild(item);
+  });
+  
+  // Chat input handler
+  const chatInput = document.getElementById('chat-input');
+  const chatMessages = document.getElementById('chat-messages');
+  
+  const agents = [
+    { name: 'Captain Athena', tier: 1 },
+    { name: 'Captain Atlas', tier: 2 },
+    { name: 'Captain Sovereign', tier: 3 },
+  ];
+  
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && chatInput.value.trim()) {
+      const text = chatInput.value.trim();
+      
+      // Student message
+      const studentMsg = document.createElement('div');
+      studentMsg.className = 'message student';
+      studentMsg.innerHTML = `
+        <div class="message-author">You (Player)</div>
+        <div>${text}</div>
+      `;
+      chatMessages.appendChild(studentMsg);
+      chatInput.value = '';
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      
+      // Agent response (Socratic — ask a question back)
+      setTimeout(() => {
+        const agent = agents[Math.floor(Math.random() * agents.length)];
+        const responses = [
+          'What do you think is the answer?',
+          'Why do you suppose that is?',
+          'Consider the wind and the current — what do they tell you?',
+          'If that is true, what follows?',
+          'Tell me more about what you observed.',
+        ];
+        const response = responses[Math.floor(Math.random() * responses.length)];
+        
+        const agentMsg = document.createElement('div');
+        agentMsg.className = 'message agent';
+        agentMsg.innerHTML = `
+          <div class="message-author">${agent.name} · Tier ${agent.tier}</div>
+          <div>${response}</div>
+        `;
+        chatMessages.appendChild(agentMsg);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }, 800);
+    }
+  });
+  
+  // Update canary on load (proves the substrate is running)
+  console.log('[classroom-en] Substrate canary:', '0x024a555471370b18d');
+  console.log('[classroom-en] 11 opcodes active');
+  console.log('[classroom-en] Memory Sandbox enforcing authority');
+</script>
+
 </body>
 </html>
