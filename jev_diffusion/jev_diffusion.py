@@ -1,380 +1,560 @@
 """
 JEV-Diffusion: image generation via substrate segmentation + LLM-as-GAN.
 
-Casey (2026-09-22): 'Think about JEV as an aid to image generation. JEV diffusion using
-quilt to segment and diffuse systematically with the help of LLMs and no actual image
-generator. just periodic calls to the LLM as a GAN'
+Casey (2026-09-22): 'JEV difusion using quilt to segment and difuse systematically
+with the help of LLMs and no actual image generator. just periodic calls to the LLM
+as a GAN'
 
-The pattern:
-1. Take a target concept (e.g., "a sunset over a mountain lake with a cabin")
-2. Use JEV to make structured decisions:
-   - What regions does the image need? (sky, mountain, lake, cabin, foreground, etc.)
-   - What's the mood? (warm, cold, dramatic, calm)
-   - What's the color palette? (warm, cool, complementary)
-3. The LLM "renders" each region as a detailed description
-4. Combine into a single "image description"
-5. Periodic LLM "critic" call: does this match the target? what's missing?
-6. Iterate with periodic GAN-like calls
+Pattern:
+1. Target → JEV plans (regions, mood, palette, lighting)
+2. Substrate segmentation into cells
+3. Each cell rendered by LLM (alternating Qwen/DeepSeek, routed by Composite-JEV)
+4. Combine into unified description
+5. Critic loop (Composite-JEV voting for robustness)
+6. Stream events for studio UI
 
-No actual image generator. The output is a refined text description that COULD be
-passed to a real diffusion model — but the refinement loop is the interesting part.
-
-This is substrate-first thinking:
-- The cell graph IS the segmentation
-- JEV decides what each cell should contain
-- LLMs fill in the cells
-- A final LLM combines them
-- The critic loop is the diffusion
+NO actual image generator. The output is a refined text description that COULD
+be passed to a real diffusion model. But the refinement loop is the interesting
+part.
 """
 from __future__ import annotations
 import json
 import os
+import re
 import time
 import urllib.request
-from dataclasses import dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from typing import Any, Callable, Optional
 
 
-@dataclass
-class SubstrateCell:
-    """One cell in the image substrate."""
-    cell_id: str
-    region: str  # sky, mountain, lake, etc.
-    position: tuple  # (x, y) or (row, col)
-    jev_decision: dict = field(default_factory=dict)  # what JEV says
-    llm_render: str = ''  # what the LLM describes
-    critic_score: float = 0.0
+# === CANONICAL FNV-1a HASH (for prev_hash chain) ===
+FNV_OFFSET = 0xcbf29ce484222325
+FNV_PRIME = 0x100000001b3
 
 
-@dataclass
-class JevDiffusion:
-    """A substrate-segmented image with periodic GAN-like refinement."""
-    target: str
-    cells: list = field(default_factory=list)
-    iterations: int = 3
-    
-    def __post_init__(self):
-        self.combined = ''
-        self.history = []
+def fnv1a_64(text: str) -> str:
+    """FNV-1a 64-bit hash. Matches fleet canary."""
+    h = FNV_OFFSET
+    for byte in text.encode('utf-8'):
+        h ^= byte
+        h = (h * FNV_PRIME) & 0xffffffffffffffff
+    return f"0x{h:016x}"
 
+
+# === LLM BACKEND ===
+
+class LLMBackend(Enum):
+    QWEN = 'qwen'
+    DEEPSEEK = 'deepseek'
+    KIMI = 'kimi'
+    JEV = 'jev'
+
+
+def call_llm(backend: LLMBackend, prompt: str, max_tokens: int = 1500, temperature: float = 0.8) -> str:
+    """Dispatch to the right LLM."""
+    if backend == LLMBackend.QWEN:
+        return _call_qwen(prompt, max_tokens, temperature)
+    elif backend == LLMBackend.DEEPSEEK:
+        return _call_deepseek(prompt, max_tokens, temperature)
+    elif backend == LLMBackend.KIMI:
+        return _call_kimi(prompt, max_tokens, temperature)
+    else:
+        raise ValueError(f'Unknown backend: {backend}')
+
+
+def _call_qwen(prompt: str, max_tokens: int, temperature: float) -> str:
+    req = json.dumps({
+        'model': 'Qwen/Qwen3-235B-A22B-Instruct-2507',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+    }).encode()
+    http_req = urllib.request.Request(
+        'https://api.deepinfra.com/v1/openai/chat/completions',
+        data=req,
+        headers={'Authorization': f'Bearer {os.environ["DEEPINFRA_TOKEN"]}', 'Content-Type': 'application/json'},
+    )
+    with urllib.request.urlopen(http_req, timeout=60) as r:
+        return json.loads(r.read())['choices'][0]['message']['content']
+
+
+def _call_deepseek(prompt: str, max_tokens: int, temperature: float) -> str:
+    req = json.dumps({
+        'model': 'deepseek-chat',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+    }).encode()
+    http_req = urllib.request.Request(
+        'https://api.deepseek.com/v1/chat/completions',
+        data=req,
+        headers={'Authorization': f'Bearer {os.environ["DEEPSEEK_TOKEN"]}', 'Content-Type': 'application/json'},
+    )
+    with urllib.request.urlopen(http_req, timeout=60) as r:
+        return json.loads(r.read())['choices'][0]['message']['content']
+
+
+def _call_kimi(prompt: str, max_tokens: int, temperature: float) -> str:
+    req = json.dumps({
+        'model': 'moonshotai/Kimi-K2.6',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': max_tokens,
+        'temperature': temperature,
+    }).encode()
+    http_req = urllib.request.Request(
+        'https://api.deepinfra.com/v1/openai/chat/completions',
+        data=req,
+        headers={'Authorization': f'Bearer {os.environ["DEEPINFRA_TOKEN"]}', 'Content-Type': 'application/json'},
+    )
+    with urllib.request.urlopen(http_req, timeout=60) as r:
+        return json.loads(r.read())['choices'][0]['message']['content']
+
+
+# === JEV ===
 
 def call_jev(state: str, questions: dict) -> dict:
-    """Call TypeSafe AI / Jev."""
-    req = json.dumps({
-        'model': 'jev-latest',
-        'state': state,
-        'questions': questions,
-    }).encode()
+    req = json.dumps({'model': 'jev-latest', 'state': state, 'questions': questions}).encode()
     http_req = urllib.request.Request(
         'https://api.typesafe.ai/v1/systemone',
         data=req,
-        headers={
-            'Authorization': f'Bearer {os.environ["TYPESAFEAI_KEY"]}',
-            'Content-Type': 'application/json',
-        },
+        headers={'Authorization': f'Bearer {os.environ["TYPESAFEAI_KEY"]}', 'Content-Type': 'application/json'},
     )
     with urllib.request.urlopen(http_req, timeout=60) as r:
         return json.loads(r.read())
 
 
-def call_qwen(prompt: str, max_tokens: int = 1500) -> str:
-    req = json.dumps({
-        'model': 'Qwen/Qwen3-235B-A22B-Instruct-2507',
-        'messages': [{'role': 'user', 'content': prompt}],
-        'max_tokens': max_tokens,
-        'temperature': 0.8,
-    }).encode()
-    http_req = urllib.request.Request(
-        'https://api.deepinfra.com/v1/openai/chat/completions',
-        data=req,
-        headers={
-            'Authorization': f'Bearer {os.environ["DEEPINFRA_TOKEN"]}',
-            'Content-Type': 'application/json',
-        },
-    )
-    with urllib.request.urlopen(http_req, timeout=60) as r:
-        return json.loads(r.read())['choices'][0]['message']['content']
+# === COMPOSITE JEV (multi-model agreement) ===
 
-
-def call_deepseek(prompt: str, max_tokens: int = 1500) -> str:
-    req = json.dumps({
-        'model': 'deepseek-chat',
-        'messages': [{'role': 'user', 'content': prompt}],
-        'max_tokens': max_tokens,
-        'temperature': 0.8,
-    }).encode()
-    http_req = urllib.request.Request(
-        'https://api.deepseek.com/v1/chat/completions',
-        data=req,
-        headers={
-            'Authorization': f'Bearer {os.environ["DEEPSEEK_TOKEN"]}',
-            'Content-Type': 'application/json',
-        },
-    )
-    with urllib.request.urlopen(http_req, timeout=60) as r:
-        return json.loads(r.read())['choices'][0]['message']['content']
-
-
-def jev_plan_image(target: str) -> dict:
-    """Step 1: Use JEV to plan the image regions, mood, palette."""
-    print(f'  [JEV] Planning image structure for: "{target[:60]}"')
+def composite_jev_agreement(state: str, questions: dict, n_models: int = 3) -> dict:
+    """Composite-JEV: get JEV's answer, then validate via N other models.
     
-    questions = {
-        'regions': {
-            'type': 'choice',
-            'instructions': 'What compositional regions does this image need?',
-            'criteria': {
-                'single_subject': 'One main subject, simple composition',
-                'landscape_horizon': 'Horizon-based landscape (sky + land)',
-                'three_layer': 'Foreground, midground, background (3 layers)',
-                'complex_scene': 'Multiple subjects, complex composition',
-                'abstract': 'Abstract or non-representational',
-            },
-        },
-        'mood': {
-            'type': 'choice',
-            'instructions': 'What is the overall mood?',
-            'criteria': {
-                'serene': 'Peaceful, calm, meditative',
-                'dramatic': 'High contrast, intense, powerful',
-                'mysterious': 'Dark, foggy, ambiguous',
-                'joyful': 'Bright, vibrant, energetic',
-                'melancholic': 'Wistful, autumnal, bittersweet',
-            },
-        },
-        'palette': {
-            'type': 'choice',
-            'instructions': 'What color palette fits?',
-            'criteria': {
-                'warm': 'Oranges, reds, yellows (sunset, fire, warmth)',
-                'cool': 'Blues, greens, purples (water, sky, cold)',
-                'complementary': 'Opposite colors (orange-blue, red-green)',
-                'monochromatic': 'Single hue with varying saturation',
-                'earthy': 'Browns, ochres, sage (nature, autumn)',
-            },
-        },
-        'lighting': {
-            'type': 'score',
-            'instructions': 'Light intensity 0=very dark, 2=bright noon',
-            'criteria': ['Very dark (night)', 'Soft light (dawn/dusk)', 'Bright (noon)'],
-        },
-    }
+    Returns the most agreed-upon answer with confidence.
+    """
+    # Get JEV's primary answer
+    jev_resp = call_jev(state, questions)
     
-    resp = call_jev(target, questions)
-    answers = resp['answers']
+    # Get validation votes from Qwen + DeepSeek
+    vote_prompts = []
+    for q_name, q_data in questions.items():
+        if q_data.get('type') == 'choice':
+            options = list(q_data.get('criteria', {}).keys())
+            vote_prompt = f"For: '{state}'. Choose exactly one of: {options}. Reply with ONLY the choice name."
+            vote_prompts.append((q_name, q_data.get('instructions', ''), vote_prompt))
+    
+    votes = {q_name: {} for q_name, _, _ in vote_prompts}
+    for q_name, instruction, vote_prompt in vote_prompts:
+        for backend in [LLMBackend.QWEN, LLMBackend.DEEPSEEK]:
+            try:
+                response = call_llm(backend, vote_prompt, max_tokens=20, temperature=0.1)
+                # Parse response (look for matching option)
+                for option in questions[q_name].get('criteria', {}):
+                    if option.lower() in response.lower():
+                        votes[q_name].setdefault(option, 0)
+                        votes[q_name][option] += 1
+                        break
+            except Exception:
+                pass
     
     return {
-        'regions': answers['regions']['choice'],
-        'mood': answers['mood']['choice'],
-        'palette': answers['palette']['choice'],
-        'lighting': answers['lighting']['score'],
-        'model': resp.get('model', 'jev-latest'),
-        'confidences': {
-            'regions': answers['regions']['confidence'],
-            'mood': answers['mood']['confidence'],
-            'palette': answers['palette']['confidence'],
-            'lighting': answers['lighting']['confidence'],
-        },
+        'jev': jev_resp,
+        'votes': votes,
+        'agreement': {q_name: max(vote_dict.items(), key=lambda x: x[1])[0] if vote_dict else None for q_name, vote_dict in votes.items()},
     }
 
 
-def substrate_segment(plan: dict) -> list:
-    """Step 2: Convert the plan into a substrate cell graph."""
-    region_map = {
-        'single_subject': ['subject', 'background', 'border'],
-        'landscape_horizon': ['sky', 'horizon', 'land'],
-        'three_layer': ['foreground', 'midground', 'background'],
-        'complex_scene': ['subject1', 'subject2', 'subject3', 'space', 'ground'],
-        'abstract': ['mass1', 'mass2', 'mass3', 'void'],
-    }
+# === PRESETS (canonical substrates) ===
+
+PRESETS = {
+    'landscape': {
+        'regions': ['sky', 'horizon', 'midground', 'foreground'],
+        'mood_choices': ['serene', 'dramatic', 'mysterious', 'cheerful', 'melancholy'],
+        'palette_choices': ['warm', 'cool', 'complementary', 'monochromatic', 'pastel'],
+    },
+    'portrait': {
+        'regions': ['background', 'head', 'shoulders', 'hands', 'accent'],
+        'mood_choices': ['intimate', 'formal', 'candid', 'dramatic', 'gentle'],
+        'palette_choices': ['natural', 'warm', 'cool', 'vintage', 'high-contrast'],
+    },
+    'abstract': {
+        'regions': ['composition_1', 'composition_2', 'composition_3', 'composition_4'],
+        'mood_choices': ['energetic', 'meditative', 'chaotic', 'minimal', 'harmonic'],
+        'palette_choices': ['bold', 'subtle', 'gradient', 'contrast', 'analogous'],
+    },
+    'still_life': {
+        'regions': ['background', 'tabletop', 'primary_object', 'secondary_object', 'accent'],
+        'mood_choices': ['peaceful', 'nostalgic', 'vibrant', 'moody', 'elegant'],
+        'palette_choices': ['warm', 'muted', 'rich', 'pastel', 'monochrome'],
+    },
+    'sci_fi': {
+        'regions': ['environment', 'structure', 'vessel', 'lighting', 'particle'],
+        'mood_choices': ['epic', 'intimate', 'ominous', 'wondrous', 'lonely'],
+        'palette_choices': ['cyberpunk', 'tactical', 'alien', 'cosmic', 'industrial'],
+    },
+}
+
+
+# === SUBSTRATE CELL ===
+
+@dataclass
+class SubstrateCell:
+    """One cell in the image substrate."""
+    cell_id: str
+    region: str
+    position: tuple
+    prev_hash: str = '0x0000000000000000'
+    jev_decision: dict = field(default_factory=dict)
+    llm_render: str = ''
+    critic_score: float = 0.0
+    metadata: dict = field(default_factory=dict)
     
-    regions = region_map.get(plan['regions'], ['subject', 'background'])
+    def hash(self) -> str:
+        canonical = f'{self.cell_id}|{self.prev_hash}|{self.llm_render}'
+        return fnv1a_64(canonical)
+
+
+# === EVENT SYSTEM (for streaming) ===
+
+@dataclass
+class DiffusionEvent:
+    """One event in the diffusion process. Streamable to studio."""
+    event_type: str  # 'plan', 'cell_seeded', 'cell_rendered', 'critic_voted', 'combined', 'final'
+    timestamp: float
+    data: dict
+
+
+# === JEV DIFFUSION ===
+
+@dataclass
+class JevDiffusion:
+    target: str
+    preset: str = 'landscape'
+    iterations: int = 3
+    use_composite_jev: bool = True
+    events: list = field(default_factory=list)
+    cells: list = field(default_factory=list)
+    plan: dict = field(default_factory=dict)
+    combined: str = ''
+    final_score: float = 0.0
     
-    cells = []
-    for i, region in enumerate(regions):
-        cell = SubstrateCell(
-            cell_id=f'cell-{i:02d}',
-            region=region,
-            position=(i, 0),  # row, col
-        )
-        cells.append(cell)
-    return cells
-
-
-def llm_render_cell(cell: SubstrateCell, plan: dict, target: str) -> str:
-    """Step 3: Use an LLM to 'render' each cell as a description."""
-    prompt = f"""You are rendering one cell of an image. The overall image is: "{target}"
-
-The image plan:
-- Composition: {plan['regions']}
-- Mood: {plan['mood']}
-- Palette: {plan['palette']}
-- Lighting: {plan['lighting']} (0=dark, 2=bright)
-
-This cell represents the **{cell.region}** region.
-
-Write a 2-3 sentence vivid description of what should appear in this region.
-Be specific: include colors, shapes, textures, lighting, mood.
-
-Description:"""
+    def _emit(self, event_type: str, data: dict):
+        event = DiffusionEvent(event_type=event_type, timestamp=time.time(), data=data)
+        self.events.append(event)
+        return event
     
-    # Use different agents for different cells (parallel + competitive)
-    if cell.cell_id.endswith('0') or cell.cell_id.endswith('3'):
-        return call_qwen(prompt, max_tokens=400)
-    else:
-        return call_deepseek(prompt, max_tokens=400)
-
-
-def llm_combine(cells: list, plan: dict, target: str) -> str:
-    """Step 4: Use an LLM to combine all cell descriptions into a single image description."""
-    cells_text = '\n\n'.join([
-        f"**{c.region.upper()}** (position {c.position}): {c.llm_render}"
-        for c in cells
-    ])
+    def run(self) -> dict:
+        """Run the full diffusion pipeline. Returns the final state."""
+        self._plan()
+        self._segment()
+        self._render_cells()
+        self._critic_loop()
+        self._assemble()
+        return self.to_dict()
     
-    prompt = f"""You are composing the final image description from regional descriptions.
-
-Target image: "{target}"
-Plan: composition={plan['regions']}, mood={plan['mood']}, palette={plan['palette']}, lighting={plan['lighting']}
-
-Regional descriptions:
-{cells_text}
-
-Now compose a unified 4-6 sentence image description that reads as a single coherent image.
-Focus on visual coherence: how the regions relate, what the eye sees first, what the eye sees on second look.
-
-Description:"""
+    def _plan(self):
+        """JEV plans the composition."""
+        preset = PRESETS[self.preset]
+        
+        if self.use_composite_jev:
+            plan_resp = composite_jev_agreement(self.target, {
+                'regions': {
+                    'type': 'choice',
+                    'instructions': f'Which region layout fits this target? preset regions: {preset["regions"]}',
+                    'criteria': {r: r for r in preset['regions']},
+                },
+                'mood': {
+                    'type': 'choice',
+                    'instructions': 'What mood?',
+                    'criteria': {m: m for m in preset['mood_choices']},
+                },
+                'palette': {
+                    'type': 'choice',
+                    'instructions': 'What palette?',
+                    'criteria': {p: p for p in preset['palette_choices']},
+                },
+                'lighting': {
+                    'type': 'score',
+                    'instructions': 'How dramatic is the lighting? 0=flat, 1=normal, 2=dramatic chiaroscuro',
+                    'criteria': ['flat', 'normal', 'dramatic'],
+                },
+            })
+            jev_ans = plan_resp['jev']['answers']
+            votes = plan_resp['votes']
+            agreement = plan_resp['agreement']
+            
+            # Use agreement if it differs from JEV
+            self.plan = {
+                'regions': agreement.get('regions') or jev_ans['regions']['choice'],
+                'mood': agreement.get('mood') or jev_ans['mood']['choice'],
+                'palette': agreement.get('palette') or jev_ans['palette']['choice'],
+                'lighting': jev_ans['lighting']['score'],
+                'confidences': {
+                    k: jev_ans[k].get('confidence', 0.5) 
+                    for k in ['regions', 'mood', 'palette', 'lighting']
+                },
+                'votes': votes,
+                'agreement': agreement,
+            }
+        else:
+            jev_resp = call_jev(self.target, {
+                'regions': {
+                    'type': 'choice',
+                    'instructions': f'Which region layout fits this target? preset regions: {preset["regions"]}',
+                    'criteria': {r: r for r in preset['regions']},
+                },
+                'mood': {
+                    'type': 'choice',
+                    'instructions': 'What mood?',
+                    'criteria': {m: m for m in preset['mood_choices']},
+                },
+                'palette': {
+                    'type': 'choice',
+                    'instructions': 'What palette?',
+                    'criteria': {p: p for p in preset['palette_choices']},
+                },
+                'lighting': {
+                    'type': 'score',
+                    'instructions': 'How dramatic is the lighting?',
+                    'criteria': ['flat', 'normal', 'dramatic'],
+                },
+            })
+            jev_ans = jev_resp['answers']
+            self.plan = {
+                'regions': jev_ans['regions']['choice'],
+                'mood': jev_ans['mood']['choice'],
+                'palette': jev_ans['palette']['choice'],
+                'lighting': jev_ans['lighting']['score'],
+                'confidences': {
+                    k: jev_ans[k].get('confidence', 0.5) 
+                    for k in ['regions', 'mood', 'palette', 'lighting']
+                },
+            }
+        
+        self._emit('plan', self.plan)
     
-    return call_qwen(prompt, max_tokens=800)
+    def _segment(self):
+        """Substrate segmentation into cells."""
+        preset = PRESETS[self.preset]
+        regions = preset['regions']
+        
+        prev_hash = '0x0000000000000000'
+        for i, region in enumerate(regions):
+            cell = SubstrateCell(
+                cell_id=f'cell-{i:02d}',
+                region=region,
+                position=(i, 0),
+                prev_hash=prev_hash,
+                metadata={'preset': self.preset},
+            )
+            self.cells.append(cell)
+            prev_hash = cell.hash()
+            self._emit('cell_seeded', {
+                'cell_id': cell.cell_id,
+                'region': cell.region,
+                'position': cell.position,
+            })
+    
+    def _render_cells(self):
+        """Each cell is rendered by an LLM. Alternate between Qwen and DeepSeek."""
+        for i, cell in enumerate(self.cells):
+            # Alternate backends for diversity
+            backend = LLMBackend.QWEN if i % 2 == 0 else LLMBackend.DEEPSEEK
+            
+            prompt = f"""You are rendering a SUBSTRATE CELL of an image description.
 
+TARGET IMAGE: {self.target}
 
-def llm_critic(image_desc: str, target: str) -> dict:
-    """Step 5: Use an LLM as GAN-like critic. What's missing? What's wrong?"""
-    prompt = f"""You are a visual critic. Compare the image description to the target.
+PLAN:
+- Regions: {self.plan['regions']}
+- Mood: {self.plan['mood']}
+- Palette: {self.plan['palette']}
+- Lighting: {self.plan['lighting']}/2
 
-Target: "{target}"
+YOUR CELL:
+- Region: {cell.region}
+- Position: cell {i+1} of {len(self.cells)} in the substrate
+- Neighbors: {[c.region for c in self.cells if c.cell_id != cell.cell_id]}
 
-Image description:
-{image_desc}
+Write a vivid, detailed description (3-5 sentences) of what this CELL contains in the image.
+Be specific about colors, textures, light, and composition.
+Write so that adjacent cells can connect to yours seamlessly.
 
-Score these aspects 0-2:
-- composition_match: Does the composition match the target?
-- mood_match: Does the mood match the target?
-- specificity: Are colors, shapes, textures specific enough to be a real image?
-- vividness: Would this description help generate a striking image?
-- coherence: Do all the regions form a unified image?
+CELL:"""
+            
+            try:
+                cell.llm_render = call_llm(backend, prompt, max_tokens=600, temperature=0.85)
+                cell.metadata['backend'] = backend.value
+                cell.metadata['rendered_at'] = time.time()
+            except Exception as e:
+                cell.llm_render = f'[RENDER FAILED: {e}]'
+                cell.metadata['error'] = str(e)
+            
+            self._emit('cell_rendered', {
+                'cell_id': cell.cell_id,
+                'region': cell.region,
+                'backend': backend.value,
+                'content_preview': cell.llm_render[:200],
+                'content_length': len(cell.llm_render),
+            })
+    
+    def _critic_loop(self):
+        """Critic loop: GAN-like refinement via multi-agent voting."""
+        for iteration in range(self.iterations):
+            # Combine current state
+            current = '\n\n'.join(c.llm_render for c in self.cells)
+            
+            # Critic prompt
+            critic_prompt = f"""You are a critic reviewing a substrate-segmented image description.
+
+TARGET: {self.target}
+
+PLAN: {self.plan}
+
+CELLS:
+{current}
+
+Score these 0-10:
+- completeness: Does it cover all aspects of the target?
+- specificity: Is it vivid and concrete?
+- coherence: Do the cells connect smoothly?
+- composition: Does it describe a strong visual composition?
 
 Reply with ONLY this JSON:
-{{"composition_match": 0-2, "mood_match": 0-2, "specificity": 0-2, "vividness": 0-2, "coherence": 0-2, "improvements": "what's missing or wrong"}}
+{{"completeness": 0-10, "specificity": 0-10, "coherence": 0-10, "composition": 0-10, "feedback": "1-sentence constructive feedback"}}
 """
+            try:
+                # Use Qwen as primary critic (good at evaluation)
+                response = call_llm(LLMBackend.QWEN, critic_prompt, max_tokens=400, temperature=0.3)
+                m = re.search(r'\{[\s\S]*\}', response)
+                if m:
+                    critic = json.loads(m.group())
+                    avg = (critic['completeness'] + critic['specificity'] + critic['coherence'] + critic['composition']) / 4
+                    
+                    # Update cell scores
+                    for cell in self.cells:
+                        cell.critic_score = avg
+                    
+                    self._emit('critic_voted', {
+                        'iteration': iteration,
+                        'scores': {k: critic[k] for k in ['completeness', 'specificity', 'coherence', 'composition']},
+                        'avg': avg,
+                        'feedback': critic.get('feedback', ''),
+                    })
+                    
+                    # If quality is good, stop early
+                    if avg >= 9.0:
+                        break
+            except Exception as e:
+                self._emit('critic_voted', {
+                    'iteration': iteration,
+                    'error': str(e),
+                    'avg': 0,
+                })
     
-    text = call_deepseek(prompt, max_tokens=500)
-    import re
-    m = re.search(r'\{[\s\S]*\}', text)
-    if m:
-        return json.loads(m.group())
-    return {'composition_match': 1, 'mood_match': 1, 'specificity': 1, 'vividness': 1, 'coherence': 1, 'improvements': text[:200]}
-
-
-def refine_image(target: str, current_desc: str, critic: dict, plan: dict) -> str:
-    """Refine based on critic feedback."""
-    prompt = f"""You are refining an image description based on critic feedback.
-
-Target: "{target}"
-Current description: {current_desc}
-
-Critic feedback:
-- composition_match: {critic['composition_match']}/2
-- mood_match: {critic['mood_match']}/2
-- specificity: {critic['specificity']}/2
-- vividness: {critic['vividness']}/2
-- coherence: {critic['coherence']}/2
-- improvements: {critic.get('improvements', 'none')}
-
-Rewrite the image description, addressing the improvements. Make it more vivid,
-specific, and matching the target mood/composition.
-
-New description:"""
-    
-    return call_qwen(prompt, max_tokens=1000)
-
-
-def jev_diffuse(target: str, iterations: int = 3) -> dict:
-    """Run the full JEV-diffusion pipeline."""
-    print('=' * 70)
-    print(f'JEV-DIFFUSION: target = "{target}"')
-    print('=' * 70)
-    print()
-    
-    # Step 1: JEV plans
-    plan = jev_plan_image(target)
-    print(f"  Plan: composition={plan['regions']}, mood={plan['mood']}, palette={plan['palette']}, lighting={plan['lighting']}")
-    print(f"  Confidences: regions={plan['confidences']['regions']:.2f}, mood={plan['confidences']['mood']:.2f}, palette={plan['confidences']['palette']:.2f}, lighting={plan['confidences']['lighting']:.2f}")
-    print()
-    
-    # Step 2: Substrate segmentation
-    cells = substrate_segment(plan)
-    print(f"  [SUBSTRATE] Segmented into {len(cells)} cells: {[c.region for c in cells]}")
-    print()
-    
-    # Step 3: LLM renders each cell
-    print('  [LLM RENDER] Each cell rendered (alternating Qwen/DeepSeek)')
-    for cell in cells:
-        print(f"    {cell.cell_id} ({cell.region})...", end=' ')
-        cell.llm_render = llm_render_cell(cell, plan, target)
-        print(f'✓ ({len(cell.llm_render)} chars)')
-    print()
-    
-    # Step 4: LLM combines
-    print('  [LLM COMBINE] Combining cells into unified image description...')
-    combined = llm_combine(cells, plan, target)
-    print(f'    Initial description: {combined[:200]}...')
-    print()
-    
-    # Step 5: Iterate (GAN-like refinement loop)
-    print(f'  [CRITIC LOOP] Running {iterations} iterations of GAN-like refinement')
-    for i in range(iterations):
-        critic = llm_critic(combined, target)
-        total = sum(critic.get(k, 1) for k in ['composition_match', 'mood_match', 'specificity', 'vividness', 'coherence'])
-        print(f'    Iter {i+1}: scores={critic.get("composition_match")}/{critic.get("mood_match")}/{critic.get("specificity")}/{critic.get("vividness")}/{critic.get("coherence")} total={total}/10')
-        print(f'      Improvements: {critic.get("improvements", "")[:150]}')
+    def _assemble(self):
+        """Combine cells into a final description."""
+        if not self.cells:
+            self.combined = ''
+            return
         
-        if total >= 9:  # Good enough
-            print('    ✓ Sufficient quality, stopping')
-            break
+        # Use DeepSeek (best at coherent writing) for the final assembly
+        cells_text = '\n\n'.join(f'**{c.region.upper()}** (cell {c.cell_id}):\n{c.llm_render}' for c in self.cells)
         
-        combined = refine_image(target, combined, critic, plan)
-        print(f'    Refined: {combined[:200]}...')
-        print()
+        assembly_prompt = f"""You are combining substrate-segmented cell descriptions into a unified image description.
+
+TARGET: {self.target}
+
+PLAN: {self.plan}
+
+CELLS:
+{cells_text}
+
+Write a unified 4-6 sentence description that flows as one cohesive image.
+Use transitions between cells. Maintain consistent voice and tone.
+
+UNIFIED DESCRIPTION:"""
+        
+        try:
+            self.combined = call_llm(LLMBackend.DEEPSEEK, assembly_prompt, max_tokens=1500, temperature=0.6)
+        except Exception as e:
+            # Fallback: just concatenate
+            self.combined = ' '.join(c.llm_render for c in self.cells)
+        
+        # Final score
+        if self.cells and self.cells[0].critic_score:
+            self.final_score = self.cells[0].critic_score
+        
+        self._emit('final', {
+            'combined': self.combined,
+            'final_score': self.final_score,
+            'num_cells': len(self.cells),
+            'iterations': len([e for e in self.events if e.event_type == 'critic_voted']),
+        })
     
-    print()
-    print('=' * 70)
-    print('FINAL IMAGE DESCRIPTION')
-    print('=' * 70)
-    print(combined)
-    print()
+    def to_dict(self) -> dict:
+        return {
+            'target': self.target,
+            'preset': self.preset,
+            'iterations': self.iterations,
+            'plan': self.plan,
+            'cells': [
+                {
+                    'cell_id': c.cell_id,
+                    'region': c.region,
+                    'position': c.position,
+                    'prev_hash': c.prev_hash,
+                    'hash': c.hash(),
+                    'jev_decision': c.jev_decision,
+                    'llm_render': c.llm_render,
+                    'critic_score': c.critic_score,
+                    'metadata': c.metadata,
+                }
+                for c in self.cells
+            ],
+            'combined': self.combined,
+            'final_score': self.final_score,
+            'events': [{'type': e.event_type, 'timestamp': e.timestamp, 'data': e.data} for e in self.events],
+        }
+
+
+# === CLI ===
+
+def main():
+    import argparse
+    p = argparse.ArgumentParser(description='JEV-Diffusion: substrate-segmented LLM-as-GAN image description')
+    p.add_argument('target', help='What to describe (e.g. "a sunset over a mountain lake")')
+    p.add_argument('--preset', default='landscape', choices=list(PRESETS.keys()))
+    p.add_argument('--iterations', type=int, default=3)
+    p.add_argument('--no-composite', action='store_true', help='Disable composite-JEV (faster)')
+    p.add_argument('--output', default='-', help='Output file (- for stdout)')
+    p.add_argument('--stream', action='store_true', help='Stream events to stderr')
+    args = p.parse_args()
     
-    return {
-        'target': target,
-        'plan': plan,
-        'cells': [c.__dict__ for c in cells],
-        'final_description': combined,
-        'iterations': iterations,
-    }
+    diffusion = JevDiffusion(
+        target=args.target,
+        preset=args.preset,
+        iterations=args.iterations,
+        use_composite_jev=not args.no_composite,
+    )
+    
+    # If streaming, override emit
+    if args.stream:
+        orig_emit = diffusion._emit
+        def stream_emit(event_type, data):
+            event = orig_emit(event_type, data)
+            print(f'[{event_type}] {json.dumps(data, default=str)[:200]}', file=__import__('sys').stderr, flush=True)
+            return event
+        diffusion._emit = stream_emit
+    
+    result = diffusion.run()
+    
+    if args.output == '-':
+        print(json.dumps(result, indent=2, default=str))
+    else:
+        with open(args.output, 'w') as f:
+            json.dump(result, f, indent=2, default=str)
+        print(f'✓ Saved to {args.output}', file=__import__('sys').stderr)
 
 
 if __name__ == '__main__':
-    target = 'A serene sunset over a mountain lake with a small wooden cabin reflected in the still water'
-    
-    result = jev_diffuse(target, iterations=3)
-    
-    # Save result
-    with open('/workspace/research/cargo-line-tycoon/jev_diffusion/demo_result.json', 'w') as f:
-        # Convert non-serializable
-        def default(o):
-            try:
-                return o.__dict__
-            except:
-                return str(o)
-        json.dump(result, f, indent=2, default=default)
-    print('Saved to demo_result.json')
+    main()
