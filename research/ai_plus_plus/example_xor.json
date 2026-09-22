@@ -1,0 +1,127 @@
+{
+  "name": "xor",
+  "cells": {
+    "x0": {
+      "type": "input",
+      "value": 1,
+      "neighbors": [],
+      "n_witnesses": 8000
+    },
+    "x1": {
+      "type": "input",
+      "value": 1,
+      "neighbors": [],
+      "n_witnesses": 8000
+    },
+    "h0": {
+      "type": "hidden",
+      "value": 0.9999866882029336,
+      "neighbors": [
+        "x0",
+        "x1",
+        "b0"
+      ],
+      "n_witnesses": 8000
+    },
+    "h1": {
+      "type": "hidden",
+      "value": 0.9996791376416978,
+      "neighbors": [
+        "x0",
+        "x1",
+        "b1"
+      ],
+      "n_witnesses": 8000
+    },
+    "b0": {
+      "type": "bias",
+      "value": -0.4015623600877677,
+      "neighbors": [],
+      "n_witnesses": 8000
+    },
+    "b1": {
+      "type": "bias",
+      "value": 1.8715359028985952,
+      "neighbors": [],
+      "n_witnesses": 8000
+    },
+    "y": {
+      "type": "output",
+      "value": 0.5511574826496409,
+      "neighbors": [
+        "h0",
+        "h1",
+        "b2"
+      ],
+      "n_witnesses": 8000
+    },
+    "b2": {
+      "type": "bias",
+      "value": 0.11072514795669142,
+      "neighbors": [],
+      "n_witnesses": 8000
+    },
+    "w_x0_h0": {
+      "type": "weight",
+      "value": 1.6875588458027337,
+      "neighbors": [],
+      "n_witnesses": 0
+    },
+    "w_x0_h1": {
+      "type": "weight",
+      "value": -2.3563790823127104,
+      "neighbors": [],
+      "n_witnesses": 0
+    },
+    "w_x1_h0": {
+      "type": "weight",
+      "value": 4.674003735810254,
+      "neighbors": [],
+      "n_witnesses": 0
+    },
+    "w_x1_h1": {
+      "type": "weight",
+      "value": 4.8535857062328,
+      "neighbors": [],
+      "n_witnesses": 0
+    },
+    "w_h0_y": {
+      "type": "weight",
+      "value": 3.0758771646336807,
+      "neighbors": [],
+      "n_witnesses": 0
+    },
+    "w_h1_y": {
+      "type": "weight",
+      "value": -3.3912525015644137,
+      "neighbors": [],
+      "n_witnesses": 0
+    }
+  },
+  "weights": {
+    "x0\u2192h0": 1.6875588458027337,
+    "x0\u2192h1": -2.3563790823127104,
+    "x1\u2192h0": 4.674003735810254,
+    "x1\u2192h1": 4.8535857062328,
+    "h0\u2192y": 3.0758771646336807,
+    "h1\u2192y": -3.3912525015644137
+  },
+  "layers": {
+    "input": [
+      "x0",
+      "x1"
+    ],
+    "hidden": [
+      "h0",
+      "h1"
+    ],
+    "params": [
+      "b0",
+      "b1",
+      "b2"
+    ],
+    "output": [
+      "y"
+    ]
+  }
+}
