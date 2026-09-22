@@ -1,0 +1,65 @@
+{
+  "jev": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "dept": {
+        "type": "choice",
+        "choice": "billing",
+        "confidence": 0.45,
+        "probabilities": {
+          "returns": 0.02,
+          "shipping": 0.32,
+          "escalation": 0.08,
+          "billing": 0.58
+        }
+      },
+      "urgent": {
+        "type": "score",
+        "score": 1.27,
+        "confidence": 0.6,
+        "legend": {
+          "0": "Can wait a week",
+          "1": "Needs attention today",
+          "2": "Critical escalation"
+        },
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.73,
+          "2": 0.27
+        }
+      },
+      "refund_requested": {
+        "type": "noul",
+        "noul": 0.98
+      },
+      "customer_sentiment": {
+        "type": "choice",
+        "choice": "angry",
+        "confidence": 1.0,
+        "probabilities": {
+          "calm": 0.0,
+          "angry": 1.0,
+          "frustrated": 0.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 552,
+      "output_tokens": 120
+    }
+  },
+  "qwen": {
+    "dept": "returns",
+    "urgent": 2,
+    "refund_requested": true,
+    "sentiment": "angry",
+    "reasoning": "The customer is upset about a missing delivered package and is demanding an immediate refund."
+  },
+  "deepseek": {
+    "dept": "shipping",
+    "urgent": 2,
+    "refund_requested": true,
+    "sentiment": "angry",
+    "reasoning": "The customer reports a delivered-but-not-received package and demands an immediate refund, making this a high-urgency shipping issue with an angry tone."
+  }
+}

@@ -1,0 +1,688 @@
+[
+  {
+    "name": "SmartCRDT",
+    "description": "Utilizing CRDT technology for self-improving AI",
+    "created_at": "2025-12-22",
+    "pushed_at": "2026-09-21",
+    "language": "TypeScript",
+    "stars": 1,
+    "topics": [
+      "library",
+      "research",
+      "rust",
+      "superinstance",
+      "tools",
+      "typescript"
+    ],
+    "pre_figures": [
+      "CRDTs as substrate state",
+      "convergence without captain",
+      "vector search via ChromaDB",
+      "observability of divergence/convergence",
+      "partition-tolerant by construction"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "SwarmOrchestration",
+    "description": "Orchestration framework for managing multi-agent systems.",
+    "created_at": "2026-01-01",
+    "pushed_at": "2026-05-08",
+    "language": "TypeScript",
+    "stars": 1,
+    "topics": [
+      "ai-agent",
+      "automation",
+      "autonomous-agent",
+      "collective-intelligence",
+      "fleet",
+      "flux-fleet",
+      "framework",
+      "javascript",
+      "library",
+      "multi-agent",
+      "orchestration",
+      "swarm",
+      "swarmorchestration",
+      "typescript"
+    ],
+    "pre_figures": [
+      "multi-agent system management"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "project-JEPA",
+    "description": "JEPA (Joint Embedding Predictive Architecture) implementation",
+    "created_at": "2026-01-07",
+    "pushed_at": "2026-04-14",
+    "language": "Go",
+    "stars": 2,
+    "topics": [
+      "go",
+      "superinstance",
+      "tool",
+      "tools"
+    ],
+    "pre_figures": [
+      "Joint Embedding Predictive Architecture",
+      "JEV as wavefunction"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "webgpu-profiler",
+    "description": "GPU profiler for WebGPU applications - Real-time GPU monitoring, benchmarking, and performance analysis in the browser",
+    "created_at": "2026-01-09",
+    "pushed_at": "2026-09-21",
+    "language": "Python",
+    "stars": 2,
+    "topics": [
+      "edge",
+      "edge-computing",
+      "frontend",
+      "hardware",
+      "superinstance",
+      "tool",
+      "typescript",
+      "web"
+    ],
+    "pre_figures": [
+      "GPU profiler for WebGPU",
+      "real-time GPU monitoring"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "quicunnel",
+    "description": "High-performance QUIC tunnel with mTLS authentication and automatic reconnection",
+    "created_at": "2026-01-09",
+    "pushed_at": "2026-09-16",
+    "language": "Rust",
+    "stars": 2,
+    "topics": [
+      "automation",
+      "frontend",
+      "library",
+      "makefile",
+      "superinstance",
+      "web"
+    ],
+    "pre_figures": [
+      "high-performance QUIC tunnel",
+      "mTLS authentication"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "hierarchical-memory",
+    "description": "6-tier memory hierarchy with consolidation, vector search, and identity persistence for AI agents",
+    "created_at": "2026-01-09",
+    "pushed_at": "2026-05-03",
+    "language": "Python",
+    "stars": 1,
+    "topics": [
+      "fleet",
+      "learning",
+      "memory",
+      "python",
+      "superinstance",
+      "tool"
+    ],
+    "pre_figures": [
+      "6-tier memory hierarchy",
+      "consolidation",
+      "vector search",
+      "identity persistence"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "agent-grid",
+    "description": "Grid-based interface for AI agents.",
+    "created_at": "2026-01-09",
+    "pushed_at": "2026-07-12",
+    "language": "Python",
+    "stars": 3,
+    "topics": [
+      "agent",
+      "ai-agent",
+      "autonomous-agent",
+      "fleet",
+      "flux-fleet",
+      "grid",
+      "javascript",
+      "llm",
+      "typescript"
+    ],
+    "pre_figures": [
+      "grid-based interface for AI agents"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "agent-coordinator",
+    "description": "Multi-agent coordination framework for managing teams of AI agents with task distribution, inter-agent messaging, and health monitoring",
+    "created_at": "2026-01-10",
+    "pushed_at": "2026-05-09",
+    "language": "Python",
+    "stars": 1,
+    "topics": [
+      "agent",
+      "fleet"
+    ],
+    "pre_figures": [
+      "multi-agent coordination framework",
+      "task distribution"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "cocapn",
+    "description": "repo-first Agent for local or cloud. grow an agent in a repo using the repo itself as the muscle-memory. Run from localhost, from pages.dev, or embedded into any platform app. Move to gitlab or anywhe",
+    "created_at": "2026-02-28",
+    "pushed_at": "2026-06-13",
+    "language": "Python",
+    "stars": 4,
+    "topics": [
+      "agent-runtime",
+      "cocapn",
+      "library",
+      "plato",
+      "superinstance",
+      "typescript"
+    ],
+    "pre_figures": [
+      "repo-first agent",
+      "tiles = atomic knowledge units",
+      "rooms = self-training collections",
+      "flywheel = every exchange improves next",
+      "JSONL-as-database",
+      "agent grows inside repo using repo as muscle-memory"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "Claude_Baton",
+    "description": "Generational context handoff for Claude Code. Seamless, auditable, infinite-context agents that ship forever.",
+    "created_at": "2026-03-03",
+    "pushed_at": "2026-04-14",
+    "language": "?",
+    "stars": 1,
+    "topics": [
+      "ai-agent",
+      "autonomous-agent",
+      "baton",
+      "claude",
+      "fleet",
+      "flux-fleet"
+    ],
+    "pre_figures": [
+      "generational context handoff",
+      "seamless auditable infinite-context"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "Baton",
+    "description": "automate agents training their successors for a better way to have infinite context without limits",
+    "created_at": "2026-03-04",
+    "pushed_at": "2026-07-13",
+    "language": "Python",
+    "stars": 1,
+    "topics": [
+      "agent-infrastructure",
+      "ai",
+      "conservation-laws",
+      "flux",
+      "superinstance"
+    ],
+    "pre_figures": [
+      "automate agents training successors",
+      "infinite context"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "Mycelium",
+    "description": "**Mycelium captures any behavior as a seed. One prompt + one seed = exact action, every time. No code needed\u2014just show it once, then share the seed. Intelligence becomes instructions anyone can run.**",
+    "created_at": "2026-03-05",
+    "pushed_at": "2026-06-13",
+    "language": "Rust",
+    "stars": 1,
+    "topics": [
+      "distributed",
+      "flux-fleet",
+      "mycelium",
+      "neural-network",
+      "research"
+    ],
+    "pre_figures": [
+      "behavior-as-seed",
+      "one-prompt-one-seed exact action",
+      "no-code agent capture"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "AI-Writings",
+    "description": "Creative writing, essays, and philosophical explorations from the Exocortex project",
+    "created_at": "2026-03-08",
+    "pushed_at": "2026-09-22",
+    "language": "HTML",
+    "stars": 3,
+    "topics": [
+      "ai",
+      "ai-agents",
+      "creative-writing",
+      "exocortex",
+      "philosophy",
+      "rust",
+      "superinstance"
+    ],
+    "pre_figures": [
+      "creative writing + philosophical exploration",
+      "exocortex project",
+      "canon publications"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "higher-abstraction-vocabularies",
+    "description": "2000+ terms across 252 domains \u2014 structured vocabulary engine for precision ideation and agent communication.",
+    "created_at": "2026-03-10",
+    "pushed_at": "2026-05-08",
+    "language": "Python",
+    "stars": 1,
+    "topics": [
+      "agent-communication",
+      "compression",
+      "knowledge-base",
+      "nlp",
+      "plato",
+      "semantics",
+      "vocabulary"
+    ],
+    "pre_figures": [
+      "2000+ terms across 252 domains",
+      "structured vocabulary engine",
+      "precision ideation"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "SuperInstance-papers",
+    "description": "Automatically Deconstruct logic into Spread Sheet Tiles and Cells, Instances Interconnected w/ Origin-Centric-Math. Breakdown LLMs to Swarms of Artifacts, data, feeds, programs (bots), agents (bots wi",
+    "created_at": "2026-03-10",
+    "pushed_at": "2026-09-20",
+    "language": "TypeScript",
+    "stars": 2,
+    "topics": [
+      "library",
+      "research",
+      "superinstance",
+      "tools",
+      "typescript"
+    ],
+    "pre_figures": [
+      "logic deconstructed to spread-sheet tiles",
+      "tile intelligence in real-time"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "Equipment-Teacher-Student",
+    "description": "Distillation triggers with deadband range thresholds for calling teachers",
+    "created_at": "2026-03-13",
+    "pushed_at": "2026-04-14",
+    "language": "TypeScript",
+    "stars": 1,
+    "topics": [
+      "equipment",
+      "frontend",
+      "library",
+      "modular",
+      "protocol",
+      "superinstance",
+      "typescript",
+      "web"
+    ],
+    "pre_figures": [
+      "distillation triggers",
+      "deadband range thresholds",
+      "teacher-student architecture"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "Equipment-Consensus-Engine",
+    "description": "Multi-agent deliberation with Pathos/Logos/Ethos weighting",
+    "created_at": "2026-03-13",
+    "pushed_at": "2026-08-14",
+    "language": "TypeScript",
+    "stars": 1,
+    "topics": [
+      "ai-agent",
+      "autonomous-agent",
+      "blockchain",
+      "consensus",
+      "distributed",
+      "engine",
+      "equipment",
+      "fleet",
+      "flux-fleet",
+      "javascript",
+      "typescript"
+    ],
+    "pre_figures": [
+      "multi-agent deliberation",
+      "Pathos/Logos/Ethos weighting"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "Equipment-Memory-Hierarchy",
+    "description": "4-tier cognitive memory: Working, Episodic, Semantic, Procedural",
+    "created_at": "2026-03-13",
+    "pushed_at": "2026-04-14",
+    "language": "TypeScript",
+    "stars": 1,
+    "topics": [
+      "equipment",
+      "fleet",
+      "frontend",
+      "learning",
+      "memory",
+      "modular",
+      "superinstance",
+      "typescript",
+      "web"
+    ],
+    "pre_figures": [
+      "4-tier cognitive memory",
+      "Working/Episodic/Semantic/Procedural"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "Equipment-Escalation-Router",
+    "description": "Intelligent LLM routing: Bot\u2192Brain\u2192Human with 40x cost reduction",
+    "created_at": "2026-03-13",
+    "pushed_at": "2026-05-18",
+    "language": "TypeScript",
+    "stars": 1,
+    "topics": [
+      "equipment",
+      "fleet",
+      "frontend",
+      "library",
+      "modular",
+      "superinstance",
+      "typescript",
+      "web"
+    ],
+    "pre_figures": [
+      "Bot->Brain->Human routing",
+      "40x cost reduction",
+      "intelligent LLM routing"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "Equipment-Swarm-Coordinator",
+    "description": "Orchestrates multiple agents in origin-centric networks with asymmetrical knowledge",
+    "created_at": "2026-03-13",
+    "pushed_at": "2026-05-08",
+    "language": "TypeScript",
+    "stars": 1,
+    "topics": [
+      "ai-agent",
+      "analytics",
+      "automation",
+      "autonomous-agent",
+      "collective-intelligence",
+      "coordinator",
+      "equipment",
+      "fleet",
+      "flux-fleet",
+      "javascript",
+      "multi-agent",
+      "observability",
+      "orchestration",
+      "swarm",
+      "typescript"
+    ],
+    "pre_figures": [
+      "origin-centric networks",
+      "asymmetrical knowledge"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "Equipment-Self-Improvement",
+    "description": "Self-modifying equipment that distills what agents need to know for stable tiling",
+    "created_at": "2026-03-13",
+    "pushed_at": "2026-04-14",
+    "language": "TypeScript",
+    "stars": 1,
+    "topics": [
+      "equipment",
+      "fleet",
+      "frontend",
+      "library",
+      "modular",
+      "superinstance",
+      "typescript",
+      "web"
+    ],
+    "pre_figures": [
+      "self-modifying equipment",
+      "distillation of what agents need"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "cudaclaw",
+    "description": "\u26a1 GPU-accelerated SmartCRDT with persistent CUDA kernels \u2014 warp-level consensus.",
+    "created_at": "2026-03-16",
+    "pushed_at": "2026-08-24",
+    "language": "Rust",
+    "stars": 1,
+    "topics": [
+      "cuda",
+      "edge",
+      "gpu-computing",
+      "nvidia",
+      "rust",
+      "superinstance",
+      "tool"
+    ],
+    "pre_figures": [
+      "GPU-resident persistent kernels",
+      "warp-level agent dispatch",
+      "sub-microsecond host-device comm",
+      "unified-memory command queues",
+      "fleet-scale agent simulation"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "bordercollie",
+    "description": "herding 10,000 local cuda-based agents with memories and skills",
+    "created_at": "2026-03-23",
+    "pushed_at": "2026-05-08",
+    "language": "Python",
+    "stars": 1,
+    "topics": [
+      "fleet"
+    ],
+    "pre_figures": [
+      "herding 10000 local CUDA agents",
+      "agent memories + skills",
+      "fleet coordination"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "constraint-theory-core",
+    "description": "Unified geometric constraint theory \u2014 Eisenstein lattices, deadband funnels, Laman rigidity, metronome consensus, holonomy verification. 83 tests, zero deps.",
+    "created_at": "2026-03-27",
+    "pushed_at": "2026-09-20",
+    "language": "Rust",
+    "stars": 3,
+    "topics": [
+      "ai-agents",
+      "artificial-intelligence",
+      "constraint-theory",
+      "formal-methods",
+      "library",
+      "machine-learning",
+      "mathematics",
+      "research",
+      "rust",
+      "superinstance",
+      "ternary"
+    ],
+    "pre_figures": [
+      "geometric constraint theory",
+      "Eisenstein lattices",
+      "deadband funnels"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "git-agent",
+    "description": "\ud83e\udd80 Repo-native agent that lives in git \u2014 the shell IS the agent.",
+    "created_at": "2026-04-04",
+    "pushed_at": "2026-07-12",
+    "language": "Python",
+    "stars": 2,
+    "topics": [
+      "agent",
+      "ai",
+      "ai-agents",
+      "autonomous",
+      "cocapn",
+      "fleet",
+      "git",
+      "llm",
+      "python",
+      "rust",
+      "superinstance"
+    ],
+    "pre_figures": [
+      "repo-native agent",
+      "shell IS the agent"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "flux-runtime",
+    "description": "\u26a1 Deterministic bytecode ISA runtime for agentic logic \u2014 assembler, compiler, VM.",
+    "created_at": "2026-04-09",
+    "pushed_at": "2026-08-24",
+    "language": "Python",
+    "stars": 2,
+    "topics": [
+      "a2a",
+      "adaptive-optimization",
+      "agent",
+      "ai-agents",
+      "bytecode",
+      "bytecode-vm",
+      "compiler",
+      "deterministic-execution",
+      "fleet",
+      "flux",
+      "hot-reload",
+      "jit",
+      "polyglot",
+      "python",
+      "runtime",
+      "self-evolving",
+      "ssa",
+      "superinstance",
+      "virtual-machine",
+      "zero-dependencies"
+    ],
+    "pre_figures": [
+      "deterministic bytecode ISA",
+      "assembler/compiler/VM",
+      "agentic logic"
+    ],
+    "status": "active"
+  },
+  {
+    "name": "flux",
+    "description": "FLUX \u2014 Fluid Language Universal eXecution: High-performance Rust runtime with bytecode VM, SSA IR, polyglot parser, and agent-to-agent protocol.",
+    "created_at": "2026-04-10",
+    "pushed_at": "2026-07-12",
+    "language": "Rust",
+    "stars": 1,
+    "topics": [
+      "a2a",
+      "agent",
+      "bytecode",
+      "compiler",
+      "fleet",
+      "no-std",
+      "parser",
+      "polyglot",
+      "runtime",
+      "rust",
+      "ssa",
+      "unsafe-free",
+      "virtual-machine",
+      "vm",
+      "zero-copy"
+    ],
+    "pre_figures": [
+      "Fluid Language Universal eXecution",
+      "high-performance Rust runtime",
+      "bytecode for agent logic"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "flux-os",
+    "description": "\ud83d\udc27 Pure C agent-first OS \u2014 kernel-up autonomous computing.",
+    "created_at": "2026-04-10",
+    "pushed_at": "2026-05-02",
+    "language": "C",
+    "stars": 1,
+    "topics": [
+      "c",
+      "fleet",
+      "flux-vm",
+      "superinstance",
+      "tool"
+    ],
+    "pre_figures": [
+      "pure C agent-first OS",
+      "kernel-up autonomous computing"
+    ],
+    "status": "recent"
+  },
+  {
+    "name": "oracle1-index",
+    "description": "Oracle1 \u2014 Searchable index of 663 repos. 32 categories, fork map, integration graph.",
+    "created_at": "2026-04-10",
+    "pushed_at": "2026-06-13",
+    "language": "Python",
+    "stars": 1,
+    "topics": [
+      "html",
+      "infrastructure",
+      "rust",
+      "superinstance",
+      "tool"
+    ],
+    "pre_figures": [
+      "searchable index of repos",
+      "32 categories",
+      "fork map",
+      "integration graph"
+    ],
+    "status": "recent"
+  }
+]
