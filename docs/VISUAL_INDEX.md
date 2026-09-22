@@ -85,3 +85,30 @@ This is publishable.
 - [DIALECTIC_IN_11_OPCODES.md](../DIALECTIC_IN_11_OPCODES.md) — pedagogical spine applied
 - [../research/](../research/) — JEPA tutor, frontier analysis
 - [../tests/stress/](../tests/stress/) — 8 stress tests, 100+ assertions
+
+## 7. The Witness Chain
+
+![Witness chain](images/witness-chain.jpg)
+
+Each observation in the substrate is hash-chained to its parent. The chain structure encodes temporal order intrinsically, making forgery detectable: a forgery would need to know every prior hash in the chain, which is computationally infeasible beyond a small depth.
+
+This is the substrate's structural defense at the **storage layer**.
+
+## 8. Three Witnesses
+
+![Three witnesses](images/three-witnesses.jpg)
+
+In Ubuntu philosophy, a city name requires three witnesses: one who speaks, one who glottal-stops, one who witnesses. This is the same as the substrate's prev_hash chain: truth is multi-witnessed, not single-sourced.
+
+In our substrate:
+- **Witness 1** (the speaker): the observation's source
+- **Witness 2** (the glottal-stop): the JEV oracle's verification  
+- **Witness 3** (the witness): the prev_hash chain's continuity
+
+## 9. Cell-Graph Detail
+
+![Cell graph detail](images/cell-graph-detail.jpg)
+
+The substrate is fractal: every cell contains sub-cells, every witness-log contains sub-witness-logs. This self-similar structure is what makes the substrate both analyzable (you can zoom in on any cell) and persistent (you can zoom out to any level).
+
+The bioluminescent color palette evokes how cells in nature use light to signal — the substrate's witness-log is the cells' way of signaling to each other.
