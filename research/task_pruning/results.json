@@ -1,0 +1,26 @@
+{
+  "task_port_matcher": {
+    "initial_accuracy": 1.0,
+    "final_accuracy": 1.0,
+    "active_count": 218,
+    "compression_ratio": 5.825688073394495,
+    "irreducible_first10": [
+      "09-the-apprentice-watch",
+      "2026-08-29-on-borrowed-shells",
+      "2026-08-29-the-shell-registry",
+      "2026-08-31-load-average",
+      "2026-09-20-the-hesitation",
+      "27-the-cell-as-book",
+      "27-the-universal-cell",
+      "30-the-cell-as-song",
+      "31-the-hermit-crab-adopts-a-quilt",
+      "31-the-unburned-han"
+    ]
+  },
+  "task_cluster_classifier": {
+    "initial_accuracy": 1.0,
+    "final_accuracy": 1.0,
+    "active_count": 231,
+    "compression_ratio": 5.4978354978354975
+  }
+}
