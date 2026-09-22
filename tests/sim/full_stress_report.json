@@ -1,0 +1,14 @@
+{
+  "total_obs": 1225513,
+  "total_rejections": 24607,
+  "injection_rate": 0.02007893837111479,
+  "provenance_conflicts": 18089,
+  "conflicts_resolved": 18089,
+  "conflicts_unresolved": 0,
+  "resolution_rate": 1,
+  "patches_shipped": 7,
+  "wall_time_sec": 191.697,
+  "throughput": 6392.969112714336,
+  "avg_chain_length": 37528.3125,
+  "max_chain_length": 41247
+}
