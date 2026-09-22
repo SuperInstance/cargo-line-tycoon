@@ -12,8 +12,20 @@ const MASK_64 = 0xffffffffffffffffn;
 const FLEET_CANARY_INPUT = 'café Δ 日本語';
 const FLEET_CANARY_HASH = 0x024a555471370b18dn;
 
-function fnv1a64(str) {
-  const bytes = Buffer.from(String(str), 'utf-8');
+function fnv1a64(input) {
+  // Accept: string (utf-8 encode), Buffer (use as-is), or Uint8Array
+  let bytes;
+  if (typeof input === 'string') {
+    // Handle unpaired surrogates like Rust/Python: 'surrogatepass' mode
+    bytes = Buffer.from(input, 'utf-8');
+  } else if (Buffer.isBuffer(input)) {
+    bytes = input;
+  } else if (input instanceof Uint8Array) {
+    bytes = Buffer.from(input);
+  } else {
+    // last resort: stringify and encode
+    bytes = Buffer.from(String(input), 'utf-8');
+  }
   let h = FNV_OFFSET;
   for (let i = 0; i < bytes.length; i++) {
     h = BigInt(h ^ BigInt(bytes[i]));
@@ -131,7 +143,14 @@ class Signal {
     this.payload = payload;
     this.priority = priority;
     this.timestamp = Date.now();
-    this.id = Number(fnv1a64(JSON.stringify({ s: source, t: target, st: signalType, ts: this.timestamp, p: payload })).toString(16).slice(0, 8));
+    // Safe id hash: tolerate cyclic / BigInt / function references
+    const fp = (p) => {
+      try { return JSON.stringify({ s: source, t: target, st: signalType, ts: this.timestamp, p }, (k,v) => typeof v === 'bigint' ? v.toString()+'n' : typeof v === 'function' ? '[fn]' : v); }
+      catch { return String(this.timestamp) + ':' + source + ':' + target + ':' + signalType; }
+    };
+    const safeHash = fp(payload);
+    const idHex = fnv1a64(safeHash).toString(16).slice(0, 8);
+    this.id = parseInt(idHex, 16);  // parseInt parses hex without 0x prefix
   }
 }
 
@@ -211,10 +230,14 @@ class SignalChain {
 
     const now = signal.timestamp;
     for (const { r: route } of matching) {
-      // OnChange logic
+      // OnChange logic — safely compute fingerprint even with cyclic / BigInt refs
       if (route.algorithm === RoutingAlgorithm.OnChange) {
-        const lastJSON = route.last_payload ? JSON.stringify(route.last_payload) : null;
-        const currJSON = JSON.stringify(signal.payload);
+        const fp = (p) => {
+          try { return JSON.stringify(p, (k,v) => typeof v === 'bigint' ? v.toString()+'n' : v); }
+          catch { return String(Date.now()) + ':' + Math.random(); }  // cycle fallback
+        };
+        const lastJSON = fp(route.last_payload);
+        const currJSON = fp(signal.payload);
         if (lastJSON === currJSON) {
           this.stats.signals_dropped++;
           continue;

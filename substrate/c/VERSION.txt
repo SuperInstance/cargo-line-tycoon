@@ -1,0 +1,2 @@
+cargo-line-tycoon-substrate C99 port v0.1.1
+Polyformal-stable: same FNV-1a 64-bit canary as TS/Rust/Python ports.

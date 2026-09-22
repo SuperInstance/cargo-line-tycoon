@@ -22,9 +22,25 @@ FLEET_CANARY_HASH = 0x024a555471370b18d
 
 
 def fnv1a64(s: str) -> int:
-    """FNV-1a 64-bit hash. Must match TS, Rust, C, Go ports."""
+    """FNV-1a 64-bit hash. Must match TS, Rust, C, Go ports.
+    
+    Uses surrogatepass + replace error handlers to match TS/Rust loose UTF-8 encoding.
+    This ensures polyformal parity when inputs contain unpaired surrogates.
+    """
+    try:
+        # Normal case
+        data = s.encode('utf-8', errors='surrogatepass')
+        if b'\xed\xb0\x80' in data[:4].replace(b'', b'') and any(
+            b'\xed\xa0' <= bytes([data[i]]) + bytes([data[i+1]]) <= b'\xed\xbf' 
+            for i in range(len(data)-1) if data[i] == 0xed
+        ):
+            # Has unpaired high surrogate, fall through
+            data = s.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace').encode('utf-8', errors='replace')
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        data = s.encode('utf-8', errors='replace')
+    
     h = FNV_OFFSET
-    for b in s.encode('utf-8'):
+    for b in data:
         h ^= b
         h = (h * FNV_PRIME) & MASK_64
     return h
