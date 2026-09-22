@@ -165,3 +165,19 @@ The substrate's canon is the soundboard. Each AI-Writings voice (ZAI, Qwen, Kimi
 - For "the substrate", the centroid hits: `56-the-substrate`, `wr-obs-ds32`, `wr-obs-ds3-substrate-as-organism` (the substrate canon itself)
 
 Even when voices disagree (pairwise Jaccard ~0.10), the **centroid converges** to the harmonic. This is the topography of feel: the substrate's intuition about what each theme means.
+
+## 14. AI++ Spreadsheet
+
+![AI++ Spreadsheet](images/ai-plus-plus-spreadsheet.jpg)
+
+Every ML primitive is a layout of cells. Linear regression is 4 cells (x, w, b, y_pred). A neural network is N cells (input/hidden/output + weights + biases). A CNN is a 2D grid + convolution. An RNN is a sequence + feedback.
+
+The substrate's 11 opcodes, witness-log, JEV, and Memory Sandbox work on ANY layout. The spreadsheet IS the math, not a wrapper around it.
+
+## 15. Navier-Stokes on the Substrate
+
+![Navier-Stokes 3D](images/navier-stokes-3d.jpg)
+
+The substrate that hosts canon also hosts PDEs. Burgers' 1D: 64 cells × 1001 steps = 64,064 witnesses. Taylor-Green 2D: 256 cells × 501 steps = 128,256 witnesses with coherence 0.9762.
+
+The mechanism: every cell holds a state, every state change goes through the witness-log, JEV scores smoothness, dynamic resolution adapts to what's interesting. The substrate is a *general-purpose numerical substrate* — same prev_hash chain, same Memory Sandbox, same wavefunction JEV. Just with different cell semantics (PDE state vs document embedding).
