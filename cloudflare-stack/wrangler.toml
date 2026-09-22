@@ -1,0 +1,52 @@
+name = "quilt-distributed"
+main = "src/index.js"
+compatibility_date = "2026-09-22"
+compatibility_flags = ["nodejs_compat"]
+
+# ─── KV namespaces ────────────────────────────────────
+[[kv_namespaces]]
+binding = "NODES"
+id = "7e9a97c50acf4dd1b8c06796e0349bef"
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "0fb0ea29a20f418a965fa2a4d0a28dc4"
+
+[[kv_namespaces]]
+binding = "WITNESS_LOG"
+id = "01ac520903954b1dbdd91f9492e539d4"
+
+# ─── D1 databases ─────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "quilt-canon"
+database_id = "801f84bf-9c12-4d91-8f55-873eb5d69f9f"
+
+# ─── R2 buckets ───────────────────────────────────────
+[[r2_buckets]]
+binding = "MODELS"
+bucket_name = "quilt-models"
+
+[[r2_buckets]]
+binding = "EMBEDDINGS"
+bucket_name = "quilt-embeddings"
+
+# ─── Vectorize ────────────────────────────────────────
+[[vectorize]]
+binding = "JEV_INDEX"
+index_name = "quilt-jev"
+
+# ─── AI ────────────────────────────────────────────────
+[ai]
+binding = "AI"
+
+# ─── Cron triggers ─────────────────────────────────────
+[triggers]
+crons = ["*/5 * * * *"]
+
+# ─── Vars ──────────────────────────────────────────────
+[vars]
+QUILT_VERSION = "0.6.0"
+CANARY_HASH = "0x024a555471370b18d"
+ML_MODEL = "@cf/meta/llama-3.1-8b-instruct-fast"
+EMBED_MODEL = "@cf/baai/bge-base-en-v1.5"
