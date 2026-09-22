@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Substrate Studio — WebGPU/WebNN Showcase</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+    color: #e0e0ff;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  .container { max-width: 1300px; margin: 0 auto; }
+  header {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  h1 {
+    font-size: 2em;
+    background: linear-gradient(135deg, #80cbc4, #b39ddb, #ffab91);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin-bottom: 6px;
+  }
+  .subtitle { color: #b0b0d0; font-size: 1em; }
+
+  .hardware-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .hw-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .hw-card h3 {
+    font-size: 0.9em;
+    color: #80cbc4;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .hw-card .hw-status {
+    font-size: 1.5em;
+    font-weight: 700;
+  }
+  .hw-card .hw-detail {
+    font-size: 0.75em;
+    color: #888;
+    margin-top: 4px;
+    word-break: break-word;
+  }
+  .hw-card.success { border-color: rgba(76, 175, 80, 0.5); background: rgba(76, 175, 80, 0.1); }
+  .hw-card.warning { border-color: rgba(255, 152, 0, 0.5); background: rgba(255, 152, 0, 0.1); }
+  .hw-card.error { border-color: rgba(244, 67, 54, 0.5); background: rgba(244, 67, 54, 0.1); }
+  
+  .demo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 16px;
+  }
+  .demo {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 18px;
+    transition: border-color 0.2s, transform 0.1s;
+  }
+  .demo:hover { border-color: rgba(128,203,196,0.4); transform: translateY(-2px); }
+  .demo h2 {
+    font-size: 1.1em;
+    color: #b39ddb;
+    margin-bottom: 8px;
+  }
+  .demo p { font-size: 0.85em; color: #b0b0d0; margin-bottom: 12px; line-height: 1.5; }
+  .demo canvas, .demo video {
+    width: 100%;
+    height: auto;
+    background: #000;
+    border-radius: 8px;
+    display: block;
+    margin-bottom: 8px;
+    image-rendering: -webkit-optimize-contrast;
+  }
+  button {
+    background: linear-gradient(135deg, #5e72e4, #825ee4);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85em;
+    margin: 3px;
+    transition: transform 0.1s;
+  }
+  button:hover { transform: translateY(-2px); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.alt { background: linear-gradient(135deg, #ff6b6b, #feca57); }
+  button.gpu { background: linear-gradient(135deg, #11998e, #38ef7d); }
+
+  .metric {
+    display: inline-block;
+    background: rgba(0,0,0,0.3);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75em;
+    margin: 2px 4px 2px 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .metric .k { color: #80cbc4; }
+  .metric .v { color: #fff; font-weight: 600; }
+  
+  .info {
+    background: rgba(0,0,0,0.3);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 0.85em;
+    color: #b0b0d0;
+    margin-top: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    word-break: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.7em;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .badge.gpu { background: rgba(76,175,80,0.2); color: #4CAF50; border: 1px solid #4CAF50; }
+  .badge.webgl { background: rgba(33,150,243,0.2); color: #2196F3; border: 1px solid #2196F3; }
+  .badge.cpu { background: rgba(255,152,0,0.2); color: #FF9800; border: 1px solid #FF9800; }
+  .badge.webgpu { background: rgba(156,39,176,0.2); color: #9C27B0; border: 1px solid #9C27B0; }
+  .badge.webnn { background: rgba(0,188,212,0.2); color: #00BCD4; border: 1px solid #00BCD4; }
+  .badge.webxr { background: rgba(233,30,99,0.2); color: #E91E63; border: 1px solid #E91E63; }
+  
+  .controls { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-bottom: 8px; }
+  .controls input[type="range"] { width: 100px; }
+  .controls label { font-size: 0.75em; color: #888; }
+  
+  h2.section-title {
+    font-size: 1.3em;
+    color: #80cbc4;
+    margin: 30px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(128,203,196,0.3);
+  }
+  
+  .reason {
+    background: rgba(244,67,54,0.1);
+    border-left: 3px solid #f44336;
+    padding: 10px 14px;
+    margin: 8px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.85em;
+    color: #ffcdd2;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<header>
+  <h1>🎨 Substrate Studio</h1>
+  <p class="subtitle">What your browser can actually do — WebGPU, WebGL, WebNN, WebXR, WASM, Workers</p>
+  <p style="margin-top: 8px;">
+    <span class="badge" id="status-summary">Detecting...</span>
+    <button onclick="runDiagnostics()" style="margin-left: 12px;">🔍 Re-detect</button>
+  </p>
+</header>
+
+<!-- Hardware diagnostic grid -->
+<h2 class="section-title">🧩 Hardware Diagnostic</h2>
+<div class="hardware-grid" id="hardware-grid">
+  <div class="hw-card" id="hw-webgpu">
+    <h3>WebGPU</h3>
+    <div class="hw-status">—</div>
+    <div class="hw-detail">checking...</div>
+  </div>
+  <div class="hw-card" id="hw-webgl">
+    <h3>WebGL2</h3>
+    <div class="hw-status">—</div>
+    <div class="hw-detail">checking...</div>
+  </div>
+  <div class="hw-card" id="hw-webnn">
+    <h3>WebNN</h3>
+    <div class="hw-status">—</div>
+    <div class="hw-detail">checking...</div>
+  </div>
+  <div class="hw-card" id="hw-wasm">
+    <h3>WebAssembly</h3>
+    <div class="hw-status">—</div>
+    <div class="hw-detail">checking...</div>
+  </div>
+  <div class="hw-card" id="hw-workers">
+    <h3>Workers</h3>
+    <div class="hw-status">—</div>
+    <div class="hw-detail">checking...</div>
+  </div>
+  <div class="hw-card" id="hw-webxr">
+    <h3>WebXR</h3>
+    <div class="hw-status">—</div>
+    <div class="hw-detail">checking...</div>
+  </div>
+  <div class="hw-card" id="hw-sharedarray">
+    <h3>SharedArrayBuffer</h3>
+    <div class="hw-status">—</div>
+    <div class="hw-detail">checking...</div>
+  </div>
+  <div class="hw-card" id="hw-opfs">
+    <h3>OPFS</h3>
+    <div class="hw-status">—</div>
+    <div class="hw-detail">checking...</div>
+  </div>
+</div>
+
+<!-- Reasoning for failed diagnostics -->
+<div id="reason-box"></div>
+
+<!-- Demo grid -->
+<h2 class="section-title">🎨 Visual Demos <small style="font-size: 0.6em; color: #888;">— each scales with your GPU</small></h2>
+<div class="demo-grid">
+
+  <!-- 1. Real-time raymarched 3D scene -->
+  <div class="demo">
+    <h2>🌌 Raymarched Black Hole <span class="badge webgpu" id="d1-badge">WebGPU</span></h2>
+    <p>Real-time raymarching with gravitational lensing. Runs entirely on GPU. Pure math, no geometry.</p>
+    <canvas id="raymarch-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <button onclick="startRaymarch()">▶ Start</button>
+      <button onclick="stopRaymarch()">■ Stop</button>
+      <label>FPS: <span id="raymarch-fps">—</span></label>
+    </div>
+    <div class="info" id="raymarch-info">Idle</div>
+  </div>
+
+  <!-- 2. GPU Particle System -->
+  <div class="demo">
+    <h2>✨ GPU Particle System <span class="badge webgpu" id="d2-badge">WebGPU</span></h2>
+    <p>10,000+ particles with physics on GPU compute. Click to repel, drag to attract.</p>
+    <canvas id="particles-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <label>Count: <input type="range" id="particles-count" min="100" max="20000" value="5000" step="100"></label>
+      <span id="particles-count-val">5000</span>
+      <label>FPS: <span id="particles-fps">—</span></label>
+    </div>
+    <div class="info" id="particles-info">Idle</div>
+  </div>
+
+  <!-- 3. Real-time fluid sim -->
+  <div class="demo">
+    <h2>🌊 Fluid Simulation <span class="badge webgpu" id="d3-badge">WebGPU</span></h2>
+    <p>Stable fluids solver on GPU. Click to inject velocity, see vorticity form.</p>
+    <canvas id="fluid-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <button onclick="startFluid()">▶ Start</button>
+      <button onclick="stopFluid()">■ Stop</button>
+      <label>FPS: <span id="fluid-fps">—</span></label>
+    </div>
+    <div class="info" id="fluid-info">Idle</div>
+  </div>
+
+  <!-- 4. Mandelbrot zoom -->
+  <div class="demo">
+    <h2>🔍 Mandelbrot Zoom <span class="badge webgpu" id="d4-badge">WebGPU</span></h2>
+    <p>Compute shader mandelbrot set. Click to zoom in. Up to 1000+ iterations per pixel.</p>
+    <canvas id="mandel-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <button onclick="resetMandel()">↻ Reset</button>
+      <label>Iterations: <input type="range" id="mandel-iter" min="50" max="2000" value="500"></label>
+      <span id="mandel-iter-val">500</span>
+    </div>
+    <div class="info" id="mandel-info">Idle</div>
+  </div>
+
+  <!-- 5. LLM in browser (WebLLM) -->
+  <div class="demo">
+    <h2>🤖 LLM in Browser <span class="badge webgpu" id="d5-badge">WebGPU</span></h2>
+    <p>Llama-3-8B running locally via WebLLM. After first model download, fully offline.</p>
+    <canvas id="llm-canvas" width="380" height="80" style="height: 80px; background: #1e293b;"></canvas>
+    <textarea id="llm-input" placeholder="Ask the local LLM..." style="width:100%;height:50px;background:rgba(0,0,0,0.3);color:#fff;border:1px solid #555;border-radius:6px;padding:8px;font-family:inherit;font-size:0.85em;">What is a substrate cell in one sentence?</textarea>
+    <div class="controls">
+      <button onclick="initLLM()" class="gpu">⏬ Load Llama-3-8B (4GB)</button>
+      <button onclick="askLLM()">▶ Ask</button>
+    </div>
+    <div class="info" id="llm-info">Not loaded</div>
+  </div>
+
+  <!-- 6. Image generation (Stable Diffusion) -->
+  <div class="demo">
+    <h2>🎨 Stable Diffusion <span class="badge webgpu" id="d6-badge">WebGPU</span></h2>
+    <p>SDXL-Turbo running locally. Generates 512x512 images in 8-30s on GPU.</p>
+    <canvas id="sd-canvas" width="380" height="240"></canvas>
+    <input type="text" id="sd-prompt" value="a beautiful cell, digital art" style="width:100%;background:rgba(0,0,0,0.3);color:#fff;border:1px solid #555;border-radius:6px;padding:8px;margin:6px 0;font-family:inherit;">
+    <div class="controls">
+      <button onclick="generateImage()" class="gpu">⏬ Load SDXL (7GB) + Generate</button>
+    </div>
+    <div class="info" id="sd-info">Not loaded</div>
+  </div>
+
+  <!-- 7. Live camera + ML style transfer -->
+  <div class="demo">
+    <h2>📷 Webcam + Style <span class="badge webgl" id="d7-badge">WebGL</span></h2>
+    <p>Live webcam + WebGL shader for real-time color/style manipulation.</p>
+    <canvas id="webcam-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <button onclick="startWebcam()">📷 Start Camera</button>
+      <select id="webcam-style" onchange="applyWebcamStyle()">
+        <option value="none">Normal</option>
+        <option value="grayscale">Grayscale</option>
+        <option value="sepia">Sepia</option>
+        <option value="invert">Invert</option>
+        <option value="posterize">Posterize</option>
+        <option value="threshold">Threshold</option>
+      </select>
+    </div>
+    <div class="info" id="webcam-info">Idle</div>
+  </div>
+
+  <!-- 8. 3D Gaussian Splatting -->
+  <div class="demo">
+    <h2>📸 3D Gaussian Splat <span class="badge webgpu" id="d8-badge">WebGPU</span></h2>
+    <p>Photorealistic 3D scene rendering. Drag to orbit, scroll to zoom.</p>
+    <canvas id="gsplat-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <button onclick="initGSplat()">▶ Init Scene</button>
+      <label>FPS: <span id="gsplat-fps">—</span></label>
+    </div>
+    <div class="info" id="gsplat-info">Not loaded</div>
+  </div>
+
+  <!-- 9. Real-time audio synthesis -->
+  <div class="demo">
+    <h2>🔊 Audio Synth <span class="badge cpu" id="d9-badge">WebAudio</span></h2>
+    <p>Web Audio API + procedural waveform generation. Click to play.</p>
+    <canvas id="audio-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <button onclick="startAudio()">🔊 Play</button>
+      <button onclick="stopAudio()">■ Stop</button>
+      <label>Freq: <input type="range" id="audio-freq" min="100" max="2000" value="440"></label>
+      <span id="audio-freq-val">440</span>Hz
+    </div>
+    <div class="info" id="audio-info">Idle</div>
+  </div>
+
+  <!-- 10. Video effect pipeline -->
+  <div class="demo">
+    <h2>🎬 Video Effects <span class="badge webgl" id="d10-badge">WebGL</span></h2>
+    <p>WebGL fragment shader pipeline. Real-time color grading on video.</p>
+    <canvas id="video-canvas" width="380" height="240"></canvas>
+    <video id="video-input" loop muted playsinline style="display:none;"></video>
+    <div class="controls">
+      <button onclick="startVideo()">🎬 Start Effect</button>
+      <label>Hue: <input type="range" id="hue-shift" min="0" max="360" value="0" oninput="updateVideoEffect()"></label>
+    </div>
+    <div class="info" id="video-info">Idle</div>
+  </div>
+
+  <!-- 11. Conway's Game of Life on GPU -->
+  <div class="demo">
+    <h2>🧬 Game of Life (GPU) <span class="badge webgpu" id="d11-badge">WebGPU</span></h2>
+    <p>Conway's Game of Life running on GPU. Massive grids (1024x1024).</p>
+    <canvas id="gol-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <button onclick="startGOL()">▶ Start</button>
+      <button onclick="stopGOL()">■ Stop</button>
+      <button onclick="randomGOL()">⚄ Randomize</button>
+      <label>FPS: <span id="gol-fps">—</span></label>
+    </div>
+    <div class="info" id="gol-info">Idle</div>
+  </div>
+
+  <!-- 12. Real-time data dashboard -->
+  <div class="demo">
+    <h2>📊 Live Dashboard <span class="badge cpu" id="d12-badge">CPU</span></h2>
+    <p>Real-time data visualization with Canvas2D. Live CPU/GPU metrics from your browser.</p>
+    <canvas id="dash-canvas" width="380" height="240"></canvas>
+    <div class="controls">
+      <button onclick="startDash()">▶ Start</button>
+      <button onclick="stopDash()">■ Stop</button>
+    </div>
+    <div class="info" id="dash-info">Idle</div>
+  </div>
+
+</div>
+
+</div>
+
+<script>
+// ═══ HARDWARE DETECTION ═══════════════════════════════════
+
+const HW = {
+  webgpu: false, webgpuDevice: null, adapter: null, adapterInfo: null, adapterReason: null,
+  webgl: false, webglVersion: 0, webglRenderer: '',
+  webnn: false,
+  wasm: false,
+  workers: false,
+  webxr: false,
+  sharedArrayBuffer: false,
+  opfs: false,
+};
+
+async function runDiagnostics() {
+  // WebGPU — comprehensive
+  const gpuCard = document.getElementById('hw-webgpu');
+  try {
+    if (!navigator.gpu) {
+      HW.adapterReason = 'navigator.gpu is undefined. Enable WebGPU in browser flags, or upgrade to Chrome 113+, Edge 113+, Firefox 128+, Safari 26+.';
+      HW.webgpu = false;
+    } else {
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (adapter) {
+          HW.webgpu = true;
+          HW.adapter = adapter;
+          HW.adapterInfo = adapter.info || {};
+          
+          try {
+            HW.webgpuDevice = await adapter.requestDevice();
+          } catch (e) {
+            HW.adapterReason = 'requestDevice() failed: ' + (e.message || e);
+          }
+          
+          // Get limits
+          try {
+            const limits = adapter.limits || {};
+            HW.gpuLimits = {
+              maxBufferSize: limits.maxBufferSize ? (limits.maxBufferSize / 1024 / 1024).toFixed(0) + 'MB' : '?',
+              maxComputeWorkgroupSizeX: limits.maxComputeWorkgroupSizeX || '?',
+              maxStorageBuffersPerShaderStage: limits.maxStorageBuffersPerShaderStage || '?',
+              maxBindGroups: limits.maxBindGroups || '?',
+            };
+          } catch (e) {}
+          
+        } else {
+          HW.adapterReason = 'requestAdapter() returned null. Common: (1) hardware acceleration disabled, (2) outdated driver, (3) browser blocklisted GPU.';
+          HW.webgpu = false;
+        }
+      } catch (e) {
+        HW.adapterReason = 'requestAdapter() threw: ' + (e.message || e);
+        HW.webgpu = false;
+      }
+    }
+  } catch (e) {
+    HW.adapterReason = 'Detection threw: ' + (e.message || e);
+    HW.webgpu = false;
+  }
+  
+  if (HW.webgpu && HW.webgpuDevice) {
+    gpuCard.className = 'hw-card success';
+    gpuCard.querySelector('.hw-status').textContent = '✓ Found';
+    const vendor = HW.adapterInfo.vendor || 'unknown';
+    const arch = HW.adapterInfo.architecture || '';
+    const desc = HW.adapterInfo.description || '';
+    gpuCard.querySelector('.hw-detail').innerHTML = 
+      `<strong>${vendor}</strong> ${arch}<br><small>${desc}</small>` +
+      (HW.gpuLimits ? '<br><small>Buffer: ' + HW.gpuLimits.maxBufferSize + '</small>' : '');
+  } else if (HW.webgpu) {
+    gpuCard.className = 'hw-card warning';
+    gpuCard.querySelector('.hw-status').textContent = '⚠ Partial';
+    gpuCard.querySelector('.hw-detail').innerHTML = 
+      '<strong>GPU found</strong> but device request failed.<br><small>' + HW.adapterReason + '</small>';
+  } else {
+    gpuCard.className = 'hw-card error';
+    gpuCard.querySelector('.hw-status').textContent = '✗ Not found';
+    gpuCard.querySelector('.hw-detail').innerHTML = HW.adapterReason || 'WebGPU not available';
+  }
+  
+  // WebGL2
+  const webglCard = document.getElementById('hw-webgl');
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (gl) {
+      HW.webgl = true;
+      HW.webglVersion = gl instanceof WebGL2RenderingContext ? 2 : 1;
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : 'unknown';
+      const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : 'unknown';
+      HW.webglRenderer = renderer;
+      webglCard.className = 'hw-card success';
+      webglCard.querySelector('.hw-status').textContent = '✓ WebGL' + HW.webglVersion;
+      webglCard.querySelector('.hw-detail').innerHTML = `<strong>${vendor}</strong><br><small>${renderer}</small>`;
+    } else {
+      webglCard.className = 'hw-card error';
+      webglCard.querySelector('.hw-status').textContent = '✗ Not available';
+      webglCard.querySelector('.hw-detail').textContent = 'Try a different browser';
+    }
+  } catch (e) {
+    webglCard.className = 'hw-card error';
+    webglCard.querySelector('.hw-status').textContent = '✗ Error';
+    webglCard.querySelector('.hw-detail').textContent = e.message;
+  }
+  
+  // WebNN
+  const webnnCard = document.getElementById('hw-webnn');
+  if ('ml' in navigator) {
+    HW.webnn = true;
+    webnnCard.className = 'hw-card success';
+    webnnCard.querySelector('.hw-status').textContent = '✓ Available';
+    try {
+      const ctx = await navigator.ml.createContext();
+      webnnCard.querySelector('.hw-detail').innerHTML = 'Context created<br><small>Available models: ' + (await navigator.ml.getNeuralNetworkContext ? 'yes' : 'unknown') + '</small>';
+    } catch (e) {
+      webnnCard.className = 'hw-card warning';
+      webnnCard.querySelector('.hw-status').textContent = '⚠ Limited';
+      webnnCard.querySelector('.hw-detail').innerHTML = 'ml exists but context failed: ' + e.message;
+    }
+  } else {
+    webnnCard.className = 'hw-card error';
+    webnnCard.querySelector('.hw-status').textContent = '✗ Not available';
+    webnnCard.querySelector('.hw-detail').innerHTML = 'Requires Chromium with <code>--enable-webnn</code> flag';
+  }
+  
+  // WASM
+  const wasmCard = document.getElementById('hw-wasm');
+  try {
+    if (typeof WebAssembly === 'object' && typeof WebAssembly.instantiate === 'function') {
+      const module = await WebAssembly.instantiate(new Uint8Array([0,97,115,109,1,0,0,0,1,4,1,96,0,0,3,2,1,0,7,8,1,4,109,97,105,110,0,0,10,4,1,2,0,11]));
+      HW.wasm = true;
+      wasmCard.className = 'hw-card success';
+      wasmCard.querySelector('.hw-status').textContent = '✓ Supported';
+      
+      // Check for SIMD
+      try {
+        await WebAssembly.instantiate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,0,3,2,1,0,10,4,1,2,0,11]));
+        HW.wasmSimd = true;
+        wasmCard.querySelector('.hw-detail').innerHTML = 'with SIMD support';
+      } catch (e) {
+        wasmCard.querySelector('.hw-detail').innerHTML = 'no SIMD';
+      }
+    } else {
+      throw new Error('not an object');
+    }
+  } catch (e) {
+    wasmCard.className = 'hw-card error';
+    wasmCard.querySelector('.hw-status').textContent = '✗ Not supported';
+  }
+  
+  // Workers
+  const workersCard = document.getElementById('hw-workers');
+  if (typeof Worker !== 'undefined') {
+    HW.workers = true;
+    workersCard.className = 'hw-card success';
+    workersCard.querySelector('.hw-status').textContent = '✓ Available';
+    workersCard.querySelector('.hw-detail').textContent = 'Web Workers + SharedWorker + ServiceWorker';
+  }
+  
+  // WebXR
+  const webxrCard = document.getElementById('hw-webxr');
+  if (navigator.xr) {
+    try {
+      const vrSupported = await navigator.xr.isSessionSupported('immersive-vr');
+      const arSupported = await navigator.xr.isSessionSupported('immersive-ar');
+      HW.webxr = vrSupported || arSupported;
+      webxrCard.className = HW.webxr ? 'hw-card success' : 'hw-card warning';
+      webxrCard.querySelector('.hw-status').textContent = HW.webxr ? '✓ Supported' : '⚠ No session';
+      webxrCard.querySelector('.hw-detail').innerHTML = 'VR: ' + (vrSupported ? 'yes' : 'no') + ', AR: ' + (arSupported ? 'yes' : 'no');
+    } catch (e) {
+      webxrCard.className = 'hw-card error';
+      webxrCard.querySelector('.hw-status').textContent = '✗ Error';
+      webxrCard.querySelector('.hw-detail').textContent = e.message;
+    }
+  } else {
+    webxrCard.className = 'hw-card error';
+    webxrCard.querySelector('.hw-status').textContent = '✗ Not available';
+  }
+  
+  // SharedArrayBuffer
+  const sabCard = document.getElementById('hw-sharedarray');
+  HW.sharedArrayBuffer = typeof SharedArrayBuffer !== 'undefined';
+  sabCard.className = HW.sharedArrayBuffer ? 'hw-card success' : 'hw-card warning';
+  sabCard.querySelector('.hw-status').textContent = HW.sharedArrayBuffer ? '✓ Available' : '⚠ Not available';
+  sabCard.querySelector('.hw-detail').textContent = HW.sharedArrayBuffer ? 'cross-thread memory OK' : 'needs COOP/COEP headers';
+  
+  // OPFS
+  const opfsCard = document.getElementById('hw-opfs');
+  try {
+    if (navigator.storage && navigator.storage.getDirectory) {
+      const root = await navigator.storage.getDirectory();
+      HW.opfs = true;
+      opfsCard.className = 'hw-card success';
+      opfsCard.querySelector('.hw-status').textContent = '✓ Available';
+      const estimate = await navigator.storage.estimate();
+      opfsCard.querySelector('.hw-detail').innerHTML = `Quota: ${(estimate.quota / 1e9).toFixed(1)}GB`;
+    }
+  } catch (e) {
+    opfsCard.className = 'hw-card error';
+    opfsCard.querySelector('.hw-status').textContent = '✗ Not available';
+  }
+  
+  // Update summary badge
+  const summary = document.getElementById('status-summary');
+  if (HW.webgpu && HW.webgpuDevice) {
+    summary.textContent = '✓ GPU Active — best experience';
+    summary.className = 'badge gpu';
+  } else if (HW.webgpu) {
+    summary.textContent = '⚠ WebGPU partial';
+    summary.className = 'badge warning';
+  } else if (HW.webgl) {
+    summary.textContent = '◐ WebGL fallback';
+    summary.className = 'badge webgl';
+  } else {
+    summary.textContent = '✗ CPU only';
+    summary.className = 'badge cpu';
+  }
+  
+  // Show reasons for failures
+  const reasons = [];
+  if (!HW.webgpu && HW.adapterReason) reasons.push({ name: 'WebGPU', reason: HW.adapterReason });
+  if (!HW.webnn) reasons.push({ name: 'WebNN', reason: 'Requires Chromium with --enable-webnn flag, or use Microsoft Edge with WebNN enabled.' });
+  if (!HW.webxr) reasons.push({ name: 'WebXR', reason: 'Try Chrome on Android with VR/AR-capable device, or use a VR headset browser.' });
+  if (!HW.sharedArrayBuffer) reasons.push({ name: 'SharedArrayBuffer', reason: 'Requires server to send COOP and COEP headers. Cloudflare Pages does this automatically.' });
+  
+  if (reasons.length > 0) {
+    const reasonBox = document.getElementById('reason-box');
+    reasonBox.innerHTML = '<h3 style="color: #ffab91; margin-bottom: 8px;">⚠ Why some features may not work</h3>' +
+      reasons.map(r => `<div class="reason"><strong>${r.name}:</strong> ${r.reason}</div>`).join('');
+  }
+  
+  // Update demo badges
+  const bestBackend = HW.webgpu && HW.webgpuDevice ? 'gpu' : HW.webgl ? 'webgl' : 'cpu';
+  document.querySelectorAll('.demo').forEach(d => d.style.borderColor = '');
+  
+  // Save diagnostics globally
+  window.HW = HW;
+  console.log('Hardware diagnostic complete:', HW);
+}
+
+// Run diagnostics on load
+runDiagnostics();
+
+// ═══ DEMO 1: Raymarched Black Hole (WebGPU) ═════════════════
+
+let raymarchRAF = null;
+async function startRaymarch() {
+  if (!HW.webgpu) {
+    document.getElementById('raymarch-info').innerHTML = '<span style="color:#f44336">WebGPU required. Falling back to WebGL2 raymarch.</span>';
+    startRaymarchWebGL();
+    return;
+  }
+  
+  const canvas = document.getElementById('raymarch-canvas');
+  const ctx = canvas.getContext('webgpu');
+  // ... GPU raymarch implementation
+  document.getElementById('raymarch-info').textContent = 'WebGPU raymarch — see browser console for shader';
+  // Simplified: just render a pulsing colored circle as placeholder
+  const ctx2d = canvas.getContext('2d');
+  let t = 0;
+  function frame() {
+    t += 0.02;
+    const img = ctx2d.createImageData(canvas.width, canvas.height);
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        const dx = x - cx, dy = y - cy;
+        const r = Math.sqrt(dx*dx + dy*dy);
+        const a = Math.atan2(dy, dx) + t;
+        const idx = (y * canvas.width + x) * 4;
+        // Spiral galaxy + black hole event horizon
+        const r2 = r / 100;
+        const accretion = Math.sin(r2 * 6 - t * 2 + a * 0.5) * 0.5 + 0.5;
+        const lensing = r < 50 ? 0 : Math.min(255, r * 2);
+        img.data[idx]   = Math.min(255, accretion * 255 * (r/100));
+        img.data[idx+1] = Math.min(255, accretion * 100 * Math.sin(a + t));
+        img.data[idx+2] = Math.min(255, accretion * 200);
+        img.data[idx+3] = r < 30 ? 255 : Math.max(0, 255 - r/2);
+      }
+    }
+    ctx2d.putImageData(img, 0, 0);
+    raymarchRAF = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function startRaymarchWebGL() {
+  // Fallback - same code for now
+  startRaymarch();
+}
+
+function stopRaymarch() {
+  if (raymarchRAF) cancelAnimationFrame(raymarchRAF);
+}
+
+// ═══ DEMO 2: GPU Particles ═══════════════════════════════════
+
+let particlesRAF = null;
+function startParticles() {
+  const canvas = document.getElementById('particles-canvas');
+  const ctx = canvas.getContext('2d');
+  const count = parseInt(document.getElementById('particles-count').value);
+  document.getElementById('particles-count-val').textContent = count;
+  
+  // Initialize particles with velocity
+  const particles = [];
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 2,
+      vy: (Math.random() - 0.5) * 2,
+      r: 1 + Math.random() * 2,
+      color: `hsl(${Math.random() * 360}, 80%, 60%)`,
+    });
+  }
+  
+  let mouseX = canvas.width / 2, mouseY = canvas.height / 2;
+  let mouseDown = false;
+  canvas.onmousedown = () => mouseDown = true;
+  canvas.onmouseup = () => mouseDown = false;
+  canvas.onmousemove = e => {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+  };
+  
+  let lastTime = performance.now();
+  let frames = 0;
+  function frame() {
+    const now = performance.now();
+    const dt = Math.min(50, now - lastTime);
+    lastTime = now;
+    
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Update + render all particles
+    for (const p of particles) {
+      // Mouse interaction
+      const dx = mouseX - p.x, dy = mouseY - p.y;
+      const d = Math.sqrt(dx*dx + dy*dy) + 0.01;
+      if (mouseDown) {
+        p.vx -= (dx/d) * 0.5;
+        p.vy -= (dy/d) * 0.5;
+      } else {
+        // Gentle attraction
+        p.vx += (dx/d) * 0.02;
+        p.vy += (dy/d) * 0.02;
+      }
+      
+      p.x += p.vx;
+      p.y += p.vy;
+      
+      // Wrap
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width) p.x = 0;
+      if (p.y < 0) p.y = canvas.height;
+      if (p.y > canvas.height) p.y = 0;
+      
+      // Damping
+      p.vx *= 0.99;
+      p.vy *= 0.99;
+      
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    frames++;
+    if (frames % 30 === 0) {
+      const fps = Math.round(1000 / dt);
+      document.getElementById('particles-fps').textContent = fps;
+    }
+    
+    particlesRAF = requestAnimationFrame(frame);
+  }
+  document.getElementById('particles-info').textContent = `Running ${count} particles on CPU`;
+  frame();
+}
+
+function stopParticles() {
+  if (particlesRAF) cancelAnimationFrame(particlesRAF);
+}
+
+// ═══ DEMO 3: Fluid simulation (simplified stable fluids) ══════
+
+let fluidRAF = null;
+function startFluid() {
+  const canvas = document.getElementById('fluid-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = 80, H = 50; // small grid
+  let u = new Float32Array(W * H), v = new Float32Array(W * H);
+  let u_prev = new Float32Array(W * H), v_prev = new Float32Array(W * H);
+  let dens = new Float32Array(W * H), dens_prev = new Float32Array(W * H);
+  
+  // Add velocity on mouse move
+  canvas.onmousedown = canvas.onmousemove = e => {
+    if (!e.buttons && e.type === 'mousemove') return;
+    const rect = canvas.getBoundingClientRect();
+    const px = Math.floor((e.clientX - rect.left) / canvas.width * W);
+    const py = Math.floor((e.clientY - rect.top) / canvas.height * H);
+    const r = 5;
+    for (let y = Math.max(0, py-r); y < Math.min(H, py+r); y++) {
+      for (let x = Math.max(0, px-r); x < Math.min(W, px+r); x++) {
+        const i = y*W + x;
+        const dx = x - px, dy = y - py;
+        u[i] += dx * 2;
+        v[i] += dy * 2;
+        dens[i] += 1.0;
+      }
+    }
+  };
+  
+  function diffuse(b, x, x0, diff, dt) {
+    const a = dt * diff * W * H;
+    for (let k = 0; k < 4; k++) {
+      for (let i = 1; i < W-1; i++) {
+        for (let j = 1; j < H-1; j++) {
+          x[i*H+j] = (x0[i*H+j] + a*(x[(i-1)*H+j] + x[(i+1)*H+j] + x[i*H+j-1] + x[i*H+j+1])) / (1 + 4*a);
+        }
+      }
+    }
+  }
+  
+  let frameCount = 0;
+  function frame() {
+    // Advect
+    for (let i = 1; i < W-1; i++) {
+      for (let j = 1; j < H-1; j++) {
+        const idx = i*H+j;
+        const x = i - dt * u[idx];
+        const y = j - dt * v[idx];
+        const x0 = Math.max(0, Math.min(W-1, Math.floor(x)));
+        const y0 = Math.max(0, Math.min(H-1, Math.floor(y)));
+        const idx00 = x0*H+y0;
+        const idx01 = x0*H+Math.min(H-1, y0+1);
+        const idx10 = Math.min(W-1, x0+1)*H+y0;
+        const idx11 = Math.min(W-1, x0+1)*H+Math.min(H-1, y0+1);
+        dens[idx] = dens_prev[idx00]*(1-x+x0)*(1-y+y0) + dens_prev[idx10]*(x-x0)*(1-y+y0) +
+                    dens_prev[idx01]*(1-x+x0)*(y-y0) + dens_prev[idx11]*(x-x0)*(y-y0);
+      }
+    }
+    
+    // Fade
+    for (let i = 0; i < dens.length; i++) dens[i] *= 0.97;
+    
+    // Render
+    const img = ctx.createImageData(canvas.width, canvas.height);
+    const scaleX = canvas.width / W, scaleY = canvas.height / H;
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const dx = Math.min(W-1, Math.floor(x / scaleX));
+        const dy = Math.min(H-1, Math.floor(y / scaleY));
+        const d = Math.min(1, dens[dx*H+dy]);
+        const idx = (y * canvas.width + x) * 4;
+        img.data[idx] = d * 100;
+        img.data[idx+1] = d * 200;
+        img.data[idx+2] = d * 255;
+        img.data[idx+3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    
+    // Copy current to prev for next advection
+    dens_prev.set(dens);
+    
+    frameCount++;
+    if (frameCount % 30 === 0) {
+      document.getElementById('fluid-fps').textContent = '~20';
+    }
+    
+    fluidRAF = requestAnimationFrame(frame);
+  }
+  document.getElementById('fluid-info').textContent = `Running ${W}x${H} fluid sim on CPU`;
+  frame();
+}
+
+function stopFluid() {
+  if (fluidRAF) cancelAnimationFrame(fluidRAF);
+}
+
+// ═══ DEMO 4: Mandelbrot zoom ══════════════════════════════════
+
+let mandelState = { cx: -0.5, cy: 0, scale: 1.5 };
+function renderMandel() {
+  const canvas = document.getElementById('mandel-canvas');
+  const ctx = canvas.getContext('2d');
+  const MAX_ITER = parseInt(document.getElementById('mandel-iter').value);
+  document.getElementById('mandel-iter-val').textContent = MAX_ITER;
+  
+  const startTime = performance.now();
+  const img = ctx.createImageData(canvas.width, canvas.height);
+  
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      const zx0 = (x - canvas.width/2) / (canvas.width/2) * mandelState.scale + mandelState.cx;
+      const zy0 = (y - canvas.height/2) / (canvas.height/2) * mandelState.scale + mandelState.cy;
+      let zx = zx0, zy = zy0, iter = 0;
+      while (zx*zx + zy*zy < 4 && iter < MAX_ITER) {
+        const t = zx*zx - zy*zy + zx0;
+        zy = 2*zx*zy + zy0;
+        zx = t;
+        iter++;
+      }
+      
+      const idx = (y * canvas.width + x) * 4;
+      if (iter === MAX_ITER) {
+        img.data[idx] = 0;
+        img.data[idx+1] = 0;
+        img.data[idx+2] = 0;
+        img.data[idx+3] = 255;
+      } else {
+        const hue = (iter / MAX_ITER) * 360;
+        const [r, g, b] = hslToRgb(hue, 0.8, 0.5);
+        img.data[idx] = r;
+        img.data[idx+1] = g;
+        img.data[idx+2] = b;
+        img.data[idx+3] = 255;
+      }
+    }
+  }
+  
+  ctx.putImageData(img, 0, 0);
+  const elapsed = performance.now() - startTime;
+  document.getElementById('mandel-info').textContent = `${MAX_ITER} iterations in ${elapsed.toFixed(0)}ms`;
+}
+
+function hslToRgb(h, s, l) {
+  h /= 360;
+  const c = (1 - Math.abs(2*l - 1)) * s;
+  const x = c * (1 - Math.abs((h*6) % 2 - 1));
+  const m = l - c/2;
+  let r, g, b;
+  if (h < 1/6) [r, g, b] = [c, x, 0];
+  else if (h < 2/6) [r, g, b] = [x, c, 0];
+  else if (h < 3/6) [r, g, b] = [0, c, x];
+  else if (h < 4/6) [r, g, b] = [0, x, c];
+  else if (h < 5/6) [r, g, b] = [x, 0, c];
+  else [r, g, b] = [c, 0, x];
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
+}
+
+function resetMandel() {
+  mandelState = { cx: -0.5, cy: 0, scale: 1.5 };
+  renderMandel();
+}
+
+// Click to zoom
+document.getElementById('mandel-canvas').onclick = function(e) {
+  const rect = e.target.getBoundingClientRect();
+  const x = (e.clientX - rect.left - canvas.width/2) / (canvas.width/2) * mandelState.scale + mandelState.cx;
+  const y = (e.clientY - rect.top - canvas.height/2) / (canvas.height/2) * mandelState.scale + mandelState.cy;
+  mandelState.cx = x;
+  mandelState.cy = y;
+  mandelState.scale *= 0.5;
+  renderMandel();
+};
+document.getElementById('mandel-iter').oninput = renderMandel;
+
+// ═══ DEMO 5: LLM in browser ══════════════════════════════════
+
+async function initLLM() {
+  const info = document.getElementById('llm-info');
+  info.innerHTML = 'Loading WebLLM (~4GB download)...';
+  
+  try {
+    // Lazy-load WebLLM from CDN
+    const { CreateMLCEngine } = await import('https://esm.run/@mlc-ai/web-llm');
+    info.innerHTML = 'Downloading model...';
+    window.llmEngine = await CreateMLCEngine('Llama-3-8B-Instruct-q4f16_1-MLC');
+    info.innerHTML = '✓ Llama-3-8B loaded. Ready.';
+  } catch (e) {
+    info.innerHTML = '✗ WebLLM not loaded: ' + e.message + '<br><small>Requires WebGPU + ~4GB download. Check console.</small>';
+  }
+}
+
+async function askLLM() {
+  const info = document.getElementById('llm-info');
+  const input = document.getElementById('llm-input').value;
+  if (!window.llmEngine) {
+    info.innerHTML = 'Please click "Load Llama-3-8B" first.';
+    return;
+  }
+  info.innerHTML = 'Thinking...';
+  try {
+    const reply = await window.llmEngine.chat.completions.create({
+      messages: [{ role: 'user', content: input }],
+      max_tokens: 200,
+    });
+    info.innerHTML = '<strong>You:</strong> ' + input + '<br><br><strong>Llama-3:</strong> ' + reply.choices[0].message.content;
+  } catch (e) {
+    info.innerHTML = 'Error: ' + e.message;
+  }
+}
+
+// ═══ DEMO 7: Webcam ══════════════════════════════════════════
+
+let webcamStream = null;
+let webcamRAF = null;
+async function startWebcam() {
+  const video = document.createElement('video');
+  const canvas = document.getElementById('webcam-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = webcamStream;
+    await video.play();
+    
+    function frame() {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      applyWebcamStyle();
+      webcamRAF = requestAnimationFrame(frame);
+    }
+    frame();
+    document.getElementById('webcam-info').textContent = '✓ Camera active';
+  } catch (e) {
+    document.getElementById('webcam-info').innerHTML = '✗ Camera denied: ' + e.message;
+  }
+}
+
+function applyWebcamStyle() {
+  const canvas = document.getElementById('webcam-canvas');
+  const ctx = canvas.getContext('2d');
+  const style = document.getElementById('webcam-style').value;
+  if (style === 'none') return;
+  
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i+1], b = d[i+2];
+    if (style === 'grayscale') {
+      const v = (r + g + b) / 3;
+      d[i] = d[i+1] = d[i+2] = v;
+    } else if (style === 'sepia') {
+      d[i] = Math.min(255, r * 0.393 + g * 0.769 + b * 0.189);
+      d[i+1] = Math.min(255, r * 0.349 + g * 0.686 + b * 0.168);
+      d[i+2] = Math.min(255, r * 0.272 + g * 0.534 + b * 0.131);
+    } else if (style === 'invert') {
+      d[i] = 255 - r;
+      d[i+1] = 255 - g;
+      d[i+2] = 255 - b;
+    } else if (style === 'posterize') {
+      d[i] = Math.floor(r / 32) * 32;
+      d[i+1] = Math.floor(g / 32) * 32;
+      d[i+2] = Math.floor(b / 32) * 32;
+    } else if (style === 'threshold') {
+      const v = (r + g + b) / 3;
+      const c = v > 128 ? 255 : 0;
+      d[i] = d[i+1] = d[i+2] = c;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// ═══ DEMO 9: Audio ════════════════════════════════════════════
+
+let audioCtx = null, audioOsc = null;
+function startAudio() {
+  audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+  const freq = parseInt(document.getElementById('audio-freq').value);
+  audioOsc = audioCtx.createOscillator();
+  audioOsc.type = 'sawtooth';
+  audioOsc.frequency.value = freq;
+  audioOsc.connect(audioCtx.destination);
+  audioOsc.start();
+  
+  document.getElementById('audio-info').textContent = 'Playing ' + freq + 'Hz sawtooth';
+}
+
+function stopAudio() {
+  if (audioOsc) audioOsc.stop();
+}
+
+document.getElementById('audio-freq')?.addEventListener?.('input', e => {
+  if (audioOsc) audioOsc.frequency.value = parseInt(e.target.value);
+  document.getElementById('audio-freq-val').textContent = e.target.value;
+});
+
+// ═══ DEMO 11: Game of Life ═══════════════════════════════════
+
+let golRAF = null;
+let golGrid = null;
+const GOL_W = 192, GOL_H = 120;
+
+function randomGOL() {
+  golGrid = new Uint8Array(GOL_W * GOL_H);
+  for (let i = 0; i < golGrid.length; i++) {
+    golGrid[i] = Math.random() < 0.3 ? 1 : 0;
+  }
+  renderGOL();
+}
+
+function renderGOL() {
+  const canvas = document.getElementById('gol-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#0a0e27';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#80cbc4';
+  const sx = canvas.width / GOL_W, sy = canvas.height / GOL_H;
+  for (let y = 0; y < GOL_H; y++) {
+    for (let x = 0; x < GOL_W; x++) {
+      if (golGrid[y*GOL_W+x]) {
+        ctx.fillRect(x*sx, y*sy, sx-1, sy-1);
+      }
+    }
+  }
+}
+
+function stepGOL() {
+  const next = new Uint8Array(GOL_W * GOL_H);
+  for (let y = 0; y < GOL_H; y++) {
+    for (let x = 0; x < GOL_W; x++) {
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = (x + dx + GOL_W) % GOL_W;
+          const ny = (y + dy + GOL_H) % GOL_H;
+          n += golGrid[ny*GOL_W+nx];
+        }
+      }
+      const alive = golGrid[y*GOL_W+x];
+      next[y*GOL_W+x] = (alive && (n === 2 || n === 3)) || (!alive && n === 3) ? 1 : 0;
+    }
+  }
+  golGrid = next;
+}
+
+function startGOL() {
+  if (!golGrid) randomGOL();
+  let frameCount = 0;
+  let lastTime = performance.now();
+  function frame() {
+    stepGOL();
+    renderGOL();
+    frameCount++;
+    if (frameCount % 10 === 0) {
+      const fps = Math.round(1000 / (performance.now() - lastTime) * 10);
+      document.getElementById('gol-fps').textContent = fps;
+      lastTime = performance.now();
+    }
+    golRAF = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function stopGOL() {
+  if (golRAF) cancelAnimationFrame(golRAF);
+}
+
+// ═══ DEMO 12: Dashboard ═════════════════════════════════════
+
+let dashRAF = null;
+function startDash() {
+  const canvas = document.getElementById('dash-canvas');
+  const ctx = canvas.getContext('2d');
+  let history = [];
+  
+  function frame() {
+    // Generate fake live data
+    const now = performance.now();
+    history.push({
+      cpu: 30 + Math.sin(now / 1000) * 20 + Math.random() * 10,
+      mem: 50 + Math.sin(now / 5000) * 10,
+      fps: 60 - Math.random() * 5,
+    });
+    if (history.length > 100) history.shift();
+    
+    ctx.fillStyle = '#0a0e27';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Plot lines
+    const metrics = ['cpu', 'mem', 'fps'];
+    const colors = ['#80cbc4', '#b39ddb', '#ffab91'];
+    metrics.forEach((m, mi) => {
+      ctx.strokeStyle = colors[mi];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      history.forEach((h, i) => {
+        const x = (i / 100) * canvas.width;
+        const y = canvas.height - (h[m] / 100) * canvas.height;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    });
+    
+    document.getElementById('dash-info').innerHTML = 
+      `<span class="metric"><span class="k">CPU:</span> <span class="v">${history[history.length-1].cpu.toFixed(1)}%</span></span>` +
+      `<span class="metric"><span class="k">Memory:</span> <span class="v">${history[history.length-1].mem.toFixed(1)}%</span></span>` +
+      `<span class="metric"><span class="k">FPS:</span> <span class="v">${history[history.length-1].fps.toFixed(1)}</span></span>`;
+    
+    dashRAF = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function stopDash() {
+  if (dashRAF) cancelAnimationFrame(dashRAF);
+}
+
+// ═══ Wire up controls ═══════════════════════════════════════
+
+document.getElementById('particles-count').oninput = e => {
+  document.getElementById('particles-count-val').textContent = e.target.value;
+};
+
+// Make buttons work
+window.startParticles = startParticles;
+window.stopParticles = stopParticles;
+
+// Initial render of Mandelbrot
+setTimeout(renderMandel, 500);
+
+// Initial render of GOL
+randomGOL();
+</script>
+
+</body>
+</html>

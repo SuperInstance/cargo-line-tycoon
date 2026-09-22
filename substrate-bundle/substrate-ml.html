@@ -324,22 +324,59 @@ function fnv1a64(str) {
 async function checkBackend() {
   const out = {};
   
-  // WebGPU
+  // WebGPU — comprehensive detection with diagnostic info
   try {
-    if (navigator.gpu) {
-      const adapter = await navigator.gpu.requestAdapter();
-      if (adapter) {
-        out.webgpu = true;
-        out.adapter = adapter.info?.vendor || 'unknown';
-        try {
-          STATE.webgpuDevice = await adapter.requestDevice();
-          STATE.webgpu = true;
-        } catch (e) {
-          out.webgpuDevice = false;
+    if (!navigator.gpu) {
+      out.webgpu = false;
+      out.adapter = 'not-supported';
+      out.adapterReason = 'navigator.gpu is undefined. Enable WebGPU in browser settings or use Chrome 113+, Edge 113+, Firefox 128+, or Safari 26+.';
+    } else {
+      try {
+        const adapter = await navigator.gpu.requestAdapter();
+        if (adapter) {
+          out.webgpu = true;
+          const info = adapter.info || {};
+          out.adapter = info.vendor || 'unknown';
+          out.adapterArchitecture = info.architecture || 'unknown';
+          out.adapterDescription = info.description || 'unknown';
+          
+          // Try to get device limits
+          try {
+            const limits = adapter.limits || {};
+            out.gpuLimits = {
+              maxBufferSize: limits.maxBufferSize,
+              maxComputeWorkgroupSizeX: limits.maxComputeWorkgroupSizeX,
+              maxComputeInvocationsPerWorkgroup: limits.maxComputeInvocationsPerWorkgroup,
+              maxStorageBuffersPerShaderStage: limits.maxStorageBuffersPerShaderStage,
+            };
+          } catch (e) {
+            out.gpuLimits = { error: 'cannot read limits' };
+          }
+          
+          try {
+            STATE.webgpuDevice = await adapter.requestDevice();
+            STATE.webgpu = true;
+            out.webgpuDevice = true;
+          } catch (e) {
+            out.webgpuDevice = false;
+            out.adapterReason = 'requestDevice() failed: ' + (e.message || 'unknown');
+          }
+        } else {
+          out.webgpu = false;
+          out.adapter = 'no-adapter';
+          out.adapterReason = 'requestAdapter() returned null. Common causes: (1) hardware acceleration disabled in browser, (2) GPU driver outdated, (3) browser blocklisted GPU. Try: chrome://gpu or about:support';
         }
-      } else { out.webgpu = false; out.adapter = 'none'; }
-    } else { out.webgpu = false; }
-  } catch (e) { out.webgpu = false; }
+      } catch (e) {
+        out.webgpu = false;
+        out.adapter = 'request-failed';
+        out.adapterReason = 'requestAdapter() threw: ' + (e.message || 'unknown');
+      }
+    }
+  } catch (e) {
+    out.webgpu = false;
+    out.adapter = 'detection-failed';
+    out.adapterReason = 'Detection threw: ' + (e.message || 'unknown');
+  }
   
   // WebNN (Chromium experimental)
   out.webnn = 'ml' in navigator ? 'available' : 'unavailable';
@@ -357,17 +394,26 @@ async function checkBackend() {
   document.getElementById('b-wasm').textContent = out.wasm ? '✓' : '✗';
   document.getElementById('b-workers').textContent = out.workers ? '✓' : '✗';
   document.getElementById('b-adapter').textContent = out.adapter || '—';
+  if (out.adapterArchitecture && out.adapterArchitecture !== 'unknown') {
+    document.getElementById('b-adapter').textContent += ' (' + out.adapterArchitecture + ')';
+  }
+  if (out.adapterReason) {
+    document.getElementById('b-adapter').title = out.adapterReason;
+  }
   
   const badge = document.getElementById('backend-badge');
   if (out.webgpu && STATE.webgpuDevice) {
-    badge.textContent = 'GPU';
+    badge.textContent = 'GPU · ' + (out.adapterArchitecture || 'GPU');
     badge.className = 'badge gpu';
+    badge.title = (out.adapterDescription || '') + '\nLimits: ' + JSON.stringify(out.gpuLimits || {}, null, 0);
   } else if (out.webgpu) {
-    badge.textContent = 'GPU-no-device';
+    badge.textContent = 'GPU-detected, no-device';
     badge.className = 'badge cpu';
+    badge.title = out.adapterReason || 'GPU detected but device request failed';
   } else {
-    badge.textContent = 'CPU';
+    badge.textContent = 'CPU fallback';
     badge.className = 'badge cpu';
+    badge.title = out.adapterReason || 'GPU not available';
   }
 }
 
