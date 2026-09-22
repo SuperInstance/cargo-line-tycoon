@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <rect width="600" height="400" fill="#0a0e1a"/>
+  <text x="300" y="30" fill="#e0e6f0" font-family="monospace" font-size="18" text-anchor="middle" font-weight="bold">
+    The Substrate Cell Graph
+  </text>
+  <text x="300" y="50" fill="#6ec3ff" font-family="monospace" font-size="12" text-anchor="middle">
+    4D cell graph · prev_hash chain · witness log
+  </text>
+  <g>
+    <rect x="40" y="180" width="100" height="60" rx="6" fill="#131826" stroke="#6ec3ff" stroke-width="2"/>
+    <text x="90" y="200" fill="#e0e6f0" font-family="monospace" font-size="11" text-anchor="middle">genesis</text>
+    <text x="90" y="220" fill="#6ec3ff" font-family="monospace" font-size="9" text-anchor="middle">0x0000...0000</text>
+    <rect x="200" y="100" width="100" height="60" rx="6" fill="#131826" stroke="#ffb86c" stroke-width="2"/>
+    <text x="250" y="120" fill="#e0e6f0" font-family="monospace" font-size="11" text-anchor="middle">cell-001</text>
+    <text x="250" y="140" fill="#ffb86c" font-family="monospace" font-size="9" text-anchor="middle">0xa3f2...e91</text>
+    <rect x="200" y="200" width="100" height="60" rx="6" fill="#131826" stroke="#ffb86c" stroke-width="2"/>
+    <text x="250" y="220" fill="#e0e6f0" font-family="monospace" font-size="11" text-anchor="middle">cell-002</text>
+    <text x="250" y="240" fill="#ffb86c" font-family="monospace" font-size="9" text-anchor="middle">0xb7c4...0d3</text>
+    <rect x="370" y="60" width="100" height="60" rx="6" fill="#131826" stroke="#bd93f9" stroke-width="2"/>
+    <text x="420" y="80" fill="#e0e6f0" font-family="monospace" font-size="11" text-anchor="middle">cell-003</text>
+    <text x="420" y="100" fill="#bd93f9" font-family="monospace" font-size="9" text-anchor="middle">0xc1d9...8a2</text>
+    <rect x="370" y="220" width="100" height="60" rx="6" fill="#131826" stroke="#bd93f9" stroke-width="2"/>
+    <text x="420" y="240" fill="#e0e6f0" font-family="monospace" font-size="11" text-anchor="middle">cell-004</text>
+    <text x="420" y="260" fill="#bd93f9" font-family="monospace" font-size="9" text-anchor="middle">0xd4e2...7b5</text>
+    <rect x="500" y="140" width="80" height="60" rx="6" fill="#131826" stroke="#6ec3ff" stroke-width="2" stroke-dasharray="4 2"/>
+    <text x="540" y="160" fill="#e0e6f0" font-family="monospace" font-size="11" text-anchor="middle">merge</text>
+    <text x="540" y="180" fill="#6ec3ff" font-family="monospace" font-size="9" text-anchor="middle">0xe5f3...c4e</text>
+  </g>
+  <g stroke="#6ec3ff" stroke-width="1.5" fill="none">
+    <path d="M 140 200 L 200 130" marker-end="url(#arrow)"/>
+    <path d="M 140 215 L 200 215" marker-end="url(#arrow)"/>
+    <path d="M 300 130 L 370 90" marker-end="url(#arrow)"/>
+    <path d="M 300 230 L 370 250" marker-end="url(#arrow)"/>
+    <path d="M 470 90 L 500 165" marker-end="url(#arrow)"/>
+    <path d="M 470 250 L 500 175" marker-end="url(#arrow)"/>
+  </g>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 Z" fill="#6ec3ff"/>
+    </marker>
+  </defs>
+  <text x="320" y="360" fill="#6c7a89" font-family="monospace" font-size="11" text-anchor="middle">
+    genesis → cells → merge — the prev_hash chain is the substrate
+  </text>
+</svg>
