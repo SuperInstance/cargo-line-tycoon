@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quilt Substrate — Browser-Native Canonical Substrate</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+    color: #e0e0ff;
+    padding: 24px;
+    line-height: 1.6;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  h1 { font-size: 2em; margin-bottom: 8px; background: linear-gradient(135deg, #80cbc4, #b39ddb); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h2 { color: #80cbc4; margin: 24px 0 12px; font-size: 1.3em; border-bottom: 1px solid rgba(128,203,196,0.3); padding-bottom: 6px; }
+  h3 { color: #b39ddb; margin: 12px 0 8px; }
+  p { margin-bottom: 12px; }
+  a { color: #80cbc4; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(76, 175, 80, 0.2);
+    border: 1px solid #4CAF50;
+    border-radius: 12px;
+    font-size: 0.75em;
+    color: #4CAF50;
+    margin-right: 6px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin: 16px 0;
+  }
+  .card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 18px;
+    transition: transform 0.1s;
+  }
+  .card:hover { transform: translateY(-3px); border-color: rgba(128,203,196,0.3); }
+  .card h3 { margin-bottom: 6px; }
+  .card p { font-size: 0.9em; color: #b0b0d0; }
+  .feature-list { list-style: none; }
+  .feature-list li { padding: 4px 0; padding-left: 16px; position: relative; }
+  .feature-list li::before { content: '→'; position: absolute; left: 0; color: #80cbc4; }
+  footer {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    color: #888;
+    font-size: 0.85em;
+  }
+  .pill {
+    display: inline-block;
+    background: rgba(128,203,196,0.1);
+    border: 1px solid rgba(128,203,196,0.3);
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.7em;
+    margin: 2px;
+    color: #80cbc4;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>🌐 Quilt Substrate</h1>
+  <p style="color: #b0b0d0; font-size: 1.1em;">
+    Browser-native canonical substrate. Polyformal, byte-exact, deploy-anywhere.
+  </p>
+  <p>
+    <span class="badge">v0.6.0</span>
+    <span class="badge">11 apps</span>
+    <span class="badge">7 languages</span>
+    <span class="badge">WebGPU</span>
+    <span class="badge">WebNN</span>
+    <span class="badge">Workers AI</span>
+  </p>
+  <p style="font-size: 0.9em;">
+    <a href="https://quilt-e4m.pages.dev/">Live site</a> · 
+    <a href="https://quilt-distributed.casey-digennaro.workers.dev/api/health">API health</a> · 
+    <a href="https://github.com/SuperInstance/cargo-line-tycoon">GitHub</a>
+  </p>
+</header>
+
+<h2>🎮 Apps (open directly)</h2>
+<div class="grid">
+  <div class="card">
+    <h3><a href="substrate">substrate.html</a></h3>
+    <p>Interactive cell-graph with JEV, wavefunction, 3D viz, IndexedDB, in-browser ML training.</p>
+  </div>
+  <div class="card">
+    <h3><a href="substrate-ml">substrate-ml.html</a></h3>
+    <p>ML backends: WebGPU, WebNN, WASM, Workers. LinReg, XOR NN, Burgers PDE, SAT solver.</p>
+  </div>
+  <div class="card">
+    <h3><a href="substrate-gpu">substrate-gpu.html</a></h3>
+    <p>WebGPU compute shaders. FNV-1a 64-bit, JEV cosine similarity on GPU.</p>
+  </div>
+  <div class="card">
+    <h3><a href="substrate-webnn">substrate-webnn.html</a></h3>
+    <p>WebNN graph builder for hardware-accelerated ML.</p>
+  </div>
+  <div class="card">
+    <h3><a href="substrate-3d">substrate-3d.html</a></h3>
+    <p>Real 3D cell-graph renderer (WebGL2, drag/zoom/query).</p>
+  </div>
+  <div class="card">
+    <h3><a href="substrate-playground">substrate-playground.html</a></h3>
+    <p>7-tab unified playground: JEV, Wavefunction, Witness-log, PDE Solver, Training, SAT, 2D Canvas.</p>
+  </div>
+  <div class="card">
+    <h3><a href="distributed-training">distributed-training.html</a></h3>
+    <p>Overnight training dashboard. Hardware detection, scheduled jobs, leaderboard.</p>
+  </div>
+  <div class="card">
+    <h3><a href="iot-nodes">iot-nodes.html</a></h3>
+    <p>12-node IoT network simulation. Click to inspect, drag to pan.</p>
+  </div>
+  <div class="card">
+    <h3><a href="tycoon-live">tycoon-live.html</a></h3>
+    <p>Multiplayer cargo tycoon. 7 locales. Distributed computing toggle.</p>
+  </div>
+  <div class="card">
+    <h3><a href="sdk-demo">sdk-demo.html</a></h3>
+    <p>Substrate SDK demo. Drop-in ES module.</p>
+  </div>
+  <div class="card">
+    <h3><a href="cloudflare-live/">cloudflare-live/</a></h3>
+    <p>Live Cloudflare backend demo (KV + D1 + R2 + Vectorize + Workers AI).</p>
+  </div>
+  <div class="card">
+    <h3><a href="garden/">Quilt Garden (Truman Architecture)</a></h3>
+    <p>Wiki-style site where any AI chatbot that visits becomes a substrate cell without knowing it.</p>
+  </div>
+</div>
+
+<h2>🌍 Languages</h2>
+<div class="grid">
+  <div class="card"><h3><a href="i18n/en">🇬🇧 English</a></h3></div>
+  <div class="card"><h3><a href="i18n/zh">🇨🇳 中文</a></h3></div>
+  <div class="card"><h3><a href="i18n/pt">🇧🇷 Português</a></h3></div>
+  <div class="card"><h3><a href="i18n/es">🇪🇸 Español</a></h3></div>
+  <div class="card"><h3><a href="i18n/ja">🇯🇵 日本語</a></h3></div>
+  <div class="card"><h3><a href="i18n/ar">🇸🇦 العربية</a></h3></div>
+  <div class="card"><h3><a href="i18n/vi">🇻🇳 Tiếng Việt</a></h3></div>
+</div>
+
+<h2>🚀 Deploy Anywhere</h2>
+<p>The substrate bundle is portable. Static HTML+JS+WGSL. No build step. ~1MB total.</p>
+
+<h3>Cloudflare Pages (recommended)</h3>
+<pre><code>wrangler pages deploy ./substrate-bundle --project-name=quilt
+# → https://quilt-e4m.pages.dev</code></pre>
+
+<h3>GitHub Pages</h3>
+<pre><code># Push to gh-pages branch
+git checkout -b gh-pages
+git push origin gh-pages
+# Settings → Pages → Source: gh-pages
+# → https://superinstance.github.io/cargo-line-tycoon/</code></pre>
+
+<h3>Local file://</h3>
+<pre><code>open substrate-bundle/index.html
+# All features work locally, no server needed</code></pre>
+
+<h3>Oracle Cloud / any static host</h3>
+<pre><code>rsync -avz substrate-bundle/ user@server:/var/www/html/
+# Or: oci os object bulk-put --bucket-name substrate ...
+# Or: aws s3 sync substrate-bundle/ s3://my-bucket/</code></pre>
+
+<h3>IoT device (Raspberry Pi / ESP32)</h3>
+<pre><code>scp -r substrate-bundle/ pi@raspberrypi.local:/home/pi/substrate/
+# ESP32: only substrate.html (~50KB), WebSerial fallback</code></pre>
+
+<h2>🧩 Architecture</h2>
+<pre><code>Browser                     Cloudflare Workers
+┌──────────────┐           ┌─────────────────┐
+│  HTML/JS     │  ←─────→  │  Worker         │
+│  substrate   │           │  ├─ KV (fast)   │
+│  SDK         │           │  ├─ D1 (SQL)    │
+│  apps        │           │  ├─ R2 (blobs)  │
+└──────────────┘           │  ├─ Vectorize   │
+                          │  ├─ Workers AI  │
+                          │  └─ Cron (5min) │
+                          └─────────────────┘</code></pre>
+
+<h2>🌐 Cross-Browser Support</h2>
+<div>
+  <span class="pill">Chrome 113+ ✓</span>
+  <span class="pill">Edge 113+ ✓</span>
+  <span class="pill">Firefox 110+ ✓</span>
+  <span class="pill">Safari 17+ ✓</span>
+  <span class="pill">WebGPU</span>
+  <span class="pill">WebNN (Chromium with flag)</span>
+  <span class="pill">WASM fallback</span>
+  <span class="pill">CPU fallback</span>
+</div>
+
+<h2>🔗 Stable URLs</h2>
+<ul class="feature-list">
+  <li><strong>Live site:</strong> <a href="https://quilt-e4m.pages.dev/">quilt-e4m.pages.dev</a></li>
+  <li><strong>API:</strong> <a href="https://quilt-distributed.casey-digennaro.workers.dev/api/health">quilt-distributed.casey-digennaro.workers.dev</a></li>
+  <li><strong>Custom domain:</strong> <a href="https://substrate.superinstance.dev/">substrate.superinstance.dev</a> (pending)</li>
+  <li><strong>GitHub repo:</strong> <a href="https://github.com/SuperInstance/cargo-line-tycoon">github.com/SuperInstance/cargo-line-tycoon</a></li>
+  <li><strong>Branch with kimi1 recommendations:</strong> <a href="https://github.com/SuperInstance/cargo-line-tycoon/tree/rescue/kimi1-recommendations-20260922">rescue/kimi1-recommendations-20260922</a></li>
+</ul>
+
+<footer>
+  Quilt Substrate v0.6.0 · Built Sept 22, 2026 · MIT License
+  <br>
+  See <a href="DEPLOY.md">DEPLOY.md</a> for full deployment instructions.
+</footer>
+
+</div>
+</body>
+</html>

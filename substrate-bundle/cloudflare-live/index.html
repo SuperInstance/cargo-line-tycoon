@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quilt Distributed — Live Cloudflare Backend</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+    color: #e0e0ff;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  header {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 20px 30px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  h1 { font-size: 1.5em; }
+  .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background: rgba(76, 175, 80, 0.2);
+    border: 1px solid #4CAF50;
+    border-radius: 12px;
+    font-size: 0.75em;
+    color: #4CAF50;
+    margin-left: 8px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 20px;
+  }
+  .panel {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .panel h2 {
+    font-size: 1.1em;
+    margin-bottom: 12px;
+    color: #80cbc4;
+    border-bottom: 1px solid rgba(128, 203, 196, 0.3);
+    padding-bottom: 8px;
+  }
+  button {
+    background: linear-gradient(135deg, #5e72e4, #825ee4);
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin: 4px 4px 4px 0;
+    transition: transform 0.1s;
+  }
+  button:hover { transform: translateY(-2px); }
+  button:active { transform: translateY(0); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  
+  input, textarea, select {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 0.9em;
+    margin: 4px 0;
+  }
+  
+  .output {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85em;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .stat {
+    background: rgba(0,0,0,0.3);
+    padding: 8px;
+    border-radius: 6px;
+    text-align: center;
+  }
+  .stat-label { font-size: 0.7em; color: #888; }
+  .stat-val { font-size: 1.4em; color: #80cbc4; font-weight: 600; }
+  
+  .stack-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0;
+  }
+  .stack-pill {
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-size: 0.7em;
+    font-weight: 600;
+  }
+  .stack-on { background: rgba(76, 175, 80, 0.2); color: #4CAF50; border: 1px solid #4CAF50; }
+  .stack-off { background: rgba(244, 67, 54, 0.2); color: #f44336; border: 1px solid #f44336; }
+  
+  a { color: #80cbc4; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🌐 Quilt Distributed <span class="badge">LIVE</span></h1>
+    <small style="color: #888;">Full Cloudflare Stack: KV + D1 + R2 + Vectorize + Workers AI + Cron</small>
+  </div>
+  <div>
+    <button onclick="refreshAll()">↻ Refresh</button>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- Stack Status -->
+  <div class="panel">
+    <h2>🧩 Stack Status</h2>
+    <div id="stack-status">Loading...</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">CELLS</div><div class="stat-val" id="stat-cells">0</div></div>
+      <div class="stat"><div class="stat-label">WITNESSES</div><div class="stat-val" id="stat-witnesses">0</div></div>
+      <div class="stat"><div class="stat-label">NODES</div><div class="stat-val" id="stat-nodes">0</div></div>
+      <div class="stat"><div class="stat-label">SUBMISSIONS</div><div class="stat-val" id="stat-submissions">0</div></div>
+    </div>
+    <small style="color: #888;">Cron runs every 5min — continuous ML on Workers AI</small>
+  </div>
+
+  <!-- Submit Cell -->
+  <div class="panel">
+    <h2>📦 Submit Cell</h2>
+    <input id="cell-id" placeholder="cell-id" value="cell-demo-001">
+    <input id="cell-type" placeholder="type" value="canon">
+    <textarea id="cell-content" rows="3" placeholder="content">A cell is born with a hash. Each cell hash-chains to the previous. The witness-log is the canonical substrate of memory.</textarea>
+    <button onclick="submitCell()">Submit Cell</button>
+    <button onclick="listCells()">List All Cells</button>
+    <div class="output" id="cell-output">Click submit to begin.</div>
+  </div>
+
+  <!-- JEV Semantic Search -->
+  <div class="panel">
+    <h2>🔍 JEV Semantic Search</h2>
+    <input id="search-query" placeholder="search query" value="witness-log canonical memory">
+    <button onclick="searchJEV()">Search</button>
+    <div class="output" id="search-output">Submit a query to search the canon.</div>
+  </div>
+
+  <!-- AI Inference -->
+  <div class="panel">
+    <h2>🤖 Workers AI Inference</h2>
+    <input id="infer-prompt" placeholder="prompt" value="In one sentence, what is the substrate?">
+    <button onclick="infer()">Infer</button>
+    <button onclick="embed()">Compute Embedding</button>
+    <div class="output" id="infer-output">Submit a prompt.</div>
+  </div>
+
+  <!-- Node Registry -->
+  <div class="panel">
+    <h2>🖥️ Register Node</h2>
+    <input id="node-name" placeholder="node name" value="browser-tab-1">
+    <input id="node-hw" placeholder="hardware" value='{"gpu":"RTX 4090","cpu":"Ryzen 9"}'>
+    <button onclick="registerNode()">Register</button>
+    <button onclick="listNodes()">List Nodes</button>
+    <div class="output" id="node-output">Click register to add a node.</div>
+  </div>
+
+  <!-- Garden Visit (Truman Architecture) -->
+  <div class="panel">
+    <h2>🌱 Garden Visit (Truman)</h2>
+    <input id="visitor-id" placeholder="visitor id" value="visitor_demo_1">
+    <select id="article-id">
+      <option>cell</option>
+      <option>witness-log</option>
+      <option>connection</option>
+      <option>manifold</option>
+      <option>negative-space</option>
+      <option>visitor</option>
+    </select>
+    <textarea id="garden-text" rows="3" placeholder="expansion text">The cell is the irreducible unit of the substrate. It is not data, it is the system. Each cell holds addresses and witnesses and prev_hash.</textarea>
+    <button onclick="gardenVisit()">Visit Article</button>
+    <button onclick="getGardenState()">Garden State</button>
+    <div class="output" id="garden-output">Visit an article to add to the canon.</div>
+  </div>
+
+  <!-- Leaderboard -->
+  <div class="panel">
+    <h2>🏆 Leaderboard</h2>
+    <button onclick="getLeaderboard()">Get Leaderboard</button>
+    <button onclick="getCanonStats()">Canon Stats</button>
+    <div class="output" id="leader-output">Top contributors and canon statistics.</div>
+  </div>
+
+</div>
+
+<footer style="text-align:center; margin-top:30px; color:#888; font-size:0.85em;">
+  <a href="https://api.superinstance.dev/api/health" target="_blank">API Health</a> · 
+  <a href="https://github.com/SuperInstance/cargo-line-tycoon" target="_blank">GitHub</a> · 
+  <a href="/">← Back to root</a>
+</footer>
+
+<script>
+const API = 'https://quilt-distributed.casey-digennaro.workers.dev';
+
+async function api(path, opts = {}) {
+  const r = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+  });
+  return r.json();
+}
+
+async function refreshAll() {
+  await refreshStack();
+  await getCanonStats();
+}
+
+async function refreshStack() {
+  try {
+    const h = await api('/api/health');
+    document.getElementById('stack-status').innerHTML = `
+      <div class="stack-status">
+        ${pill(h.stack.kv, 'KV')}
+        ${pill(h.stack.d1, 'D1')}
+        ${pill(h.stack.r2, 'R2')}
+        ${pill(h.stack.vectorize, 'Vectorize')}
+        ${pill(h.stack.durableObjects, 'Durable Obj')}
+        ${pill(h.stack.ai, 'Workers AI')}
+      </div>
+      <small style="color: #888;">v${h.version} · canary ${h.canary}</small>
+    `;
+  } catch (e) {
+    document.getElementById('stack-status').innerHTML = `<div style="color:#f44336">Error: ${e.message}</div>`;
+  }
+}
+
+function pill(on, name) {
+  return `<span class="stack-pill ${on ? 'stack-on' : 'stack-off'}">${name}</span>`;
+}
+
+async function submitCell() {
+  const id = document.getElementById('cell-id').value;
+  const type = document.getElementById('cell-type').value;
+  const content = document.getElementById('cell-content').value;
+  const r = await api('/api/cell', {
+    method: 'POST',
+    body: JSON.stringify({ id, type, content, state: { text: content } }),
+  });
+  document.getElementById('cell-output').textContent = JSON.stringify(r, null, 2);
+  await getCanonStats();
+}
+
+async function listCells() {
+  const r = await api('/api/cells?limit=20');
+  document.getElementById('cell-output').textContent = JSON.stringify(r, null, 2);
+}
+
+async function searchJEV() {
+  const q = document.getElementById('search-query').value;
+  const r = await api('/api/jev/search', {
+    method: 'POST',
+    body: JSON.stringify({ query: q, topK: 5 }),
+  });
+  document.getElementById('search-output').textContent = JSON.stringify(r, null, 2);
+}
+
+async function infer() {
+  const prompt = document.getElementById('infer-prompt').value;
+  const r = await api('/api/infer', {
+    method: 'POST',
+    body: JSON.stringify({ prompt, max_tokens: 150 }),
+  });
+  document.getElementById('infer-output').textContent = JSON.stringify(r, null, 2);
+}
+
+async function embed() {
+  const text = document.getElementById('infer-prompt').value;
+  const r = await api('/api/embed', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+  document.getElementById('infer-output').textContent = `Embedding (${r.embedding?.length || 0} dims):\n${r.embedding?.slice(0,10).map(v=>v.toFixed(4)).join(', ')}...`;
+}
+
+async function registerNode() {
+  const name = document.getElementById('node-name').value;
+  const hw = document.getElementById('node-hw').value;
+  const r = await api('/api/node/register', {
+    method: 'POST',
+    body: JSON.stringify({ name, hardware: JSON.parse(hw) }),
+  });
+  document.getElementById('node-output').textContent = JSON.stringify(r, null, 2);
+  await getCanonStats();
+}
+
+async function listNodes() {
+  const r = await api('/api/nodes');
+  document.getElementById('node-output').textContent = JSON.stringify(r, null, 2);
+}
+
+async function gardenVisit() {
+  const visitorId = document.getElementById('visitor-id').value;
+  const articleId = document.getElementById('article-id').value;
+  const text = document.getElementById('garden-text').value;
+  const r = await api('/api/garden/visit', {
+    method: 'POST',
+    body: JSON.stringify({ visitorId, articleId, text }),
+  });
+  document.getElementById('garden-output').textContent = JSON.stringify(r, null, 2);
+  await getCanonStats();
+}
+
+async function getGardenState() {
+  const r = await api('/api/garden/state');
+  document.getElementById('garden-output').textContent = JSON.stringify(r, null, 2);
+}
+
+async function getLeaderboard() {
+  const r = await api('/api/leaderboard');
+  document.getElementById('leader-output').textContent = JSON.stringify(r, null, 2);
+}
+
+async function getCanonStats() {
+  const r = await api('/api/canon/stats');
+  if (r.stats) {
+    document.getElementById('stat-cells').textContent = r.stats.cells;
+    document.getElementById('stat-witnesses').textContent = r.stats.witnesses;
+    document.getElementById('stat-nodes').textContent = r.stats.nodes;
+    document.getElementById('stat-submissions').textContent = r.stats.submissions;
+  }
+}
+
+// Initial load
+refreshAll();
+
+// Auto-refresh every 30 seconds
+setInterval(refreshAll, 30000);
+</script>
+
+</body>
+</html>

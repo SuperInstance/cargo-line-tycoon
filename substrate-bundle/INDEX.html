@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>cargo-line-tycoon — landing</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    line-height: 1.6;
+  }
+  .container { max-width: 900px; margin: 0 auto; padding: 2em; }
+  h1 { color: #fbbf24; font-size: 2.2em; margin-bottom: 0.3em; }
+  h2 { color: #fbbf24; margin-top: 1.5em; margin-bottom: 0.5em; border-bottom: 1px solid #334155; padding-bottom: 0.3em; }
+  h3 { color: #60a5fa; margin-top: 1em; }
+  p { margin-bottom: 1em; }
+  a { color: #fbbf24; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .hero { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding: 2em; border-radius: 8px; margin-bottom: 2em; }
+  .badge { display: inline-block; background: #1e40af; color: white; padding: 0.2em 0.6em; border-radius: 4px; font-size: 0.85em; margin-right: 0.5em; margin-bottom: 0.3em; }
+  .badge.green { background: #15803d; }
+  .badge.amber { background: #b45309; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1em; margin: 1em 0; }
+  .card { background: #1e293b; padding: 1.2em; border-radius: 8px; border-left: 4px solid #fbbf24; }
+  .card.alt { border-left-color: #60a5fa; }
+  .card.alt2 { border-left-color: #f472b6; }
+  .card.alt3 { border-left-color: #a78bfa; }
+  .card h3 { margin-bottom: 0.5em; color: #fbbf24; }
+  .card.alt h3 { color: #60a5fa; }
+  .card.alt2 h3 { color: #f472b6; }
+  .card.alt3 h3 { color: #a78bfa; }
+  pre { background: #0f172a; padding: 0.8em; border-radius: 6px; overflow-x: auto; font-size: 0.85em; }
+  code { background: #0f172a; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+  footer { margin-top: 3em; padding-top: 1em; border-top: 1px solid #334155; color: #94a3b8; font-size: 0.9em; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<div class="hero">
+  <h1>cargo-line-tycoon</h1>
+  <p style="color: #94a3b8; font-size: 1.1em;">A polyformal Quilt-native game + canonical substrate. 7 locales, 4 framings, 11 opcodes, byte-exact canary across 4 languages.</p>
+  <p>
+    <span class="badge">v0.5.0</span><span class="badge">11 browser apps</span>
+    <span class="badge green">8 stress tests pass</span>
+    <span class="badge green">1.2M obs stress tested</span>
+    <span class="badge amber">100% provenance-conflict</span>
+  </p>
+  <p>
+    <a href="https://github.com/SuperInstance/cargo-line-tycoon">→ GitHub</a> · 
+    <a href="https://canon-api-worker.casey-digennaro.workers.dev">→ Live Worker</a> · 
+    <a href="README.md">→ README</a>
+  </p>
+</div>
+
+
+<!-- ═══════════ NEW FEATURES (added Sept 22 evening) ═══════════ -->
+
+<h2 style="margin-top: 0;">🚀 What's New (Sept 22 evening)</h2>
+<div class="grid">
+  
+  <div class="card" style="border-left-color: #15803d;">
+    <h3>🌐 Browser-Native Substrate</h3>
+    <p>Run the substrate entirely in your browser. 6 apps. No server required. Your data stays local.</p>
+    <p><a href="https://quilt-e4m.pages.dev/">→ Open Browser Substrate</a></p>
+  </div>
+  
+  <div class="card alt" style="border-left-color: #15803d;">
+    <h3>🎮 Cargo Line Tycoon (live)</h3>
+    <p>Play the game in any of 7 locales. Animated ships, AI agents, witness-log mechanics. Now with multiplayer hooks.</p>
+    <p><a href="../apps/classroom-en/public/index.html">→ Play in English</a></p>
+  </div>
+  
+  <div class="card alt2" style="border-left-color: #15803d;">
+    <h3>💻 Distributed Training Dashboard</h3>
+    <p>Enable your GPU (RTX 4050, etc.) and CPU. Train models overnight on your machine. Submit results in the morning. Keep or share.</p>
+    <p><a href="../browser-deploy/distributed-training.html">→ Open Dashboard</a></p>
+  </div>
+  
+  <div class="card alt3" style="border-left-color: #15803d;">
+    <h3>🌊 IoT Node Browser</h3>
+    <p>View the substrate as projected across IoT nodes. Each node is a cell. The quilt spans devices.</p>
+    <p><a href="../browser-deploy/iot-nodes.html">→ View IoT Network</a></p>
+  </div>
+  
+</div>
+
+<!-- ═══════════ Hardware-Enabled Training ═══════════ -->
+
+<h2>💻 Hardware-Enabled Training</h2>
+<p>You can leave your computer on the Quilt page. Train models overnight on your hardware. Submit results in the morning.</p>
+<div class="grid">
+  <div class="card">
+    <h3>🖥️ GPU Mode (WebGPU)</h3>
+    <p>Use your NVIDIA RTX 4050 (or any WebGPU-compatible GPU). The substrate runs training compute shaders directly on your GPU.</p>
+    <p>WebGPU compute shaders for FNV-1a hash, JEV cosine similarity, and gradient descent. <a href="../browser-deploy/substrate-gpu.html">→ WebGPU Demo</a></p>
+  </div>
+  
+  <div class="card alt">
+    <h3>🧠 NPU / ML Mode (WebNN)</h3>
+    <p>Hardware-accelerated ML. Apple Neural Engine on Macs, DirectML on Windows, NNAPI on Android.</p>
+    <p>WebNN graph builder for MatMul, MLP, Conv. <a href="../browser-deploy/substrate-webnn.html">→ WebNN Demo</a></p>
+  </div>
+  
+  <div class="card alt2">
+    <h3>⚡ CPU Mode (WASM + Workers)</h3>
+    <p>Multi-threaded CPU compute. Use all cores of your Ryzen 9 HX. WASM kernels for heavy compute.</p>
+    <p>Always works as fallback. <a href="../browser-deploy/substrate-ml.html">→ CPU Demo</a></p>
+  </div>
+  
+  <div class="card alt3">
+    <h3>📊 Schedule Overnight</h3>
+    <p>Set training schedule. Sleep. Wake up to a trained model. The Quilt keeps it if you like it.</p>
+    <p><a href="../browser-deploy/distributed-training.html">→ Open Scheduler</a></p>
+  </div>
+</div>
+
+<!-- ═══════════ Multi-language UI ═══════════ -->
+
+<h2>🌍 Available in 7 Languages</h2>
+<p>The browser substrate UI is available in all 7 locales. Same substrate, different pedagogy.</p>
+<div class="grid">
+  <div class="card">
+    <h3>🇬🇧 English (Socratic)</h3>
+    <p>Default. Socratic pedagogy: ask, examine, refine.</p>
+    <p><a href="../browser-deploy/i18n/en.html">→ English UI</a></p>
+  </div>
+  <div class="card alt">
+    <h3>🇨🇳 中文 (Confucian)</h3>
+    <p>六艺 (Six Arts) framing. Reciprocal teacher/student roles.</p>
+    <p><a href="../browser-deploy/i18n/zh.html">→ 中文 UI</a></p>
+  </div>
+  <div class="card alt2">
+    <h3>🇵🇹 Português (Ubuntu)</h3>
+    <p>"Eu sou porque nós somos" — three-witness pedagogy.</p>
+    <p><a href="../browser-deploy/i18n/pt.html">→ Português UI</a></p>
+  </div>
+  <div class="card alt3">
+    <h3>🇪🇸 Español</h3>
+    <p>Socratic framing in Spanish. Mercado abierto pedagogy.</p>
+    <p><a href="../browser-deploy/i18n/es.html">→ Español UI</a></p>
+  </div>
+  <div class="card">
+    <h3>🇯🇵 日本語 (Whakaako)</h3>
+    <p>Reciprocal exchange. Bidirectional agent↔agent routes.</p>
+    <p><a href="../browser-deploy/i18n/ja.html">→ 日本語 UI</a></p>
+  </div>
+  <div class="card alt">
+    <h3>🇸🇦 العربية (Suez corridor)</h3>
+    <p>MENA Mediterranean testimony-based commerce. Witness requirements scale 2→3→5 by tier.</p>
+    <p><a href="../browser-deploy/i18n/ar.html">→ العربية UI</a></p>
+  </div>
+  <div class="card alt2">
+    <h3>🇻🇳 Tiếng Việt</h3>
+    <p>Âm-dương dialectical pedagogy. Yin-yang witness pairs.</p>
+    <p><a href="../browser-deploy/i18n/vi.html">→ Tiếng Việt UI</a></p>
+  </div>
+</div>
+
+
+<h2>What is this?</h2>
+<p>cargo-line-tycoon is a polyformal (many-languages, many-locales) game where every operation is an opcode in a canonical 11-opcode algebra, every state change is hash-chained in a witness-log, and every locale teaches the same cell-graph through its own pedagogical lens.</p>
+
+<p>The substrate defends against memory-poisoning attacks at both layers (storage witness-log + execution Memory Sandbox), and beats FluctlightDB's 18% provenance-conflict with 100% top-1 accuracy under shared-brain conditions.</p>
+
+<h2>Try it</h2>
+<div class="grid">
+  <div class="card">
+    <h3>🚢 The Game (English)</h3>
+    <p>Open <a href="../apps/classroom-en/public/index.html">classroom-en</a> in your browser. Animated ship on a North Atlantic map. Three agents (Socratic framing) who ask questions about your trade routes.</p>
+    <p><a href="../apps/classroom-en/public/index.html">→ Open classroom-en</a></p>
+  </div>
+  <div class="card alt">
+    <h3>🕌 Arabic (Suez corridor)</h3>
+    <p>Open <code>locales/ar/canon/ports.json</code> — 8 ports from Port Said to Doha. Pedagogy centered on testimony-based commerce (every transaction needs 2-5 witnesses).</p>
+  </div>
+  <div class="card alt2">
+    <h3>⛩️ Japanese (Whakaako)</h3>
+    <p>Open <code>locales/ja/apps/classroom-ja.js</code> — 8 ports (Yokohama, Kobe, Nagasaki, Osaka, Tokyo, Shimonoseki, Hakata, Niigata). Bidirectional agent↔agent routes (54 active).</p>
+  </div>
+  <div class="card alt3">
+    <h3>🌀 Subtitles</h3>
+    <p>Other locales: <a href="../locales/zh/">zh</a> (Confucian), <a href="../locales/pt/">pt</a> (Ubuntu), <a href="../locales/es/">es</a>, <a href="../locales/vi/">vi</a> (Vietnamese dialectic).</p>
+  </div>
+</div>
+
+<h2>The science</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Provenance-conflict</h3>
+    <p>100% top-1 vs FluctlightDB's 18% under shared-brain conditions. The substrate's prev_hash chains encode temporal order intrinsically.</p>
+    <p><a href="https://arxiv.org/abs/2608.12365">arXiv 2608.12365</a> (FluctlightDB baseline)</p>
+  </div>
+  <div class="card alt">
+    <h3>Memory Sandbox</h3>
+    <p>22/22 stress tests pass. 6 Leong injection patterns detected. 5 authority classes scope correctly. Cross-port TS+Python parity.</p>
+    <p><a href="https://arxiv.org/abs/2605.08442">arXiv 2605.08442</a> (Leong baseline)</p>
+  </div>
+  <div class="card alt2">
+    <h3>Wavefunction JEV</h3>
+    <p>Constructive/destructive interference ratio 1.23 — the canon reinforces itself 25% more than it cancels. The substrate's coherence as a measurable number.</p>
+    <p><a href="../docs/VISUAL_INDEX.md">VISUAL_INDEX sections 10-13</a></p>
+  </div>
+  <div class="card alt3">
+    <h3>Task Pruning</h3>
+    <p>1,270 cells → 231 cells (5.5× compression) at 100% accuracy. The irreducible core for a task IS the task code.</p>
+    <p><a href="../research/task_pruning/cross_task_transfer.py">cross_task_transfer.py</a></p>
+  </div>
+</div>
+
+<h2>The polyformalism canary</h2>
+<pre><code>const sub = require('@superinstance/cargo-line-tycoon-substrate');
+
+// All 4 ports produce the same hash for the same input:
+const fnv1a64 = sub.fnv1a64;
+console.log(fnv1a64('café Δ 日本語').toString(16).padStart(16, '0'));
+// → 024a555471370b18d (in TypeScript, Rust, Python, C99)
+
+console.log(sub.FLEET_CANARY_HASH);  // → 0x024a555471370b18d
+</code></pre>
+
+<h2>Quickstart</h2>
+<pre><code># Install
+npm install @superinstance/cargo-line-tycoon-substrate
+
+# Use the 11 opcodes
+const { ATTEST, BIND, LINK, EFFECT, VIEW, TICK,
+        DELEGATE, CONTEST, MERGER, REVOKE, WITHDRAW,
+        FLEET_CANARY_HASH } = require('@superinstance/cargo-line-tycoon-substrate');
+
+console.log('Canary:', FLEET_CANARY_HASH);  // 0x024a555471370b18d
+
+# Or run the stress tests
+git clone https://github.com/SuperInstance/cargo-line-tycoon
+cd cargo-line-tycoon
+node tests/stress/01_fnv1a64_fuzz.js  # 29/29 byte-exact across ports
+node tests/stress/07_memory_sandbox.js  # 22/22 sandbox tests
+node tests/stress/08_provenance_conflict.js  # 100% vs FluctlightDB 18%
+</code></pre>
+
+<h2>Documentation</h2>
+<ul style="margin: 1em 0 1em 2em;">
+  <li><a href="README.md">README.md</a> — the canonical entry point</li>
+  <li><a href="VISUAL_INDEX.md">VISUAL_INDEX.md</a> — 13 visual sections with images</li>
+  <li><a href="SUBSTRATE_AS_BRUSH.md">SUBSTRATE_AS_BRUSH.md</a> — long-form post for non-canon readers</li>
+  <li><a href="SUBSTRATE_FOUNDATION.md">SUBSTRATE_FOUNDATION.md</a> — what the substrate is</li>
+  <li><a href="THREAT_MODEL.md">THREAT_MODEL.md</a> — what substrate defends + what it doesn't</li>
+  <li><a href="JEV_AS_DIRECTOR.md">JEV_AS_DIRECTOR.md</a> — JEV oracle + authority boundaries</li>
+  <li><a href="DIALECTIC_IN_11_OPCODES.md">DIALECTIC_IN_11_OPCODES.md</a> — pedagogical spine</li>
+  <li><a href="POLYFORMALISM.md">POLYFORMALISM.md</a> — the polyformalism doctrine</li>
+  <li><a href="SESSION_SUMMARY_2026-09-22.md">SESSION_SUMMARY_2026-09-22.md</a> — what we shipped</li>
+</ul>
+
+<h2>The research</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Wavefunction JEV</h3>
+    <p><code>research/wavefunction_jev/</code></p>
+  </div>
+  <div class="card alt">
+    <h3>Echogram</h3>
+    <p><code>research/echogram/</code></p>
+  </div>
+  <div class="card alt2">
+    <h3>Task Pruning</h3>
+    <p><code>research/task_pruning/</code></p>
+  </div>
+  <div class="card alt3">
+    <h3>JEPA Tutor</h3>
+    <p><code>research/jepa_tutor/</code></p>
+  </div>
+  <div class="card">
+    <h3>Resonance</h3>
+    <p><code>research/resonance/</code></p>
+  </div>
+  <div class="card alt">
+    <h3>OpenMAIC Compat</h3>
+    <p><code>openmaic_compat/</code></p>
+  </div>
+</div>
+
+<h2>Published versions</h2>
+<pre><code>npm:    @superinstance/cargo-line-tycoon-substrate@0.2.0
+crates.io: cargo-line-tycoon-substrate@0.2.0
+Worker:    https://canon-api-worker.casey-digennaro.workers.dev
+GitHub:    github.com/SuperInstance/cargo-line-tycoon v0.5.0
+            commit 61602cd
+</code></pre>
+
+<h2>The narrative</h2>
+<p>Four threads, one substrate:</p>
+<ol style="margin-left: 2em;">
+  <li><strong>Defense</strong> — Memory Sandbox at execution layer (Leong 2605.08442)</li>
+  <li><strong>Truth</strong> — 100% provenance-conflict (FluctlightDB 2608.12365)</li>
+  <li><strong>Architecture</strong> — wavefunction JEV + task pruning (LEVI 2605.09764)</li>
+  <li><strong>Growth</strong> — JEPA tutor that learns canonicity (LeCun 2503.18808)</li>
+</ol>
+
+<p>The OpenAI team cracked Navier-Stokes (Clay Millennium problem) by ML-filtering classical solver outputs. We do the same for software: witness-log = classical solver, JEPA tutor = ML filter, canonicity = smoothness.</p>
+
+<footer>
+  <p>cargo-line-tycoon · polyformal Quilt-native game + canonical substrate · MIT · <a href="https://github.com/SuperInstance/cargo-line-tycoon">GitHub</a></p>
+</footer>
+
+</div>
+
+</body>
+</html>
+
+<!-- (Stats updated Sept 22 evening) -->

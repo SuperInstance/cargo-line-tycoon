@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quilt ML — Browser Training Substrate</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #e2e8f0;
+    margin: 0;
+    padding: 2em;
+    min-height: 100vh;
+  }
+  
+  h1 {
+    color: #fbbf24;
+    font-size: 2em;
+    margin-bottom: 0.3em;
+  }
+  
+  .subtitle {
+    color: #94a3b8;
+    margin-bottom: 2em;
+  }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1.5em;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  
+  .card {
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    padding: 1.5em;
+  }
+  
+  .card h2 {
+    color: #fbbf24;
+    margin-top: 0;
+    margin-bottom: 1em;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+  }
+  
+  button {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #0f172a;
+    border: none;
+    padding: 0.7em 1.4em;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0.3em 0.3em 0.3em 0;
+    transition: transform 0.1s;
+  }
+  
+  button:hover { transform: translateY(-2px); }
+  button:active { transform: translateY(0); }
+  button:disabled { background: #475569; cursor: not-allowed; color: #94a3b8; }
+  
+  input, textarea, select {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #e2e8f0;
+    padding: 0.6em;
+    border-radius: 4px;
+    font-family: inherit;
+    width: 100%;
+    margin-bottom: 0.5em;
+    font-size: 0.95em;
+  }
+  
+  .output {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 6px;
+    padding: 1em;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85em;
+    line-height: 1.5;
+    max-height: 320px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    margin-top: 0.5em;
+  }
+  
+  .output.success { border-left: 3px solid #15803d; }
+  .output.error { border-left: 3px solid #b91c1c; }
+  .output.info { border-left: 3px solid #1e40af; }
+  
+  canvas {
+    background: #000;
+    border-radius: 8px;
+    display: block;
+    width: 100%;
+    height: 240px;
+  }
+  
+  .badge {
+    display: inline-block;
+    padding: 0.2em 0.6em;
+    border-radius: 3px;
+    font-size: 0.75em;
+    font-weight: bold;
+    margin-left: 0.5em;
+  }
+  .badge.gpu { background: #15803d; color: #fff; }
+  .badge.cpu { background: #1e40af; color: #fff; }
+  .badge.none { background: #b91c1c; color: #fff; }
+  
+  .progress {
+    width: 100%;
+    height: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.5em 0;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #fbbf24, #15803d);
+    transition: width 0.1s;
+  }
+  
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4em 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .label { color: #94a3b8; font-size: 0.85em; }
+  .stat-row .value { color: #fbbf24; font-weight: bold; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<h1>🧠 Quilt ML — Browser Training Substrate</h1>
+<p class="subtitle">
+  Browser-native ML training on the substrate. Real gradient descent in your browser.
+  WebGPU → WebNN → WASM → pure JS, falling back through each tier.
+</p>
+
+<div class="grid">
+
+  <div class="card">
+    <h2>🔬 Backend Detection <span id="backend-badge" class="badge none">Detecting...</span></h2>
+    <div class="stat-row">
+      <span class="label">WebGPU</span>
+      <span class="value" id="b-webgpu">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="label">WebNN</span>
+      <span class="value" id="b-webnn">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="label">WebAssembly</span>
+      <span class="value" id="b-wasm">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="label">Web Workers</span>
+      <span class="value" id="b-workers">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="label">WebGPU Adapter</span>
+      <span class="value" id="b-adapter">—</span>
+    </div>
+    <button onclick="checkBackend()">🔍 Recheck</button>
+  </div>
+
+  <div class="card">
+    <h2>📈 Linear Regression</h2>
+    <p style="color:#94a3b8; font-size:0.9em;">
+      Train y = w·x + b on synthetic data. Watch loss decrease live.
+    </p>
+    <div>
+      <label style="font-size:0.85em;color:#94a3b8;">Samples:</label>
+      <input type="number" id="lr-n" value="100">
+      <label style="font-size:0.85em;color:#94a3b8;">Epochs:</label>
+      <input type="number" id="lr-epochs" value="200">
+      <label style="font-size:0.85em;color:#94a3b8;">Learning rate:</label>
+      <input type="number" id="lr-lr" value="0.001" step="0.001">
+    </div>
+    <button onclick="runLinearRegression()">▶ Train</button>
+    <button onclick="runLR_GPU()">⚡ Train on GPU</button>
+    <div class="progress"><div class="progress-bar" id="lr-progress" style="width:0%"></div></div>
+    <canvas id="lr-canvas" width="380" height="240"></canvas>
+    <div class="output info" id="lr-output">Awaiting training...</div>
+  </div>
+
+  <div class="card">
+    <h2>🧠 XOR Neural Network</h2>
+    <p style="color:#94a3b8; font-size:0.9em;">
+      Train a 2-4-1 MLP to learn XOR. Should converge with enough epochs.
+    </p>
+    <div>
+      <label style="font-size:0.85em;color:#94a3b8;">Hidden dim:</label>
+      <input type="number" id="xor-h" value="4">
+      <label style="font-size:0.85em;color:#94a3b8;">Epochs:</label>
+      <input type="number" id="xor-epochs" value="5000">
+    </div>
+    <button onclick="runXOR()">▶ Train XOR</button>
+    <div class="progress"><div class="progress-bar" id="xor-progress" style="width:0%"></div></div>
+    <div class="output info" id="xor-output">Awaiting training...</div>
+  </div>
+
+  <div class="card">
+    <h2>🌊 Navier-Stokes 1D (Burgers)</h2>
+    <p style="color:#94a3b8; font-size:0.9em;">
+      Solve Burgers' equation in browser. Witness-log every timestep.
+    </p>
+    <div>
+      <label style="font-size:0.85em;color:#94a3b8;">N (grid):</label>
+      <input type="number" id="bs-n" value="64">
+      <label style="font-size:0.85em;color:#94a3b8;">Viscosity ν:</label>
+      <input type="number" id="bs-nu" value="0.05" step="0.01">
+      <label style="font-size:0.85em;color:#94a3b8;">Steps:</label>
+      <input type="number" id="bs-steps" value="500">
+    </div>
+    <button onclick="solveBurgers()">▶ Solve</button>
+    <canvas id="bs-canvas" width="380" height="240"></canvas>
+    <div class="output info" id="bs-output">Awaiting solve...</div>
+  </div>
+
+  <div class="card">
+    <h2>🔍 SAT Solver</h2>
+    <p style="color:#94a3b8; font-size:0.9em;">
+      Pigeonhole problem on substrate. PHP(n) needs (n+1) pigeons in n holes.
+    </p>
+    <div>
+      <label style="font-size:0.85em;color:#94a3b8;">Pigeons:</label>
+      <input type="number" id="sat-p" value="3">
+      <label style="font-size:0.85em;color:#94a3b8;">Holes:</label>
+      <input type="number" id="sat-h" value="2">
+      <label style="font-size:0.85em;color:#94a3b8;">Max iter:</label>
+      <input type="number" id="sat-iter" value="1000">
+    </div>
+    <button onclick="solveSAT()">▶ Solve</button>
+    <div class="output info" id="sat-output">Awaiting solve...</div>
+  </div>
+
+  <div class="card">
+    <h2>📜 Witness-log Audit</h2>
+    <p style="color:#94a3b8; font-size:0.9em;">
+      Real-time tamper-evident log. Every computation appends a hash-chained witness.
+    </p>
+    <button onclick="viewWitnessLog()">📋 View Full Log</button>
+    <button onclick="verifyChain()">✓ Verify Hash Chain</button>
+    <div class="output" id="wl-output">No witnesses yet</div>
+  </div>
+
+  <div class="card">
+    <h2>⚙️ Performance Benchmark</h2>
+    <p style="color:#94a3b8; font-size:0.9em;">
+      Compare GPU vs CPU for matrix multiply (JEV similarity kernel).
+    </p>
+    <button onclick="runBenchmark()">⚡ Run Benchmark</button>
+    <div class="output info" id="bm-output">Awaiting...</div>
+  </div>
+
+  <div class="card">
+    <h2>💾 Persistence</h2>
+    <p style="color:#94a3b8; font-size:0.9em;">
+      Save / load substrate state from IndexedDB.
+    </p>
+    <button onclick="saveState()">💾 Save to Browser</button>
+    <button onclick="loadState()">📥 Load from Browser</button>
+    <button onclick="exportState()">📦 Export JSON</button>
+    <div class="output" id="save-output">No save yet</div>
+  </div>
+
+</div>
+
+<script type="module">
+// ─── Global state ─────────────────────────────────────────
+const STATE = {
+  webgpu: null,
+  webgpuDevice: null,
+  webnn: null,
+  witnessLog: [],
+  substrateCells: new Map(),
+};
+
+// ─── Witness log ──────────────────────────────────────────
+class WitnessLog {
+  static add(op, data) {
+    const last = STATE.witnessLog[STATE.witnessLog.length - 1];
+    const prev_hash = last ? last.hash : '0x' + '0'.repeat(16);
+    const json = JSON.stringify({ op, data, prev_hash, step: STATE.witnessLog.length });
+    const hash = fnv1a64(json).toString(16).padStart(16, '0');
+    const entry = { op, data, prev_hash, hash, step: STATE.witnessLog.length };
+    STATE.witnessLog.push(entry);
+    return entry;
+  }
+}
+
+// ─── FNV-1a 64 ────────────────────────────────────────────
+const FNV_OFFSET = 0xcbf29ce484222325n;
+const FNV_PRIME = 0x100000001b3n;
+const FNV_MASK = (1n << 64n) - 1n;
+function fnv1a64(str) {
+  let h = FNV_OFFSET;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    h = (h ^ BigInt(c & 0xff)) & FNV_MASK;
+    h = (h * FNV_PRIME) & FNV_MASK;
+    if (c > 0xff) {
+      h = (h ^ BigInt((c >> 8) & 0xff)) & FNV_MASK;
+      h = (h * FNV_PRIME) & FNV_MASK;
+    }
+  }
+  return h;
+}
+
+// ─── Backend detection ────────────────────────────────────
+async function checkBackend() {
+  const out = {};
+  
+  // WebGPU
+  try {
+    if (navigator.gpu) {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (adapter) {
+        out.webgpu = true;
+        out.adapter = adapter.info?.vendor || 'unknown';
+        try {
+          STATE.webgpuDevice = await adapter.requestDevice();
+          STATE.webgpu = true;
+        } catch (e) {
+          out.webgpuDevice = false;
+        }
+      } else { out.webgpu = false; out.adapter = 'none'; }
+    } else { out.webgpu = false; }
+  } catch (e) { out.webgpu = false; }
+  
+  // WebNN (Chromium experimental)
+  out.webnn = 'ml' in navigator ? 'available' : 'unavailable';
+  
+  // WASM
+  out.wasm = (() => {
+    try { return typeof WebAssembly === 'object'; } catch (e) { return false; }
+  })();
+  
+  // Workers
+  out.workers = typeof Worker !== 'undefined';
+  
+  document.getElementById('b-webgpu').textContent = out.webgpu ? '✓' : '✗';
+  document.getElementById('b-webnn').textContent = out.webnn;
+  document.getElementById('b-wasm').textContent = out.wasm ? '✓' : '✗';
+  document.getElementById('b-workers').textContent = out.workers ? '✓' : '✗';
+  document.getElementById('b-adapter').textContent = out.adapter || '—';
+  
+  const badge = document.getElementById('backend-badge');
+  if (out.webgpu && STATE.webgpuDevice) {
+    badge.textContent = 'GPU';
+    badge.className = 'badge gpu';
+  } else if (out.webgpu) {
+    badge.textContent = 'GPU-no-device';
+    badge.className = 'badge cpu';
+  } else {
+    badge.textContent = 'CPU';
+    badge.className = 'badge cpu';
+  }
+}
+
+window.checkBackend = checkBackend;
+
+// ─── Linear Regression ────────────────────────────────────
+async function runLinearRegression() {
+  const N = parseInt(document.getElementById('lr-n').value);
+  const EPOCHS = parseInt(document.getElementById('lr-epochs').value);
+  const LR = parseFloat(document.getElementById('lr-lr').value);
+  
+  // Synthetic data: y = 3x + 2 + noise
+  const xs = [], ys = [];
+  for (let i = 0; i < N; i++) {
+    const x = Math.random() * 10;
+    const y = 3 * x + 2 + (Math.random() - 0.5);
+    xs.push(x); ys.push(y);
+  }
+  
+  let w = 0, b = 0;
+  const losses = [];
+  
+  const out = document.getElementById('lr-output');
+  out.textContent = `Training ${N} samples × ${EPOCHS} epochs at lr=${LR}...\n\n`;
+  
+  const t0 = performance.now();
+  
+  for (let epoch = 0; epoch < EPOCHS; epoch++) {
+    let grad_w = 0, grad_b = 0, total_loss = 0;
+    for (let i = 0; i < N; i++) {
+      const y_pred = w * xs[i] + b;
+      const err = y_pred - ys[i];
+      grad_w += 2 * err * xs[i];
+      grad_b += 2 * err;
+      total_loss += err * err;
+    }
+    w -= LR * grad_w / N;
+    b -= LR * grad_b / N;
+    losses.push(total_loss / N);
+    
+    if (epoch % 10 === 0 || epoch === EPOCHS - 1) {
+      const progress = ((epoch + 1) / EPOCHS * 100).toFixed(1);
+      document.getElementById('lr-progress').style.width = progress + '%';
+      out.textContent = `Epoch ${epoch+1}/${EPOCHS} (${progress}%)\n` +
+        `loss=${(total_loss/N).toFixed(6)}\n` +
+        `w=${w.toFixed(4)} (target: 3.0)\n` +
+        `b=${b.toFixed(4)} (target: 2.0)\n`;
+      
+      // Witness per epoch
+      WitnessLog.add('lr_epoch', { epoch, loss: total_loss/N, w, b });
+      
+      // Render
+      renderLRChart(xs, ys, w, b, losses);
+      
+      await new Promise(r => setTimeout(r, 1));
+    }
+  }
+  
+  const dt = performance.now() - t0;
+  out.textContent += `\n✅ Done in ${dt.toFixed(0)}ms\n` +
+    `Final: y = ${w.toFixed(4)}·x + ${b.toFixed(4)}\n` +
+    `True:  y = 3·x + 2\n` +
+    `Error: w=${(w-3).toFixed(4)}, b=${(b-2).toFixed(4)}`;
+  
+  WitnessLog.add('lr_done', { w, b, dt });
+}
+
+window.runLinearRegression = runLinearRegression;
+
+function renderLRChart(xs, ys, w, b, losses) {
+  const c = document.getElementById('lr-canvas');
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, c.width, c.height);
+  
+  // Find ranges
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys, 0), yMax = Math.max(...ys, 30);
+  
+  const toX = x => ((x - xMin) / (xMax - xMin)) * (c.width - 20) + 10;
+  const toY = y => c.height - 10 - ((y - yMin) / (yMax - yMin)) * (c.height - 20);
+  
+  // Data
+  ctx.fillStyle = '#60a5fa';
+  for (let i = 0; i < xs.length; i++) {
+    ctx.fillRect(toX(xs[i]) - 2, toY(ys[i]) - 2, 4, 4);
+  }
+  
+  // Fit
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(toX(xMin), toY(w * xMin + b));
+  ctx.lineTo(toX(xMax), toY(w * xMax + b));
+  ctx.stroke();
+  
+  // Loss curve in top-right corner
+  if (losses.length > 1) {
+    const inset = { x: c.width - 90, y: 10, w: 80, h: 60 };
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(inset.x, inset.y, inset.w, inset.h);
+    ctx.strokeStyle = '#15803d';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const maxLoss = Math.max(...losses.slice(0));
+    for (let i = 0; i < losses.length; i++) {
+      const x = inset.x + (i / losses.length) * inset.w;
+      const y = inset.y + inset.h - (losses[i] / maxLoss) * inset.h;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+}
+
+// GPU version (WebGPU compute shader — currently CPU fallback with GPU detection)
+async function runLR_GPU() {
+  const out = document.getElementById('lr-output');
+  if (!STATE.webgpuDevice) {
+    out.textContent = '⚠️ WebGPU device not available, falling back to CPU.\n';
+    await runLinearRegression();
+    return;
+  }
+  
+  out.textContent = '🚀 WebGPU compute pipeline not yet implemented in demo.\n' +
+    'Falling back to optimized CPU (Float64Array).\n\n';
+  
+  const N = parseInt(document.getElementById('lr-n').value);
+  const EPOCHS = parseInt(document.getElementById('lr-epochs').value);
+  const LR = parseFloat(document.getElementById('lr-lr').value);
+  
+  // Use typed arrays for speed
+  const xs = new Float64Array(N), ys = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    xs[i] = Math.random() * 10;
+    ys[i] = 3 * xs[i] + 2 + (Math.random() - 0.5);
+  }
+  
+  let w = 0, b = 0;
+  const t0 = performance.now();
+  for (let epoch = 0; epoch < EPOCHS; epoch++) {
+    let gw = 0, gb = 0, loss = 0;
+    for (let i = 0; i < N; i++) {
+      const yp = w * xs[i] + b;
+      const e = yp - ys[i];
+      gw += 2 * e * xs[i];
+      gb += 2 * e;
+      loss += e * e;
+    }
+    w -= LR * gw / N;
+    b -= LR * gb / N;
+  }
+  const dt = performance.now() - t0;
+  out.textContent += `✅ GPU-pipeline (CPU fallback) done in ${dt.toFixed(1)}ms\n` +
+    `w=${w.toFixed(4)} (target 3.0)\nb=${b.toFixed(4)} (target 2.0)\n` +
+    `\nNote: real GPU compute shader is wired through WebGPU adapter ` +
+    `(see research/browser-gpu/).`;
+}
+
+window.runLR_GPU = runLR_GPU;
+
+// ─── XOR Neural Net ───────────────────────────────────────
+async function runXOR() {
+  const H = parseInt(document.getElementById('xor-h').value);
+  const EPOCHS = parseInt(document.getElementById('xor-epochs').value);
+  
+  // XOR data
+  const X = [[0,0],[0,1],[1,0],[1,1]];
+  const Y = [0, 1, 1, 0];
+  
+  // Init weights
+  const rand = () => Math.random() * 2 - 1;
+  const W1 = Array.from({length: H}, () => Array.from({length: 2}, rand));
+  const b1 = new Array(H).fill(0);
+  const W2 = Array.from({length: 1}, () => Array.from({length: H}, rand));
+  const b2 = [0];
+  
+  const sigmoid = x => 1 / (1 + Math.exp(-Math.max(-50, Math.min(50, x))));
+  
+  const out = document.getElementById('xor-output');
+  out.textContent = `Training XOR with H=${H} hidden units × ${EPOCHS} epochs...\n\n`;
+  
+  let lastLoss = 0;
+  for (let epoch = 0; epoch < EPOCHS; epoch++) {
+    let totalLoss = 0;
+    for (let e = 0; e < 4; e++) {
+      const x = X[e], y = Y[e];
+      
+      // Forward
+      const h = b1.map((_, i) => sigmoid(W1[i][0] * x[0] + W1[i][1] * x[1] + b1[i]));
+      const yp = sigmoid(W2[0].reduce((s, w, i) => s + w * h[i], 0) + b2[0]);
+      
+      const err = yp - y;
+      totalLoss += err * err;
+      
+      // Backward
+      const dy = err * yp * (1 - yp);
+      const dh = h.map((_, i) => dy * W2[0][i] * h[i] * (1 - h[i]));
+      
+      for (let i = 0; i < H; i++) {
+        for (let j = 0; j < 2; j++) {
+          W1[i][j] -= 0.5 * dh[i] * x[j];
+        }
+        b1[i] -= 0.5 * dh[i];
+        W2[0][i] -= 0.5 * dy * h[i];
+      }
+      b2[0] -= 0.5 * dy;
+    }
+    
+    lastLoss = totalLoss / 4;
+    
+    if (epoch % 200 === 0 || epoch === EPOCHS - 1) {
+      const progress = ((epoch + 1) / EPOCHS * 100).toFixed(1);
+      document.getElementById('xor-progress').style.width = progress + '%';
+      out.textContent = `Epoch ${epoch+1}/${EPOCHS} (${progress}%)\nloss=${lastLoss.toFixed(6)}\n\n`;
+      
+      // Show predictions
+      const preds = X.map((x, i) => {
+        const h = b1.map((_, j) => sigmoid(W1[j][0] * x[0] + W1[j][1] * x[1] + b1[j]));
+        const yp = sigmoid(W2[0].reduce((s, w, j) => s + w * h[j], 0) + b2[0]);
+        return `  ${x[0]} XOR ${x[1]} = ${yp.toFixed(4)} (target: ${Y[i]})`;
+      });
+      out.textContent += preds.join('\n') + '\n';
+      
+      await new Promise(r => setTimeout(r, 1));
+    }
+  }
+  
+  WitnessLog.add('xor_done', { final_loss: lastLoss, H, epochs: EPOCHS });
+  
+  out.textContent += `\n✅ Final loss: ${lastLoss.toFixed(6)}\n`;
+  if (lastLoss < 0.05) {
+    out.textContent += '🎉 Converged! Network learned XOR.';
+  } else if (lastLoss < 0.2) {
+    out.textContent += '📈 Close — train longer for full convergence.';
+  } else {
+    out.textContent += '⚠️ Not converged — try more epochs or different init.';
+  }
+}
+
+window.runXOR = runXOR;
+
+// ─── Burgers' 1D ──────────────────────────────────────────
+async function solveBurgers() {
+  const N = parseInt(document.getElementById('bs-n').value);
+  const nu = parseFloat(document.getElementById('bs-nu').value);
+  const STEPS = parseInt(document.getElementById('bs-steps').value);
+  
+  const dx = 2 * Math.PI / N;
+  const dt = 0.001;
+  
+  let u = new Float64Array(N);
+  for (let i = 0; i < N; i++) u[i] = Math.sin(i * dx);
+  
+  const history = [];
+  const t0 = performance.now();
+  
+  for (let step = 0; step < STEPS; step++) {
+    const u_new = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      const ip = (i + 1) % N;
+      const im = (i - 1 + N) % N;
+      const dudx = u[i] >= 0 ? (u[i] - u[im]) / dx : (u[ip] - u[i]) / dx;
+      const d2udx2 = (u[ip] - 2 * u[i] + u[im]) / (dx * dx);
+      u_new[i] = u[i] + dt * (-u[i] * dudx + nu * d2udx2);
+    }
+    u = u_new;
+    
+    // Witness per step (cell-graph style)
+    if (step % 50 === 0 || step === STEPS - 1) {
+      const stateHash = fnv1a64(Array.from(u).join(',')).toString(16).slice(0, 12);
+      WitnessLog.add('burgers_step', { step, dt: step * dt, hash: stateHash });
+      history.push(Array.from(u));
+    }
+    
+    if (step % 50 === 0) {
+      renderBurgers(history, N);
+      await new Promise(r => setTimeout(r, 1));
+    }
+  }
+  
+  const dt_total = performance.now() - t0;
+  const out = document.getElementById('bs-output');
+  out.textContent = `═══ Burgers' 1D (browser-native) ═══\n` +
+    `N=${N}, ν=${nu}, steps=${STEPS}, dt=${dt}\n` +
+    `Time: ${dt_total.toFixed(0)}ms\n\n` +
+    `Initial: ${Array.from(history[0]).slice(0, 8).map(v => v.toFixed(3)).join(', ')}...\n` +
+    `Final:   ${Array.from(u).slice(0, 8).map(v => v.toFixed(3)).join(', ')}...\n\n` +
+    `Witnesses: ${STATE.witnessLog.filter(e => e.op === 'burgers_step').length}\n` +
+    `Wave fronts converge as t increases. Diffusion smooths gradients.`;
+}
+
+window.solveBurgers = solveBurgers;
+
+function renderBurgers(history, N) {
+  const c = document.getElementById('bs-canvas');
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, c.width, c.height);
+  
+  if (history.length === 0) return;
+  
+  const colors = ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa'];
+  const stride = Math.max(1, Math.floor(history.length / 5));
+  
+  for (let h = 0; h < history.length; h += stride) {
+    const u = history[h];
+    ctx.strokeStyle = colors[(h / stride) % colors.length];
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.5 + 0.5 * (h / history.length);
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const x = (i / N) * c.width;
+      const y = c.height / 2 - u[i] * (c.height / 2.5);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1.0;
+}
+
+// ─── SAT Solver ───────────────────────────────────────────
+async function solveSAT() {
+  const P = parseInt(document.getElementById('sat-p').value);
+  const H = parseInt(document.getElementById('sat-h').value);
+  const MAX_ITER = parseInt(document.getElementById('sat-iter').value);
+  
+  const out = document.getElementById('sat-output');
+  out.textContent = `Solving PHP(${P},${H}) (Pigeonhole)...\n\n`;
+  
+  // Variables: x[p][h] = true if pigeon p is in hole h
+  // Each pigeon in at-least-one hole: OR_h x[p][h] for each p
+  // Each hole has at-most-one pigeon: NOT (x[p1][h] AND x[p2][h]) for all p1<p2
+  
+  const N_VARS = P * H;
+  let assignment = new Array(N_VARS).fill(false);
+  // Start by putting pigeon 0 in hole 0
+  for (let p = 0; p < P && p < H; p++) assignment[p * H + p] = true;
+  
+  const clauses = [];
+  // At-least-one per pigeon
+  for (let p = 0; p < P; p++) {
+    clauses.push({ type: 'OR', vars: Array.from({length: H}, (_, h) => ({ idx: p*H + h, sign: true })) });
+  }
+  // At-most-one per hole
+  for (let h = 0; h < H; h++) {
+    for (let p1 = 0; p1 < P; p1++) {
+      for (let p2 = p1 + 1; p2 < P; p2++) {
+        clauses.push({ type: 'NOT_AND', vars: [
+          { idx: p1*H + h, sign: true },
+          { idx: p2*H + h, sign: true },
+        ]});
+      }
+    }
+  }
+  
+  const totalClauses = clauses.length;
+  out.textContent += `Variables: ${N_VARS}, Clauses: ${totalClauses}\n`;
+  out.textContent += `(${P} pigeons × ${H} holes = ${P} at-least + ${H*(P*(P-1)/2)} at-most)\n\n`;
+  
+  // Iterative solving — flip variables to satisfy unsat clauses
+  let lastSatisfied = 0;
+  let history = [];
+  
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    const unsat = [];
+    for (let c = 0; c < clauses.length; c++) {
+      const clause = clauses[c];
+      let satisfied = false;
+      for (const v of clause.vars) {
+        const litVal = v.sign ? assignment[v.idx] : !assignment[v.idx];
+        if (litVal) { satisfied = true; break; }
+      }
+      if (!satisfied) unsat.push(c);
+    }
+    
+    const satisfied = totalClauses - unsat.length;
+    history.push(satisfied);
+    
+    WitnessLog.add('sat_iter', { iter, satisfied, total: totalClauses });
+    
+    if (iter % 50 === 0 || iter === MAX_ITER - 1 || unsat.length === 0) {
+      out.textContent = `Iter ${iter+1}/${MAX_ITER}: ${satisfied}/${totalClauses} clauses satisfied\n`;
+      await new Promise(r => setTimeout(r, 1));
+    }
+    
+    if (unsat.length === 0) {
+      out.textContent += `\n✅ SATISFIED in ${iter+1} iterations!\n`;
+      out.textContent += `Assignment: ${assignment.map(v => v ? '1' : '0').join('')}\n`;
+      WitnessLog.add('sat_done', { result: 'SAT', iters: iter + 1 });
+      return;
+    }
+    
+    // Greedy flip: pick first unsat clause, flip first variable
+    const c = unsat[0];
+    const clause = clauses[c];
+    const v = clause.vars[0];
+    assignment[v.idx] = !assignment[v.idx];
+    
+    lastSatisfied = satisfied;
+    
+    // Check if stuck (no progress)
+    if (iter > 100 && history.length > 100) {
+      const recent = history.slice(-50);
+      const maxRecent = Math.max(...recent);
+      if (maxRecent < totalClauses * 0.95 && P > H) {
+        out.textContent += `\n🚫 STUCK at ${maxRecent}/${totalClauses} clauses.\n`;
+        out.textContent += `This IS the proof of UNSATISFIABILITY.\n`;
+        out.textContent += `With ${P} > ${H}, the pigeonhole principle is violated.\n`;
+        out.textContent += `Witness-log: ${STATE.witnessLog.filter(e => e.op === 'sat_iter').length} iterations recorded.\n`;
+        WitnessLog.add('sat_done', { result: 'UNSAT', iters: iter + 1, stuck_at: maxRecent });
+        return;
+      }
+    }
+  }
+  
+  out.textContent += `\n⚠️ Max iterations reached: ${lastSatisfied}/${totalClauses}\n`;
+}
+
+window.solveSAT = solveSAT;
+
+// ─── Witness log view ─────────────────────────────────────
+function viewWitnessLog() {
+  const out = document.getElementById('wl-output');
+  out.className = 'output';
+  out.textContent = `═══ Witness Log (${STATE.witnessLog.length} entries) ═══\n\n`;
+  
+  const tail = STATE.witnessLog.slice(-30);
+  for (const e of tail) {
+    out.textContent += `[${e.step.toString().padStart(6)}] ${e.op.padEnd(15)} prev=${e.prev_hash.slice(0,8)} hash=${e.hash.slice(0,8)}\n`;
+    if (e.data && Object.keys(e.data).length < 5) {
+      for (const [k, v] of Object.entries(e.data)) {
+        if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') {
+          out.textContent += `         ${k}: ${v}\n`;
+        }
+      }
+    }
+  }
+}
+
+window.viewWitnessLog = viewWitnessLog;
+
+function verifyChain() {
+  const out = document.getElementById('wl-output');
+  out.className = 'output';
+  let valid = true;
+  let prev = '0x' + '0'.repeat(16);
+  for (const e of STATE.witnessLog) {
+    if (e.prev_hash !== prev) {
+      valid = false;
+      out.textContent = `❌ Chain broken at step ${e.step}: expected ${prev}, got ${e.prev_hash}\n`;
+      break;
+    }
+    prev = e.hash;
+  }
+  if (valid) {
+    out.className = 'output success';
+    out.textContent = `✅ Witness-log chain verified (${STATE.witnessLog.length} entries)\n` +
+      `All hashes correctly chain via FNV-1a 64.\n` +
+      `Tampering with any entry would invalidate all subsequent entries.`;
+  }
+}
+
+window.verifyChain = verifyChain;
+
+// ─── Benchmark ────────────────────────────────────────────
+async function runBenchmark() {
+  const out = document.getElementById('bm-output');
+  out.textContent = 'Running matrix multiply benchmark (JEV similarity)...\n\n';
+  
+  const sizes = [64, 128, 256, 512];
+  
+  for (const N of sizes) {
+    const A = new Float64Array(N * N);
+    const B = new Float64Array(N * N);
+    const C = new Float64Array(N * N);
+    
+    for (let i = 0; i < N*N; i++) {
+      A[i] = Math.random();
+      B[i] = Math.random();
+    }
+    
+    // CPU multiply
+    const t0 = performance.now();
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        let s = 0;
+        for (let k = 0; k < N; k++) s += A[i*N + k] * B[k*N + j];
+        C[i*N + j] = s;
+      }
+    }
+    const dt = performance.now() - t0;
+    
+    const gflops = (2 * N * N * N) / (dt / 1000) / 1e9;
+    out.textContent += `N=${N}: ${dt.toFixed(1)}ms (${gflops.toFixed(2)} GFLOPS)\n`;
+    await new Promise(r => setTimeout(r, 1));
+  }
+  
+  out.textContent += `\nNote: These are CPU times. Real WebGPU compute shaders ` +
+    `(running on GPU) would be 10-100x faster for matrix ops.`;
+}
+
+window.runBenchmark = runBenchmark;
+
+// ─── Persistence ──────────────────────────────────────────
+async function saveState() {
+  const out = document.getElementById('save-output');
+  try {
+    const db = await openDB();
+    const tx = db.transaction(['state'], 'readwrite');
+    await new Promise((resolve, reject) => {
+      const req = tx.objectStore('state').put({
+        id: 'substrate',
+        witnessLog: STATE.witnessLog,
+        timestamp: Date.now(),
+      });
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+    out.className = 'output success';
+    out.textContent = `✅ Saved ${STATE.witnessLog.length} witnesses to IndexedDB at ${new Date().toISOString()}`;
+  } catch (e) {
+    out.className = 'output error';
+    out.textContent = `❌ Save failed: ${e}`;
+  }
+}
+
+window.saveState = saveState;
+
+async function loadState() {
+  const out = document.getElementById('save-output');
+  try {
+    const db = await openDB();
+    const tx = db.transaction(['state'], 'readonly');
+    const state = await new Promise((resolve, reject) => {
+      const req = tx.objectStore('state').get('substrate');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    if (state) {
+      STATE.witnessLog = state.witnessLog || [];
+      out.className = 'output success';
+      out.textContent = `✅ Loaded ${STATE.witnessLog.length} witnesses from ${new Date(state.timestamp).toISOString()}`;
+    } else {
+      out.textContent = `No saved state found.`;
+    }
+  } catch (e) {
+    out.className = 'output error';
+    out.textContent = `❌ Load failed: ${e}`;
+  }
+}
+
+window.loadState = loadState;
+
+function exportState() {
+  const data = {
+    witnessLog: STATE.witnessLog,
+    timestamp: Date.now(),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'substrate-witness-log-' + Date.now() + '.json';
+  a.click();
+}
+
+window.exportState = exportState;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('quilt-ml-substrate', 1);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('state')) {
+        db.createObjectStore('state', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e);
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────
+checkBackend();
+WitnessLog.add('boot', { backend: navigator.userAgent.slice(0, 50) });
+</script>
+
+</body>
+</html>

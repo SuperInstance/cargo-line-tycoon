@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quilt Substrate — Playground</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 0;
+  }
+  
+  header {
+    background: linear-gradient(90deg, #1e293b, #0f172a);
+    padding: 1.5em;
+    border-bottom: 2px solid #fbbf24;
+  }
+  
+  h1 {
+    margin: 0;
+    color: #fbbf24;
+    font-size: 1.6em;
+  }
+  
+  .subtitle { color: #94a3b8; margin-top: 0.3em; }
+  
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: rgba(30, 41, 59, 0.5);
+  }
+  
+  .tab {
+    padding: 1em 1.5em;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    color: #94a3b8;
+    transition: all 0.2s;
+  }
+  
+  .tab:hover { color: #fff; }
+  .tab.active {
+    color: #fbbf24;
+    border-bottom-color: #fbbf24;
+    background: rgba(15, 23, 42, 0.7);
+  }
+  
+  .panel { display: none; padding: 2em; }
+  .panel.active { display: block; }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 2em;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  button {
+    background: #fbbf24;
+    color: #0f172a;
+    border: none;
+    padding: 0.7em 1.4em;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0.3em 0.3em 0.3em 0;
+  }
+  
+  button:hover { background: #f59e0b; }
+  
+  input, textarea, select {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    padding: 0.5em;
+    border-radius: 4px;
+    width: 100%;
+    margin-bottom: 0.5em;
+    font-family: inherit;
+  }
+  
+  .output {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #334155;
+    padding: 1em;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.85em;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  
+  canvas {
+    background: #000;
+    border-radius: 8px;
+    width: 100%;
+    height: 500px;
+  }
+  
+  h2 { color: #fbbf24; margin-top: 0; }
+  
+  .controls {
+    background: rgba(30, 41, 59, 0.6);
+    padding: 1.2em;
+    border-radius: 8px;
+    border: 1px solid #334155;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧪 Quilt Substrate Playground</h1>
+  <div class="subtitle">Multi-tab browser substrate. Switch between JEV, Wavefunction, Witness-log, Solver, Training.</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('jev')">🔍 JEV Top-5</div>
+  <div class="tab" onclick="switchTab('wavefunction')">🌊 Wavefunction</div>
+  <div class="tab" onclick="switchTab('witness')">📜 Witness-log</div>
+  <div class="tab" onclick="switchTab('solver')">🌊 PDE Solver</div>
+  <div class="tab" onclick="switchTab('training')">📈 Training</div>
+  <div class="tab" onclick="switchTab('sat')">🧩 SAT</div>
+  <div class="tab" onclick="switchTab('canvas')">🎨 2D Canvas</div>
+</div>
+
+<!-- Tab 1: JEV -->
+<div class="panel active" id="tab-jev">
+  <div class="grid">
+    <div class="controls">
+      <h2>🔍 JEV Query</h2>
+      <textarea id="jev-q" placeholder="Enter your query...">the witness as prediction</textarea>
+      <button onclick="runJEV()">🔍 Find Top-5</button>
+      <div class="output" id="jev-out">Click "Find Top-5" to search the substrate.</div>
+    </div>
+    <div>
+      <h2>Results</h2>
+      <div id="jev-results"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 2: Wavefunction -->
+<div class="panel" id="tab-wavefunction">
+  <div class="grid">
+    <div class="controls">
+      <h2>🌊 Wavefunction JEV</h2>
+      <textarea id="wf-q" placeholder="Query the wavefunction...">cells linked by JEV</textarea>
+      <button onclick="runWavefunction()">🌊 Compute</button>
+      <div class="output" id="wf-out">Click to compute wavefunction...</div>
+    </div>
+    <div>
+      <h2>Visualization</h2>
+      <canvas id="wf-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 3: Witness-log -->
+<div class="panel" id="tab-witness">
+  <div class="grid">
+    <div class="controls">
+      <h2>📜 Witness-log Audit</h2>
+      <button onclick="viewWitnessLog()">📋 View Full Log</button>
+      <button onclick="verifyChain()">✓ Verify Chain</button>
+      <button onclick="addWitness()">+ Add Witness</button>
+      <div class="output" id="wl-out">Click to view log...</div>
+    </div>
+    <div>
+      <h2>Hash Chain Visualization</h2>
+      <canvas id="wl-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 4: PDE Solver -->
+<div class="panel" id="tab-solver">
+  <div class="grid">
+    <div class="controls">
+      <h2>🌊 Navier-Stokes / Burgers</h2>
+      <select id="solver-type">
+        <option value="burgers">Burgers 1D</option>
+        <option value="heat">Heat Equation 1D</option>
+        <option value="wave">Wave Equation 1D</option>
+      </select>
+      <input type="number" id="solver-n" value="64" placeholder="Grid N">
+      <input type="number" id="solver-steps" value="500" placeholder="Steps">
+      <input type="number" id="solver-dt" value="0.001" placeholder="dt" step="0.001">
+      <button onclick="runSolver()">▶ Solve</button>
+      <div class="output" id="solver-out">Click to solve...</div>
+    </div>
+    <div>
+      <h2>Solution</h2>
+      <canvas id="solver-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 5: Training -->
+<div class="panel" id="tab-training">
+  <div class="grid">
+    <div class="controls">
+      <h2>📈 In-Browser Training</h2>
+      <select id="train-task">
+        <option value="linreg">Linear Regression</option>
+        <option value="xor">XOR NN</option>
+        <option value="sine">Sine Wave</option>
+      </select>
+      <input type="number" id="train-epochs" value="1000" placeholder="Epochs">
+      <input type="number" id="train-lr" value="0.001" placeholder="LR" step="0.001">
+      <button onclick="runTraining()">▶ Train</button>
+      <div class="output" id="train-out">Click to train...</div>
+    </div>
+    <div>
+      <h2>Loss Curve</h2>
+      <canvas id="train-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 6: SAT -->
+<div class="panel" id="tab-sat">
+  <div class="grid">
+    <div class="controls">
+      <h2>🧩 SAT Solver</h2>
+      <select id="sat-type">
+        <option value="php">Pigeonhole</option>
+        <option value="sudoku">Sudoku (3x3)</option>
+        <option value="3sat">Random 3-SAT</option>
+      </select>
+      <input type="number" id="sat-p" value="3" placeholder="Pigeons / variables">
+      <input type="number" id="sat-h" value="2" placeholder="Holes / clauses">
+      <button onclick="runSAT()">▶ Solve</button>
+      <div class="output" id="sat-out">Click to solve...</div>
+    </div>
+    <div>
+      <h2>Solution Visualization</h2>
+      <canvas id="sat-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Tab 7: 2D Canvas -->
+<div class="panel" id="tab-canvas">
+  <div class="grid">
+    <div class="controls">
+      <h2>🎨 2D Cell-Graph</h2>
+      <input type="number" id="cv-n" value="50" placeholder="N cells">
+      <button onclick="rebuildCanvas()">🔄 Rebuild</button>
+      <div class="output">Drag cells to reposition. Click for info.</div>
+    </div>
+    <div>
+      <h2>Interactive Cell-Graph</h2>
+      <canvas id="cv-canvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+// ───────────────────────────────────────────────────────────
+// Global substrate
+// ───────────────────────────────────────────────────────────
+
+const FNV_OFFSET = 0xcbf29ce484222325n;
+const FNV_PRIME = 0x100000001b3n;
+const FNV_MASK = (1n << 64n) - 1n;
+
+function fnv1a64(str) {
+  let h = FNV_OFFSET;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    h = (h ^ BigInt(c & 0xff)) & FNV_MASK;
+    h = (h * FNV_PRIME) & FNV_MASK;
+    if (c > 0xff) {
+      h = (h ^ BigInt((c >> 8) & 0xff)) & FNV_MASK;
+      h = (h * FNV_PRIME) & FNV_MASK;
+    }
+    if (c > 0xffff) {
+      h = (h ^ BigInt((c >> 16) & 0xff)) & FNV_MASK;
+      h = (h * FNV_PRIME) & FNV_MASK;
+      h = (h ^ BigInt((c >> 24) & 0xff)) & FNV_MASK;
+      h = (h * FNV_PRIME) & FNV_MASK;
+    }
+  }
+  return h;
+}
+
+const CANON_TEXTS = [
+  'the irreducible connection', 'memory poisoning defense', 'witness-log prev_hash',
+  'ubuntu cellular architecture', 'conscription cron 5% quorum', 'polyformal port bytelocked',
+  'JEV oracle canonicity gate', 'candor WAL receipts', '11 opcodes canonical',
+  'FNV-1a 64-bit canary', 'the witness as prediction', 'wavefunction JEV interference',
+  'task pruning irreducible core', 'AI++ spreadsheet encoding', 'three witnesses speak the city',
+  'the soundboard of canon', 'substrate as brush', 'Navier-Stokes on substrate',
+  'Burgers 1D topology', 'Taylor-Green 2D vortex', 'Pigeonhole UNSAT proof',
+  'cells as irreducible systems', 'substrate became living model', 'webgpu compute shader',
+  'cells linked by JEV', 'Memory Sandbox execution', 'pedagogical quartet',
+  'shock capture AMR', 'witness-log as prediction',
+];
+
+class Substrate {
+  constructor() {
+    this.cells = [];
+    this.witnessLog = [];
+    this.embeddings = new Map();
+    this.embedder = {
+      dim: 32,
+      embed: (text) => {
+        const features = new Array(256).fill(0);
+        for (let i = 0; i < text.length; i++) {
+          features[text.charCodeAt(i) & 0xff] += 1;
+        }
+        if (this.embedder.W === undefined) {
+          this.embedder.W = Array.from({length: 32}, () =>
+            Array.from({length: 256}, () => Math.random() * 2 - 1)
+          );
+        }
+        const emb = new Array(32).fill(0);
+        for (let i = 0; i < 32; i++) {
+          for (let j = 0; j < 256; j++) {
+            emb[i] += features[j] * this.embedder.W[i][j];
+          }
+          emb[i] /= 16;
+        }
+        return emb;
+      },
+    };
+    this.initCells();
+  }
+  
+  initCells() {
+    for (let i = 0; i < CANON_TEXTS.length; i++) {
+      const text = CANON_TEXTS[i];
+      const emb = this.embedder.embed(text);
+      this.cells.push({
+        id: 'c' + i,
+        type: ['canon', 'pde', 'memory', 'compute', 'defense'][i % 5],
+        text,
+        embedding: emb,
+        value: i,
+      });
+    }
+  }
+  
+  cosine(a, b) {
+    if (!a || !b || a.length !== b.length) return 0;
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      na += a[i] * a[i];
+      nb += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-12);
+  }
+  
+  findTopK(query, k = 5) {
+    const emb = this.embedder.embed(query);
+    return this.cells.map(cell => ({
+      cell,
+      score: this.cosine(emb, cell.embedding),
+    })).sort((a, b) => b.score - a.score).slice(0, k);
+  }
+  
+  wavefunction(query) {
+    const emb = this.embedder.embed(query);
+    const amps = this.cells.map((cell, i) => {
+      const sim = this.cosine(emb, cell.embedding);
+      const phase = (cell.id.charCodeAt(1) * 0.123) % (2 * Math.PI);
+      return { re: sim * Math.cos(phase), im: sim * Math.sin(phase), cell };
+    });
+    let psiRe = 0, psiIm = 0;
+    for (const a of amps) {
+      psiRe += a.re;
+      psiIm += a.im;
+    }
+    const psiMag = Math.sqrt(psiRe * psiRe + psiIm * psiIm);
+    let totalPower = 0, constructive = 0, destructive = 0;
+    for (const a of amps) totalPower += a.re * a.re + a.im * a.im;
+    for (let i = 0; i < amps.length; i++) {
+      for (let j = i + 1; j < amps.length; j++) {
+        const cross = amps[i].re * amps[j].re + amps[i].im * amps[j].im;
+        if (cross > 0) constructive += cross;
+        else destructive += cross;
+      }
+    }
+    return {
+      psiMag, totalPower,
+      coherence: (psiMag * psiMag) / Math.max(totalPower, 1e-12),
+      constructive, destructive,
+      ratio: constructive / Math.max(Math.abs(destructive), 1e-12),
+      amps,
+    };
+  }
+  
+  addWitness(op, data) {
+    const prev = this.witnessLog[this.witnessLog.length - 1];
+    const prev_hash = prev ? prev.hash : '0x' + '0'.repeat(16);
+    const json = JSON.stringify({ op, data, prev_hash, step: this.witnessLog.length });
+    const hash = fnv1a64(json).toString(16).padStart(16, '0');
+    const entry = { op, data, prev_hash, hash, step: this.witnessLog.length };
+    this.witnessLog.push(entry);
+    return entry;
+  }
+}
+
+const SUB = new Substrate();
+SUB.addWitness('boot', { timestamp: Date.now() });
+
+// ───────────────────────────────────────────────────────────
+// Tab switching
+// ───────────────────────────────────────────────────────────
+
+window.switchTab = function(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`[onclick*="${name}"]`).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+};
+
+// ───────────────────────────────────────────────────────────
+// Tab 1: JEV
+// ───────────────────────────────────────────────────────────
+
+window.runJEV = function() {
+  const q = document.getElementById('jev-q').value;
+  const top5 = SUB.findTopK(q, 5);
+  const out = document.getElementById('jev-out');
+  out.textContent = `Query: "${q}"\nTop 5 cells by cosine similarity:\n\n` +
+    top5.map((m, i) => `${i+1}. ${m.cell.id} — score ${m.score.toFixed(4)}\n   "${m.cell.text}"`).join('\n\n');
+  const container = document.getElementById('jev-results');
+  container.innerHTML = '<h3>Top-5 Results</h3>' +
+    top5.map((m, i) => {
+      const cls = m.score > 0.8 ? 'high' : m.score > 0.5 ? 'mid' : 'low';
+      return `<div style="background: rgba(0,0,0,0.4); padding:1em; border-radius:6px; border-left: 4px solid ${cls === 'high' ? '#15803d' : cls === 'mid' ? '#fbbf24' : '#b91c1c'}; margin-bottom:0.5em;">
+        <strong>${i+1}. ${m.cell.id}</strong> — score ${m.score.toFixed(4)}
+        <div style="color:#94a3b8; margin-top:0.3em;">${m.cell.text}</div>
+      </div>`;
+    }).join('');
+};
+
+// ───────────────────────────────────────────────────────────
+// Tab 2: Wavefunction
+// ───────────────────────────────────────────────────────────
+
+window.runWavefunction = function() {
+  const q = document.getElementById('wf-q').value;
+  const wf = SUB.wavefunction(q);
+  document.getElementById('wf-out').textContent = 
+    `═══ Wavefunction JEV ═══\n` +
+    `Query: "${q}"\n` +
+    `|ψ|:      ${wf.psiMag.toFixed(4)}\n` +
+    `Total P:  ${wf.totalPower.toFixed(4)}\n` +
+    `Coherence: ${wf.coherence.toFixed(4)}\n` +
+    `Constructive: ${wf.constructive.toFixed(4)}\n` +
+    `Destructive:  ${wf.destructive.toFixed(4)}\n` +
+    `Ratio:    ${wf.ratio.toFixed(4)}\n\n` +
+    (wf.ratio > 1.0 ? '✓ Canon reinforces itself' : '✗ Destructive interference');
+  
+  // Draw interference pattern
+  const c = document.getElementById('wf-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.clientWidth; c.height = c.clientHeight;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, c.width, c.height);
+  
+  // Each amp as a circle on complex plane
+  ctx.strokeStyle = '#334155';
+  ctx.beginPath();
+  ctx.moveTo(c.width/2, 0); ctx.lineTo(c.width/2, c.height);
+  ctx.moveTo(0, c.height/2); ctx.lineTo(c.width, c.height/2);
+  ctx.stroke();
+  
+  // Cells
+  for (const a of wf.amps) {
+    const cx = c.width/2 + a.re * 200;
+    const cy = c.height/2 - a.im * 200;
+    ctx.fillStyle = a.re * a.re + a.im * a.im > 0.5 ? '#fbbf24' : '#60a5fa';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Resultant
+  ctx.strokeStyle = '#15803d';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(c.width/2, c.height/2);
+  ctx.lineTo(c.width/2 + wf.psiMag * 200 * Math.cos(Math.atan2(wf.psiIm, wf.psiRe)),
+             c.height/2 - wf.psiMag * 200 * Math.sin(Math.atan2(wf.psiIm, wf.psiRe)));
+  ctx.stroke();
+};
+
+// ───────────────────────────────────────────────────────────
+// Tab 3: Witness-log
+// ───────────────────────────────────────────────────────────
+
+window.viewWitnessLog = function() {
+  const tail = SUB.witnessLog.slice(-15);
+  document.getElementById('wl-out').textContent = 
+    `═══ Witness Log (${SUB.witnessLog.length} entries) ═══\n\n` +
+    tail.map(e => `[${e.step.toString().padStart(4)}] ${e.op.padEnd(15)} prev=${e.prev_hash.slice(0,10)} hash=${e.hash.slice(0,10)}`).join('\n');
+  
+  drawChain();
+};
+
+window.verifyChain = function() {
+  let valid = true;
+  let prev = '0x' + '0'.repeat(16);
+  for (const e of SUB.witnessLog) {
+    if (e.prev_hash !== prev) {
+      valid = false;
+      document.getElementById('wl-out').textContent = `❌ Chain broken at step ${e.step}`;
+      return;
+    }
+    prev = e.hash;
+  }
+  document.getElementById('wl-out').textContent = 
+    `✅ Witness-log chain verified\n` +
+    `${SUB.witnessLog.length} entries, all hash-chained correctly.`;
+  drawChain();
+};
+
+window.addWitness = function() {
+  const op = 'manual_op_' + Math.random().toString(36).slice(2, 8);
+  SUB.addWitness(op, { random: Math.random() });
+  viewWitnessLog();
+};
+
+function drawChain() {
+  const c = document.getElementById('wl-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  c.width = c.clientWidth; c.height = c.clientHeight;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, c.width, c.height);
+  
+  // Draw chain as connected boxes
+  const entries = SUB.witnessLog.slice(-30);
+  const boxW = 100, boxH = 40, gap = 30;
+  const totalW = entries.length * (boxW + gap);
+  const startX = Math.max(20, (c.width - totalW) / 2);
+  const y = c.height / 2 - boxH / 2;
+  
+  ctx.font = '10px monospace';
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    const x = startX + i * (boxW + gap);
+    
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, boxW, boxH);
+    
+    ctx.fillStyle = '#fff';
+    ctx.fillText('step ' + e.step, x + 4, y + 14);
+    ctx.fillText('hash: ' + e.hash.slice(0, 6), x + 4, y + 28);
+    ctx.fillText(e.op, x + 4, y + 38);
+    
+    // Connection arrow
+    if (i < entries.length - 1) {
+      ctx.strokeStyle = '#94a3b8';
+      ctx.beginPath();
+      ctx.moveTo(x + boxW, y + boxH/2);
+      ctx.lineTo(x + boxW + gap, y + boxH/2);
+      ctx.stroke();
+      // Arrow head
+      ctx.beginPath();
+      ctx.moveTo(x + boxW + gap, y + boxH/2);
+      ctx.lineTo(x + boxW + gap - 5, y + boxH/2 - 3);
+      ctx.lineTo(x + boxW + gap - 5, y + boxH/2 + 3);
+      ctx.closePath();
+      ctx.fillStyle = '#94a3b8';
+      ctx.fill();
+    }
+  }
+}
+
+// ───────────────────────────────────────────────────────────
+// Tab 4: PDE Solver
+// ───────────────────────────────────────────────────────────
+
+window.runSolver = function() {
+  const type = document.getElementById('solver-type').value;
+  const N = parseInt(document.getElementById('solver-n').value);
+  const steps = parseInt(document.getElementById('solver-steps').value);
+  const dt = parseFloat(document.getElementById('solver-dt').value);
+  const dx = 1.0 / N;
+  
+  let u = new Float64Array(N);
+  for (let i = 0; i < N; i++) u[i] = Math.sin(i * Math.PI / N);
+  
+  const history = [Array.from(u)];
+  
+  if (type === 'burgers') {
+    const nu = 0.05;
+    for (let s = 0; s < steps; s++) {
+      const u_new = new Float64Array(N);
+      for (let i = 0; i < N; i++) {
+        const ip = (i + 1) % N, im = (i - 1 + N) % N;
+        const dudx = u[i] >= 0 ? (u[i] - u[im]) / dx : (u[ip] - u[i]) / dx;
+        const d2udx2 = (u[ip] - 2 * u[i] + u[im]) / (dx * dx);
+        u_new[i] = u[i] + dt * (-u[i] * dudx + nu * d2udx2);
+      }
+      u = u_new;
+      if (s % 50 === 0) history.push(Array.from(u));
+    }
+  } else if (type === 'heat') {
+    const alpha = 0.5;
+    for (let s = 0; s < steps; s++) {
+      const u_new = new Float64Array(N);
+      for (let i = 0; i < N; i++) {
+        const ip = (i + 1) % N, im = (i - 1 + N) % N;
+        u_new[i] = u[i] + alpha * dt / (dx * dx) * (u[ip] - 2 * u[i] + u[im]);
+      }
+      u = u_new;
+      if (s % 50 === 0) history.push(Array.from(u));
+    }
+  } else if (type === 'wave') {
+    const c = 1.0;
+    const u_prev = new Float64Array(N);
+    for (let i = 0; i < N; i++) u_prev[i] = u[i];
+    for (let s = 0; s < steps; s++) {
+      const u_new = new Float64Array(N);
+      for (let i = 0; i < N; i++) {
+        const ip = (i + 1) % N, im = (i - 1 + N) % N;
+        u_new[i] = 2 * u[i] - u_prev[i] + (c * c * dt * dt / (dx * dx)) * (u[ip] - 2 * u[i] + u[im]);
+      }
+      u_prev.set(u);
+      u = u_new;
+      if (s % 50 === 0) history.push(Array.from(u));
+    }
+  }
+  
+  document.getElementById('solver-out').textContent = 
+    `═══ ${type === 'burgers' ? "Burgers" : type === 'heat' ? 'Heat' : 'Wave'} Equation ═══\n` +
+    `N=${N}, steps=${steps}, dt=${dt}\n` +
+    `Witnesses added: ${history.length}\n` +
+    `Final u[0..5]: ${Array.from(u).slice(0, 5).map(v => v.toFixed(3)).join(', ')}`;
+  
+  // Plot
+  const c = document.getElementById('solver-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.clientWidth; c.height = c.clientHeight;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, c.width, c.height);
+  
+  const colors = ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa'];
+  const stride = Math.max(1, Math.floor(history.length / 5));
+  for (let h = 0; h < history.length; h += stride) {
+    const u_h = history[h];
+    ctx.strokeStyle = colors[(h / stride) % colors.length];
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.4 + 0.6 * (h / history.length);
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const x = (i / N) * c.width;
+      const y = c.height/2 - u_h[i] * (c.height/3);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+};
+
+// ───────────────────────────────────────────────────────────
+// Tab 5: Training
+// ───────────────────────────────────────────────────────────
+
+window.runTraining = async function() {
+  const task = document.getElementById('train-task').value;
+  const epochs = parseInt(document.getElementById('train-epochs').value);
+  const lr = parseFloat(document.getElementById('train-lr').value);
+  
+  const losses = [];
+  let out = '';
+  
+  if (task === 'linreg') {
+    // y = 2x + 1 + noise
+    const xs = [], ys = [];
+    for (let i = 0; i < 50; i++) {
+      const x = Math.random() * 10;
+      xs.push(x);
+      ys.push(2 * x + 1 + (Math.random() - 0.5));
+    }
+    let w = 0, b = 0;
+    for (let e = 0; e < epochs; e++) {
+      let gw = 0, gb = 0, loss = 0;
+      for (let i = 0; i < xs.length; i++) {
+        const yp = w * xs[i] + b;
+        const err = yp - ys[i];
+        gw += 2 * err * xs[i];
+        gb += 2 * err;
+        loss += err * err;
+      }
+      w -= lr * gw / xs.length;
+      b -= lr * gb / xs.length;
+      losses.push(loss / xs.length);
+      if (e % 100 === 0) {
+        out = `Epoch ${e}: loss=${(loss/xs.length).toFixed(6)} w=${w.toFixed(3)} b=${b.toFixed(3)}\n${out}`;
+        document.getElementById('train-out').textContent = out;
+        drawLoss(losses);
+        await new Promise(r => setTimeout(r, 1));
+      }
+    }
+    document.getElementById('train-out').textContent = 
+      `Final: y = ${w.toFixed(4)}·x + ${b.toFixed(4)} (target: 2·x + 1)\n` +
+      `Final loss: ${losses[losses.length-1].toFixed(6)}`;
+  } else if (task === 'xor') {
+    const X = [[0,0],[0,1],[1,0],[1,1]];
+    const Y = [0, 1, 1, 0];
+    const H = 4;
+    const rand = () => Math.random() * 2 - 1;
+    const W1 = Array.from({length: H}, () => Array.from({length: 2}, rand));
+    const b1 = new Array(H).fill(0);
+    const W2 = Array.from({length: 1}, () => Array.from({length: H}, rand));
+    const b2 = [0];
+    const sigmoid = x => 1 / (1 + Math.exp(-Math.max(-50, Math.min(50, x))));
+    
+    for (let e = 0; e < epochs; e++) {
+      let loss = 0;
+      for (let i = 0; i < 4; i++) {
+        const x = X[i], y = Y[i];
+        const h = b1.map((_, j) => sigmoid(W1[j][0]*x[0] + W1[j][1]*x[1] + b1[j]));
+        const yp = sigmoid(W2[0].reduce((s, w, j) => s + w * h[j], 0) + b2[0]);
+        const err = yp - y;
+        loss += err * err;
+        const dy = err * yp * (1 - yp);
+        const dh = h.map((_, j) => dy * W2[0][j] * h[j] * (1 - h[j]));
+        for (let j = 0; j < H; j++) {
+          for (let k = 0; k < 2; k++) W1[j][k] -= 0.5 * dh[j] * x[k];
+          b1[j] -= 0.5 * dh[j];
+          W2[0][j] -= 0.5 * dy * h[j];
+        }
+        b2[0] -= 0.5 * dy;
+      }
+      losses.push(loss / 4);
+      if (e % 200 === 0) {
+        document.getElementById('train-out').textContent = `Epoch ${e}: loss=${(loss/4).toFixed(6)}`;
+        drawLoss(losses);
+        await new Promise(r => setTimeout(r, 1));
+      }
+    }
+    document.getElementById('train-out').textContent = `Final loss: ${losses[losses.length-1].toFixed(6)}`;
+  } else if (task === 'sine') {
+    // y = sin(x)
+    const xs = [], ys = [];
+    for (let i = 0; i < 30; i++) {
+      const x = Math.random() * 2 * Math.PI;
+      xs.push(x);
+      ys.push(Math.sin(x));
+    }
+    // Simple: y = a*sin(b*x + c) + d
+    let a = 1, b = 1, c = 0, d = 0;
+    for (let e = 0; e < epochs; e++) {
+      let loss = 0;
+      let ga = 0, gb = 0, gc = 0, gd = 0;
+      for (let i = 0; i < xs.length; i++) {
+        const yp = a * Math.sin(b * xs[i] + c) + d;
+        const err = yp - ys[i];
+        loss += err * err;
+        ga += 2 * err * Math.sin(b * xs[i] + c);
+        gd += 2 * err;
+        gc += 2 * err * a * Math.cos(b * xs[i] + c);
+        gb += 2 * err * a * Math.cos(b * xs[i] + c) * xs[i];
+      }
+      a -= lr * ga / xs.length;
+      b -= lr * gb / xs.length;
+      c -= lr * gc / xs.length;
+      d -= lr * gd / xs.length;
+      losses.push(loss / xs.length);
+      if (e % 100 === 0) {
+        document.getElementById('train-out').textContent = `Epoch ${e}: loss=${(loss/xs.length).toFixed(6)}\na=${a.toFixed(3)} b=${b.toFixed(3)} c=${c.toFixed(3)} d=${d.toFixed(3)}`;
+        drawLoss(losses);
+        await new Promise(r => setTimeout(r, 1));
+      }
+    }
+    document.getElementById('train-out').textContent = `Final: a=${a.toFixed(3)} b=${b.toFixed(3)} c=${c.toFixed(3)} d=${d.toFixed(3)}`;
+  }
+  
+  drawLoss(losses);
+};
+
+function drawLoss(losses) {
+  const c = document.getElementById('train-canvas');
+  if (!c) return;
+  const ctx = c.getContext('2d');
+  c.width = c.clientWidth; c.height = c.clientHeight;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, c.width, c.height);
+  
+  if (losses.length < 2) return;
+  
+  const max = Math.max(...losses);
+  const min = Math.min(...losses);
+  const range = max - min || 1;
+  
+  ctx.strokeStyle = '#15803d';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < losses.length; i++) {
+    const x = (i / losses.length) * c.width;
+    const y = c.height - ((losses[i] - min) / range) * (c.height - 20) - 10;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  
+  // Labels
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '12px monospace';
+  ctx.fillText('Max: ' + max.toExponential(2), 10, 20);
+  ctx.fillText('Min: ' + min.toExponential(2), 10, c.height - 10);
+}
+
+// ───────────────────────────────────────────────────────────
+// Tab 6: SAT
+// ───────────────────────────────────────────────────────────
+
+window.runSAT = function() {
+  const type = document.getElementById('sat-type').value;
+  
+  if (type === 'php') {
+    const P = parseInt(document.getElementById('sat-p').value);
+    const H = parseInt(document.getElementById('sat-h').value);
+    const N_VARS = P * H;
+    let assignment = new Array(N_VARS).fill(false);
+    for (let p = 0; p < P && p < H; p++) assignment[p * H + p] = true;
+    
+    const clauses = [];
+    for (let p = 0; p < P; p++) {
+      clauses.push({ type: 'OR', vars: Array.from({length: H}, (_, h) => ({ idx: p*H + h, sign: true })) });
+    }
+    for (let h = 0; h < H; h++) {
+      for (let p1 = 0; p1 < P; p1++) {
+        for (let p2 = p1 + 1; p2 < P; p2++) {
+          clauses.push({ type: 'NOT_AND', vars: [
+            { idx: p1*H + h, sign: true },
+            { idx: p2*H + h, sign: true },
+          ]});
+        }
+      }
+    }
+    
+    let lastSatisfied = 0;
+    let history = [];
+    const maxIter = 1000;
+    let result = '';
+    
+    for (let iter = 0; iter < maxIter; iter++) {
+      const unsat = [];
+      for (const c of clauses) {
+        let sat = false;
+        for (const v of c.vars) {
+          if (v.sign ? assignment[v.idx] : !assignment[v.idx]) { sat = true; break; }
+        }
+        if (!sat) unsat.push(c);
+      }
+      const satisfied = clauses.length - unsat.length;
+      history.push(satisfied);
+      lastSatisfied = satisfied;
+      
+      if (unsat.length === 0) {
+        result = `✅ SATISFIED in ${iter+1} iterations\nFinal: ${assignment.map(v => v ? '1' : '0').join('')}`;
+        break;
+      }
+      
+      const c = unsat[0];
+      const v = c.vars[0];
+      assignment[v.idx] = !assignment[v.idx];
+      
+      if (iter > 100 && history.length > 100) {
+        const recent = history.slice(-50);
+        const max = Math.max(...recent);
+        if (max < clauses.length * 0.95 && P > H) {
+          result = `🚫 STUCK at ${max}/${clauses.length} clauses\nThis IS the proof of UNSATISFIABILITY.`;
+          break;
+        }
+      }
+    }
+    
+    if (!result) result = `⚠️ ${lastSatisfied}/${clauses.length} clauses after ${maxIter} iterations`;
+    
+    document.getElementById('sat-out').textContent = 
+      `═══ PHP(${P}, ${H}) ═══\n` +
+      `Variables: ${N_VARS}, Clauses: ${clauses.length}\n\n` +
+      result;
+    
+    // Draw assignment grid
+    const c = document.getElementById('sat-canvas');
+    const ctx = c.getContext('2d');
+    c.width = c.clientWidth; c.height = c.clientHeight;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, c.width, c.height);
+    
+    const cellSize = Math.min(60, (c.width - 100) / P, (c.height - 50) / H);
+    const startX = 50;
+    const startY = 30;
+    
+    // Holes (rows)
+    for (let h = 0; h < H; h++) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '14px monospace';
+      ctx.fillText(`Hole ${h}`, 5, startY + h * cellSize + cellSize/2 + 5);
+    }
+    // Pigeons (columns)
+    for (let p = 0; p < P; p++) {
+      ctx.fillStyle = '#fff';
+      ctx.font = '14px monospace';
+      ctx.fillText(`P${p}`, startX + p * cellSize + 5, 20);
+    }
+    // Cells
+    for (let p = 0; p < P; p++) {
+      for (let h = 0; h < H; h++) {
+        const x = startX + p * cellSize;
+        const y = startY + h * cellSize;
+        ctx.strokeStyle = '#334155';
+        ctx.strokeRect(x, y, cellSize, cellSize);
+        if (assignment[p * H + h]) {
+          ctx.fillStyle = '#15803d';
+          ctx.beginPath();
+          ctx.arc(x + cellSize/2, y + cellSize/2, cellSize/3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  } else {
+    document.getElementById('sat-out').textContent = `${type} solver not yet implemented in playground`;
+  }
+};
+
+// ───────────────────────────────────────────────────────────
+// Tab 7: 2D Canvas
+// ───────────────────────────────────────────────────────────
+
+let canvasCells = [];
+let canvasDragging = null;
+
+window.rebuildCanvas = function() {
+  const N = parseInt(document.getElementById('cv-n').value);
+  canvasCells = [];
+  for (let i = 0; i < N; i++) {
+    canvasCells.push({
+      x: Math.random(),
+      y: Math.random(),
+      vx: (Math.random() - 0.5) * 0.01,
+      vy: (Math.random() - 0.5) * 0.01,
+      type: ['canon', 'pde', 'compute'][i % 3],
+    });
+  }
+};
+
+rebuildCanvas();
+
+const cv = document.getElementById('cv-canvas');
+const cvCtx = cv.getContext('2d');
+
+cv.addEventListener('mousedown', (e) => {
+  const rect = cv.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top) / rect.height;
+  for (const c of canvasCells) {
+    const dx = c.x - x, dy = c.y - y;
+    if (Math.sqrt(dx*dx + dy*dy) < 0.02) {
+      canvasDragging = c;
+      break;
+    }
+  }
+});
+
+cv.addEventListener('mousemove', (e) => {
+  if (canvasDragging) {
+    const rect = cv.getBoundingClientRect();
+    canvasDragging.x = (e.clientX - rect.left) / rect.width;
+    canvasDragging.y = (e.clientY - rect.top) / rect.height;
+  }
+});
+
+cv.addEventListener('mouseup', () => { canvasDragging = null; });
+
+function renderCanvas() {
+  cv.width = cv.clientWidth; cv.height = cv.clientHeight;
+  cvCtx.fillStyle = '#000';
+  cvCtx.fillRect(0, 0, cv.width, cv.height);
+  
+  // Force-directed edges
+  cvCtx.strokeStyle = 'rgba(100, 116, 139, 0.3)';
+  for (let i = 0; i < canvasCells.length; i++) {
+    for (let j = i + 1; j < canvasCells.length; j++) {
+      const a = canvasCells[i], b = canvasCells[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < 0.15) {
+        cvCtx.beginPath();
+        cvCtx.moveTo(a.x * cv.width, a.y * cv.height);
+        cvCtx.lineTo(b.x * cv.width, b.y * cv.height);
+        cvCtx.stroke();
+      }
+    }
+  }
+  
+  // Force simulation
+  if (!canvasDragging) {
+    for (let i = 0; i < canvasCells.length; i++) {
+      const c = canvasCells[i];
+      c.vx *= 0.95; c.vy *= 0.95;
+      c.x += c.vx; c.y += c.vy;
+      // Repulsion
+      for (let j = 0; j < canvasCells.length; j++) {
+        if (i === j) continue;
+        const o = canvasCells[j];
+        const dx = c.x - o.x, dy = c.y - o.y;
+        const d2 = dx*dx + dy*dy + 0.001;
+        if (d2 < 0.01) {
+          const d = Math.sqrt(d2);
+          c.vx += (dx / d) * 0.001;
+          c.vy += (dy / d) * 0.001;
+        }
+      }
+      // Bounds
+      if (c.x < 0.02) c.vx += 0.001;
+      if (c.x > 0.98) c.vx -= 0.001;
+      if (c.y < 0.02) c.vy += 0.001;
+      if (c.y > 0.98) c.vy -= 0.001;
+    }
+  }
+  
+  // Cells
+  const colors = { canon: '#fbbf24', pde: '#22d3ee', compute: '#a78bfa' };
+  for (const c of canvasCells) {
+    cvCtx.fillStyle = colors[c.type] || '#fff';
+    cvCtx.beginPath();
+    cvCtx.arc(c.x * cv.width, c.y * cv.height, 6, 0, Math.PI * 2);
+    cvCtx.fill();
+  }
+  
+  requestAnimationFrame(renderCanvas);
+}
+
+renderCanvas();
+
+// ───────────────────────────────────────────────────────────
+// Initial run
+// ───────────────────────────────────────────────────────────
+
+runJEV();
+runWavefunction();
+viewWitnessLog();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Substrato Quilt — Nativo do Navegador</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3em 2em;
+    line-height: 1.6;
+  }
+  h1 { color: #fbbf24; }
+  .card {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1.5em;
+    margin: 1.5em 0;
+  }
+  .card h2 { color: #fbbf24; margin-top: 0; }
+  a.btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #0f172a;
+    padding: 0.7em 1.4em;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  code { background: rgba(0,0,0,0.3); padding: 0.1em 0.4em; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>Substrato Quilt — Nativo do Navegador</h1>
+<p>Execute o substrato no seu navegador. Sem servidor necessário.</p>
+
+<div class="card">
+  <h2>Núcleo do Substrato</h2>
+  <p>Grafo de células interativo com log de testemunhas, JEV, função de onda, viz 3D, IndexedDB, treinamento LR+MLP no navegador, resolvedor Burgers 1D embutido.</p>
+  <a class="btn" href="../substrate.html">Abrir →</a>
+</div>
+
+<div class="card">
+  <h2>ML do Substrato</h2>
+  <p>Treinamento no navegador e resolução PDE/SAT. Descida de gradiente real. Detecção de backend WebGPU/WebNN/WASM.</p>
+  <a class="btn" href="../substrate-ml.html">Abrir →</a>
+</div>
+
+<div class="card">
+  <h2>GPU do Substrato</h2>
+  <p>Shaders de computação WebGPU para hash FNV-1a e similaridade cosseno JEV. Verifica canário.</p>
+  <a class="btn" href="../substrate-gpu.html">Abrir →</a>
+</div>
+
+<div class="card">
+  <h2>WebNN do Substrato</h2>
+  <p>Construtor de grafo WebNN para MatMul, Softmax, MLP. ML acelerado por hardware.</p>
+  <a class="btn" href="../substrate-webnn.html">Abrir →</a>
+</div>
+
+<div class="card">
+  <h2>Substrato 3D</h2>
+  <p>Grafo de células 3D real. Arraste, zoom, consulta. WebGL2 + Canvas puro.</p>
+  <a class="btn" href="../substrate-3d.html">Abrir →</a>
+</div>
+
+<div class="card">
+  <h2>Parque do Substrato</h2>
+  <p>Substrato multi-aba no navegador. JEV, função de onda, log de testemunhas, PDE, treinamento, SAT, canvas 2D.</p>
+  <a class="btn" href="../substrate-playground.html">Abrir →</a>
+</div>
+
+<div class="card">
+  <h2>📡 Distributed Training & IoT</h2>
+  <p>Enable your hardware. Train models overnight. Submit to the Quilt Cloud.</p>
+  <a class="btn" href="../distributed-training.html">Abrir →</a>
+  <a class="btn" href="../iot-nodes.html" style="margin-left:0.5em;">IoT Nodes →</a>
+</div>
+
+</body>
+</html>

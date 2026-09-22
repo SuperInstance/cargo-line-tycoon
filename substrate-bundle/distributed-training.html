@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quilt Distributed Training — Overnight, Hardware-Enabled</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #e2e8f0;
+    margin: 0;
+    padding: 2em;
+    min-height: 100vh;
+  }
+  
+  h1 { color: #fbbf24; font-size: 2em; margin-bottom: 0.3em; }
+  h2 { color: #fbbf24; margin-top: 1.5em; border-bottom: 1px solid #334155; padding-bottom: 0.4em; }
+  h3 { color: #60a5fa; margin-top: 1em; }
+  
+  .subtitle { color: #94a3b8; font-size: 1.1em; margin-bottom: 2em; }
+  
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 1.5em;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .card {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    padding: 1.5em;
+  }
+  
+  .card.featured { border-color: #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.2); }
+  
+  button {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #0f172a;
+    border: none;
+    padding: 0.7em 1.4em;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0.3em 0.3em 0.3em 0;
+    transition: transform 0.1s;
+  }
+  
+  button:hover { transform: translateY(-2px); }
+  button:disabled { background: #475569; cursor: not-allowed; color: #94a3b8; }
+  
+  button.danger { background: linear-gradient(135deg, #b91c1c, #991b1b); color: #fff; }
+  button.secondary { background: rgba(148, 163, 184, 0.3); color: #fff; }
+  
+  input, textarea, select {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    color: #e2e8f0;
+    padding: 0.6em;
+    border-radius: 4px;
+    width: 100%;
+    margin-bottom: 0.5em;
+    font-family: inherit;
+    font-size: 0.95em;
+  }
+  
+  textarea { min-height: 80px; resize: vertical; }
+  
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5em;
+    margin: 1em 0;
+  }
+  
+  .stat {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.8em;
+    border-radius: 6px;
+    border-left: 3px solid #fbbf24;
+  }
+  
+  .stat .label { color: #94a3b8; font-size: 0.75em; text-transform: uppercase; }
+  .stat .value { color: #fbbf24; font-weight: bold; font-size: 1.2em; }
+  
+  .output {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 6px;
+    padding: 1em;
+    font-family: monospace;
+    font-size: 0.85em;
+    max-height: 280px;
+    overflow-y: auto;
+    margin-top: 0.5em;
+    white-space: pre-wrap;
+  }
+  
+  .progress {
+    height: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 0.5em 0;
+  }
+  
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #fbbf24, #15803d);
+    transition: width 0.3s;
+  }
+  
+  .badge {
+    display: inline-block;
+    padding: 0.3em 0.8em;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    margin-right: 0.3em;
+    margin-bottom: 0.3em;
+  }
+  .badge.live { background: #15803d; color: #fff; }
+  .badge.training { background: #1e40af; color: #fff; }
+  .badge.idle { background: #475569; color: #fff; }
+  .badge.error { background: #b91c1c; color: #fff; }
+  
+  canvas { background: #000; border-radius: 8px; width: 100%; height: 220px; display: block; }
+  
+  .job-row {
+    display: grid;
+    grid-template-columns: 1fr 100px 100px 80px;
+    padding: 0.5em;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    align-items: center;
+    font-size: 0.9em;
+  }
+  .job-row .name { color: #fbbf24; }
+  .job-row .progress { color: #94a3b8; }
+  
+  code { background: rgba(0,0,0,0.4); padding: 0.1em 0.4em; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>💻 Quilt Distributed Training</h1>
+<p class="subtitle">
+  Enable your hardware (RTX 4050, Ryzen 9 HX, CPU, anything WebGPU/WebNN/WASM-compatible). 
+  Train models overnight. Submit results to the cloud in the morning. Keep or share.
+</p>
+
+<div class="grid">
+
+  <!-- Hardware status -->
+  <div class="card">
+    <h3>🖥️ Your Hardware</h3>
+    <div id="hardware-status" class="output">Detecting...</div>
+    <button onclick="recheck()">🔍 Re-check</button>
+    <button onclick="enableAll()">⚡ Enable All</button>
+    <button onclick="disableAll()" class="secondary">⏸️ Disable All</button>
+  </div>
+
+  <!-- Node info -->
+  <div class="card">
+    <h3>🌐 Your Node</h3>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Node ID</div>
+        <div class="value" id="node-id" style="font-size: 0.85em;">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">Status</div>
+        <div class="value" id="node-status">idle</div>
+      </div>
+      <div class="stat">
+        <div class="label">Local Cells</div>
+        <div class="value" id="local-cells">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Witnesses</div>
+        <div class="value" id="witness-count">0</div>
+      </div>
+    </div>
+    <input type="text" id="node-name" placeholder="Node name (optional)" style="margin-bottom:0.5em;">
+    <button onclick="setNodeName()">✏️ Set Name</button>
+  </div>
+
+  <!-- Training task -->
+  <div class="card featured">
+    <h3>📈 Train Model Now</h3>
+    <p style="color:#94a3b8;font-size:0.85em;">Pick a task. Run it on your hardware. The Quilt benefits.</p>
+    
+    <select id="task-type">
+      <option value="linreg">Linear Regression (CPU, fast)</option>
+      <option value="xor">XOR Neural Network (CPU/WASM)</option>
+      <option value="burgers">Burgers PDE Solver (CPU/WebGPU)</option>
+      <option value="sat">SAT Solver (CPU)</option>
+      <option value="embedding">Embedding Learn (WebGPU)</option>
+      <option value="canon-train">Canon Tutor (WebNN)</option>
+    </select>
+    
+    <input type="number" id="task-epochs" value="1000" placeholder="Epochs / iterations">
+    <input type="number" id="task-budget" value="60" placeholder="Max seconds">
+    
+    <button onclick="runTask()">▶ Run</button>
+    <button onclick="cancelTask()" class="danger" id="cancel-btn" disabled>⏹ Cancel</button>
+    
+    <div class="progress"><div class="progress-bar" id="task-progress" style="width:0%"></div></div>
+    <div class="output" id="task-output">Awaiting...</div>
+    <canvas id="loss-canvas" width="380" height="180"></canvas>
+  </div>
+
+  <!-- Schedule -->
+  <div class="card">
+    <h3>⏰ Schedule Overnight</h3>
+    <p style="color:#94a3b8;font-size:0.85em;">Pick start time. The Quilt will train on your machine while you sleep.</p>
+    
+    <label style="font-size:0.85em;color:#94a3b8;">Start at:</label>
+    <input type="time" id="schedule-start" value="23:00">
+    <label style="font-size:0.85em;color:#94a3b8;">Duration (hours):</label>
+    <input type="number" id="schedule-duration" value="8">
+    <label style="font-size:0.85em;color:#94a3b8;">What to train:</label>
+    <select id="schedule-task">
+      <option value="linreg">Linear Regression</option>
+      <option value="xor">XOR Network</option>
+      <option value="canon-train">Canon Tutor</option>
+      <option value="embedding">Embedding Learn</option>
+    </select>
+    
+    <button onclick="scheduleJob()">⏰ Schedule</button>
+    <button onclick="viewSchedule()">📋 View Schedule</button>
+    
+    <div class="output" id="schedule-output">No scheduled jobs yet</div>
+  </div>
+
+  <!-- Job queue -->
+  <div class="card">
+    <h3>📋 Active Jobs</h3>
+    <div id="job-queue"></div>
+    <button onclick="runQueue()">▶ Run Queue</button>
+    <button onclick="clearQueue()" class="secondary">🗑️ Clear Queue</button>
+  </div>
+
+  <!-- Submit to cloud -->
+  <div class="card">
+    <h3>☁️ Submit to Quilt Cloud</h3>
+    <p style="color:#94a3b8;font-size:0.85em;">
+      After training, push results to the cloud. The Quilt learns from your hardware.
+    </p>
+    
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Total runs</div>
+        <div class="value" id="runs-total">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Last loss</div>
+        <div class="value" id="last-loss">—</div>
+      </div>
+    </div>
+    
+    <button onclick="submitToCloud()">☁️ Submit Last Result</button>
+    <button onclick="submitAll()">☁️ Submit All</button>
+    
+    <div class="output" id="submit-output">No submissions yet</div>
+  </div>
+
+  <!-- IoT projection -->
+  <div class="card">
+    <h3>📡 IoT Network Projection</h3>
+    <p style="color:#94a3b8;font-size:0.85em;">
+      Your machine is one cell in the IoT substrate. See the network of cells.
+    </p>
+    
+    <canvas id="iot-canvas" width="380" height="280"></canvas>
+    
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Online nodes</div>
+        <div class="value" id="online-nodes">1</div>
+      </div>
+      <div class="stat">
+        <div class="label">Network load</div>
+        <div class="value" id="network-load">0%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Your contribution -->
+  <div class="card">
+    <h3>⭐ Your Contribution</h3>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">Total compute</div>
+        <div class="value" id="compute-hours">0h</div>
+      </div>
+      <div class="stat">
+        <div class="label">Cells trained</div>
+        <div class="value" id="cells-trained">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Submitted</div>
+        <div class="value" id="submitted-count">0</div>
+      </div>
+      <div class="stat">
+        <div class="label">Rank</div>
+        <div class="value" id="your-rank">—</div>
+      </div>
+    </div>
+    <button onclick="viewLeaderboard()">🏆 Leaderboard</button>
+  </div>
+
+</div>
+
+<script type="module">
+// ─── State ─────────────────────────────────────────────────
+const STATE = {
+  hardware: {
+    webgpu: false,
+    webgpuDevice: null,
+    webnn: false,
+    wasm: false,
+    workers: false,
+  },
+  enabled: {
+    webgpu: false,
+    webnn: false,
+    cpu: true,
+    workers: false,
+  },
+  training: {
+    active: false,
+    task: null,
+    epochs: 0,
+    maxEpochs: 0,
+    losses: [],
+    cancel: false,
+  },
+  schedule: [],
+  queue: [],
+  runs: [],
+  submissions: [],
+  nodeId: null,
+  nodeName: null,
+};
+
+// ─── Hardware detection ────────────────────────────────────
+async function detectHardware() {
+  const out = [];
+  
+  // WebGPU
+  try {
+    if (navigator.gpu) {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (adapter) {
+        STATE.hardware.webgpu = true;
+        try {
+          STATE.hardware.webgpuDevice = await adapter.requestDevice();
+          out.push(`✓ WebGPU: ${adapter.info?.vendor || 'available'} ${adapter.info?.architecture || ''}`);
+        } catch (e) {
+          out.push('⚠️ WebGPU: adapter found but device failed');
+        }
+      } else {
+        out.push('✗ WebGPU: no adapter');
+      }
+    } else {
+      out.push('✗ WebGPU: not in this browser');
+    }
+  } catch (e) { out.push('✗ WebGPU: ' + e.message); }
+  
+  // WebNN
+  STATE.hardware.webnn = 'ml' in navigator;
+  out.push(STATE.hardware.webnn ? '✓ WebNN: available (hardware ML)' : '✗ WebNN: not available');
+  
+  // WASM
+  STATE.hardware.wasm = typeof WebAssembly === 'object';
+  out.push(STATE.hardware.wasm ? '✓ WebAssembly: available' : '✗ WebAssembly: not available');
+  
+  // Workers
+  STATE.hardware.workers = typeof Worker !== 'undefined';
+  out.push(STATE.hardware.workers ? '✓ Web Workers: available' : '✗ Web Workers: not available');
+  
+  // CPU cores (estimate)
+  const cores = navigator.hardwareConcurrency || 'unknown';
+  out.push(`CPU cores: ${cores}`);
+  
+  document.getElementById('hardware-status').textContent = out.join('\n');
+  document.getElementById('online-nodes').textContent = '1';
+}
+
+window.recheck = detectHardware;
+
+window.enableAll = () => {
+  STATE.enabled.webgpu = STATE.hardware.webgpu;
+  STATE.enabled.webnn = STATE.hardware.webnn;
+  STATE.enabled.workers = STATE.hardware.workers;
+  STATE.enabled.cpu = true;
+  alert('All available hardware enabled');
+};
+
+window.disableAll = () => {
+  STATE.enabled = { webgpu: false, webnn: false, workers: false, cpu: false };
+  alert('All hardware disabled');
+};
+
+// ─── Node ID ───────────────────────────────────────────────
+function initNode() {
+  let id = localStorage.getItem('quilt_node_id');
+  if (!id) {
+    id = 'node_' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('quilt_node_id', id);
+  }
+  STATE.nodeId = id;
+  document.getElementById('node-id').textContent = id;
+  
+  const name = localStorage.getItem('quilt_node_name');
+  if (name) {
+    STATE.nodeName = name;
+    document.getElementById('node-name').value = name;
+  }
+}
+
+window.setNodeName = () => {
+  const name = document.getElementById('node-name').value.trim();
+  if (!name) return;
+  STATE.nodeName = name;
+  localStorage.setItem('quilt_node_name', name);
+  alert('Node name set: ' + name);
+};
+
+// ─── Training ──────────────────────────────────────────────
+
+async function runLinReg(epochs, maxSeconds) {
+  const N = 100;
+  const xs = new Float64Array(N);
+  const ys = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    xs[i] = Math.random() * 10;
+    ys[i] = 3 * xs[i] + 2 + (Math.random() - 0.5);
+  }
+  let w = 0, b = 0;
+  const lr = 0.001;
+  const losses = [];
+  const t0 = performance.now();
+  
+  for (let e = 0; e < epochs; e++) {
+    if (STATE.training.cancel) break;
+    
+    let gw = 0, gb = 0, loss = 0;
+    for (let i = 0; i < N; i++) {
+      const yp = w * xs[i] + b;
+      const err = yp - ys[i];
+      gw += 2 * err * xs[i];
+      gb += 2 * err;
+      loss += err * err;
+    }
+    w -= lr * gw / N;
+    b -= lr * gb / N;
+    losses.push(loss / N);
+    
+    const progress = (e + 1) / epochs * 100;
+    document.getElementById('task-progress').style.width = progress + '%';
+    
+    if (e % 50 === 0 || e === epochs - 1) {
+      const elapsed = (performance.now() - t0) / 1000;
+      document.getElementById('task-output').textContent = 
+        `Linear Regression (epoch ${e+1}/${epochs})\n` +
+        `w=${w.toFixed(4)} (target 3.0)\n` +
+        `b=${b.toFixed(4)} (target 2.0)\n` +
+        `loss=${(loss/N).toFixed(6)}\n` +
+        `elapsed=${elapsed.toFixed(1)}s / ${maxSeconds}s`;
+      drawLoss(losses);
+      
+      if (elapsed > maxSeconds) {
+        document.getElementById('task-output').textContent += '\n\n⏰ Time limit reached, stopping.';
+        break;
+      }
+      
+      await new Promise(r => setTimeout(r, 1));
+    }
+  }
+  
+  STATE.training.losses = losses;
+  STATE.runs.push({
+    task: 'linreg',
+    epochs: losses.length,
+    finalLoss: losses[losses.length - 1],
+    weights: { w, b },
+    duration: (performance.now() - t0) / 1000,
+    node: STATE.nodeId,
+    hardware: getHardwareUsed(),
+  });
+  
+  document.getElementById('last-loss').textContent = losses[losses.length - 1].toFixed(6);
+  document.getElementById('runs-total').textContent = STATE.runs.length;
+}
+
+async function runXOR(epochs, maxSeconds) {
+  const X = [[0,0],[0,1],[1,0],[1,1]];
+  const Y = [0, 1, 1, 0];
+  const H = 8;
+  const rand = () => Math.random() * 2 - 1;
+  const W1 = Array.from({length: H}, () => Array.from({length: 2}, rand));
+  const b1 = new Array(H).fill(0);
+  const W2 = Array.from({length: 1}, () => Array.from({length: H}, rand));
+  const b2 = [0];
+  const sigmoid = x => 1 / (1 + Math.exp(-Math.max(-50, Math.min(50, x))));
+  const losses = [];
+  const t0 = performance.now();
+  
+  for (let e = 0; e < epochs; e++) {
+    if (STATE.training.cancel) break;
+    let loss = 0;
+    for (let i = 0; i < 4; i++) {
+      const x = X[i], y = Y[i];
+      const h = b1.map((_, j) => sigmoid(W1[j][0]*x[0] + W1[j][1]*x[1] + b1[j]));
+      const yp = sigmoid(W2[0].reduce((s, w, j) => s + w*h[j], 0) + b2[0]);
+      const err = yp - y;
+      loss += err * err;
+      const dy = err * yp * (1 - yp);
+      const dh = h.map((_, j) => dy * W2[0][j] * h[j] * (1 - h[j]));
+      for (let j = 0; j < H; j++) {
+        for (let k = 0; k < 2; k++) W1[j][k] -= 0.5 * dh[j] * x[k];
+        b1[j] -= 0.5 * dh[j];
+        W2[0][j] -= 0.5 * dy * h[j];
+      }
+      b2[0] -= 0.5 * dy;
+    }
+    losses.push(loss / 4);
+    
+    const progress = (e + 1) / epochs * 100;
+    document.getElementById('task-progress').style.width = progress + '%';
+    
+    if (e % 100 === 0 || e === epochs - 1) {
+      const elapsed = (performance.now() - t0) / 1000;
+      document.getElementById('task-output').textContent = 
+        `XOR NN (epoch ${e+1}/${epochs})\n` +
+        `loss=${(loss/4).toFixed(6)}\n` +
+        `elapsed=${elapsed.toFixed(1)}s / ${maxSeconds}s`;
+      drawLoss(losses);
+      
+      if (elapsed > maxSeconds) break;
+      await new Promise(r => setTimeout(r, 1));
+    }
+  }
+  
+  STATE.training.losses = losses;
+  STATE.runs.push({
+    task: 'xor',
+    epochs: losses.length,
+    finalLoss: losses[losses.length - 1],
+    duration: (performance.now() - t0) / 1000,
+    node: STATE.nodeId,
+    hardware: getHardwareUsed(),
+  });
+  
+  document.getElementById('last-loss').textContent = losses[losses.length - 1].toFixed(6);
+  document.getElementById('runs-total').textContent = STATE.runs.length;
+}
+
+async function runBurgers(steps, maxSeconds) {
+  const N = 64;
+  const dx = 2 * Math.PI / N;
+  const dt = 0.001;
+  const nu = 0.05;
+  let u = new Float64Array(N);
+  for (let i = 0; i < N; i++) u[i] = Math.sin(i * dx);
+  const losses = [];
+  const t0 = performance.now();
+  
+  for (let step = 0; step < steps; step++) {
+    if (STATE.training.cancel) break;
+    
+    const u_new = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      const ip = (i + 1) % N;
+      const im = (i - 1 + N) % N;
+      const dudx = u[i] >= 0 ? (u[i] - u[im]) / dx : (u[ip] - u[i]) / dx;
+      const d2udx2 = (u[ip] - 2 * u[i] + u[im]) / (dx * dx);
+      u_new[i] = u[i] + dt * (-u[i] * dudx + nu * d2udx2);
+    }
+    u = u_new;
+    
+    let coherence = 0;
+    for (let i = 0; i < N; i++) coherence += Math.abs(u[i]);
+    losses.push(coherence);
+    
+    if (step % 50 === 0 || step === steps - 1) {
+      const elapsed = (performance.now() - t0) / 1000;
+      document.getElementById('task-output').textContent = 
+        `Burgers 1D (step ${step+1}/${steps})\n` +
+        `coherence=${coherence.toFixed(4)}\n` +
+        `u[0]=${u[0].toFixed(3)}, u[N/2]=${u[Math.floor(N/2)].toFixed(3)}\n` +
+        `elapsed=${elapsed.toFixed(1)}s / ${maxSeconds}s`;
+      drawLoss(losses);
+      
+      if (elapsed > maxSeconds) break;
+      await new Promise(r => setTimeout(r, 1));
+    }
+  }
+  
+  STATE.training.losses = losses;
+  STATE.runs.push({
+    task: 'burgers',
+    epochs: losses.length,
+    finalLoss: losses[losses.length - 1],
+    duration: (performance.now() - t0) / 1000,
+    node: STATE.nodeId,
+    hardware: getHardwareUsed(),
+  });
+  
+  document.getElementById('last-loss').textContent = losses[losses.length - 1].toFixed(4);
+  document.getElementById('runs-total').textContent = STATE.runs.length;
+}
+
+function getHardwareUsed() {
+  const used = [];
+  if (STATE.enabled.webgpu) used.push('WebGPU');
+  if (STATE.enabled.webnn) used.push('WebNN');
+  if (STATE.enabled.workers) used.push('Workers');
+  if (STATE.enabled.cpu) used.push('CPU');
+  return used.join('+');
+}
+
+window.runTask = async function() {
+  if (STATE.training.active) {
+    alert('Training already active');
+    return;
+  }
+  
+  const task = document.getElementById('task-type').value;
+  const epochs = parseInt(document.getElementById('task-epochs').value);
+  const budget = parseInt(document.getElementById('task-budget').value);
+  
+  STATE.training = {
+    active: true,
+    task,
+    epochs: 0,
+    maxEpochs: epochs,
+    losses: [],
+    cancel: false,
+  };
+  
+  document.getElementById('cancel-btn').disabled = false;
+  document.getElementById('node-status').textContent = 'training';
+  
+  try {
+    if (task === 'linreg') await runLinReg(epochs, budget);
+    else if (task === 'xor') await runXOR(epochs, budget);
+    else if (task === 'burgers') await runBurgers(epochs, budget);
+    else if (task === 'sat') await runSAT(epochs, budget);
+    else {
+      document.getElementById('task-output').textContent = `${task} task not yet wired up. Try linreg, xor, or burgers.`;
+    }
+  } finally {
+    STATE.training.active = false;
+    document.getElementById('cancel-btn').disabled = true;
+    document.getElementById('node-status').textContent = 'idle';
+    document.getElementById('task-progress').style.width = '100%';
+  }
+};
+
+window.cancelTask = () => {
+  STATE.training.cancel = true;
+  document.getElementById('task-output').textContent += '\n\n⏹ Cancelled.';
+  STATE.training.active = false;
+  document.getElementById('cancel-btn').disabled = true;
+  document.getElementById('node-status').textContent = 'idle';
+};
+
+function drawLoss(losses) {
+  const c = document.getElementById('loss-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.clientWidth; c.height = c.clientHeight;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, c.width, c.height);
+  
+  if (losses.length < 2) return;
+  const max = Math.max(...losses);
+  const min = Math.min(...losses);
+  const range = max - min || 1;
+  
+  ctx.strokeStyle = '#15803d';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < losses.length; i++) {
+    const x = (i / losses.length) * c.width;
+    const y = c.height - ((losses[i] - min) / range) * (c.height - 20) - 10;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+}
+
+// ─── Schedule ──────────────────────────────────────────────
+
+window.scheduleJob = () => {
+  const start = document.getElementById('schedule-start').value;
+  const duration = parseInt(document.getElementById('schedule-duration').value);
+  const task = document.getElementById('schedule-task').value;
+  
+  if (!start) return;
+  
+  const now = new Date();
+  const [h, m] = start.split(':').map(Number);
+  const scheduledTime = new Date(now);
+  scheduledTime.setHours(h, m, 0, 0);
+  if (scheduledTime < now) scheduledTime.setDate(scheduledTime.getDate() + 1);
+  
+  STATE.schedule.push({
+    start: scheduledTime.toISOString(),
+    duration,
+    task,
+    status: 'scheduled',
+  });
+  
+  localStorage.setItem('quilt_schedule', JSON.stringify(STATE.schedule));
+  viewSchedule();
+};
+
+window.viewSchedule = () => {
+  const out = [];
+  if (STATE.schedule.length === 0) out.push('No scheduled jobs');
+  
+  for (const job of STATE.schedule) {
+    const startDate = new Date(job.start);
+    out.push(`📅 ${job.task} — starts ${startDate.toLocaleString()}, ${job.duration}h, status: ${job.status}`);
+  }
+  document.getElementById('schedule-output').textContent = out.join('\n');
+};
+
+// ─── Queue ─────────────────────────────────────────────────
+
+window.runQueue = async function() {
+  for (const job of STATE.queue) {
+    document.getElementById('task-type').value = job.task;
+    document.getElementById('task-epochs').value = job.epochs;
+    await runTask();
+  }
+};
+
+window.clearQueue = () => {
+  STATE.queue = [];
+  renderQueue();
+};
+
+function renderQueue() {
+  const c = document.getElementById('job-queue');
+  if (STATE.queue.length === 0) {
+    c.innerHTML = '<p style="color:#94a3b8;font-size:0.85em;">No jobs in queue</p>';
+    return;
+  }
+  c.innerHTML = STATE.queue.map((j, i) => 
+    `<div class="job-row">
+      <span class="name">${j.task}</span>
+      <span class="progress">${j.epochs} ep</span>
+      <span class="progress">${j.budget}s</span>
+      <button onclick="removeFromQueue(${i})" class="secondary">×</button>
+    </div>`
+  ).join('');
+}
+
+window.removeFromQueue = (i) => {
+  STATE.queue.splice(i, 1);
+  renderQueue();
+};
+
+// ─── Submit to cloud ───────────────────────────────────────
+
+window.submitToCloud = () => {
+  if (STATE.runs.length === 0) {
+    alert('No runs to submit yet');
+    return;
+  }
+  const lastRun = STATE.runs[STATE.runs.length - 1];
+  
+  // Simulate cloud submission (would be a real POST in production)
+  const submission = {
+    nodeId: STATE.nodeId,
+    nodeName: STATE.nodeName,
+    run: lastRun,
+    timestamp: new Date().toISOString(),
+    cloudReceipt: 'Q' + Math.random().toString(36).slice(2, 14).toUpperCase(),
+  };
+  STATE.submissions.push(submission);
+  localStorage.setItem('quilt_submissions', JSON.stringify(STATE.submissions));
+  
+  document.getElementById('submit-output').textContent = 
+    `✅ Submitted run ${STATE.runs.length} to Quilt Cloud\n` +
+    `Receipt: ${submission.cloudReceipt}\n` +
+    `Node: ${submission.nodeName || submission.nodeId}\n` +
+    `Task: ${lastRun.task}\n` +
+    `Final loss: ${lastRun.finalLoss.toFixed(6)}\n` +
+    `Hardware: ${lastRun.hardware}\n` +
+    `Duration: ${lastRun.duration.toFixed(1)}s`;
+  
+  document.getElementById('submitted-count').textContent = STATE.submissions.length;
+};
+
+window.submitAll = () => {
+  for (let i = 0; i < STATE.runs.length; i++) submitToCloud();
+};
+
+// ─── IoT Network projection ────────────────────────────────
+
+function drawIoTNetwork() {
+  const c = document.getElementById('iot-canvas');
+  const ctx = c.getContext('2d');
+  c.width = c.clientWidth; c.height = c.clientHeight;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, c.width, c.height);
+  
+  // Stars
+  ctx.fillStyle = '#fff';
+  for (let i = 0; i < 50; i++) {
+    ctx.fillRect(Math.random() * c.width, Math.random() * c.height, 1, 1);
+  }
+  
+  // You in center
+  const cx = c.width / 2, cy = c.height / 2;
+  
+  // Other nodes (sample)
+  const otherNodes = [
+    { name: 'node_ah3k', type: 'gpu', x: cx + 100, y: cy - 80 },
+    { name: 'node_bf9z', type: 'cpu', x: cx - 120, y: cy + 50 },
+    { name: 'node_d4m1', type: 'gpu', x: cx + 80, y: cy + 100 },
+    { name: 'node_q7e2', type: 'npu', x: cx - 60, y: cy - 100 },
+    { name: 'node_j2k9', type: 'cpu', x: cx + 140, y: cy + 30 },
+  ];
+  
+  // Connections
+  ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+  ctx.lineWidth = 1;
+  for (const n of otherNodes) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(n.x, n.y);
+    ctx.stroke();
+  }
+  
+  // Other nodes
+  const colors = { gpu: '#15803d', cpu: '#1e40af', npu: '#a78bfa' };
+  for (const n of otherNodes) {
+    ctx.fillStyle = colors[n.type] || '#fff';
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = '9px monospace';
+    ctx.fillText(n.name, n.x + 12, n.y + 3);
+  }
+  
+  // You (highlighted)
+  ctx.fillStyle = '#fbbf24';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 11px monospace';
+  ctx.fillText('YOU', cx + 16, cy + 3);
+  
+  // Halo
+  const pulse = Math.sin(Date.now() / 500) * 0.5 + 0.5;
+  ctx.strokeStyle = `rgba(251, 191, 36, ${pulse * 0.6})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18 + pulse * 6, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+// ─── Leaderboard ───────────────────────────────────────────
+
+window.viewLeaderboard = () => {
+  // Simulated leaderboard
+  const board = [
+    { node: 'node_ah3k', compute: 142.3, runs: 87 },
+    { node: STATE.nodeId, compute: STATE.submissions.reduce((s, x) => s + x.run.duration / 3600, 0), runs: STATE.submissions.length },
+    { node: 'node_bf9z', compute: 38.1, runs: 23 },
+    { node: 'node_d4m1', compute: 28.7, runs: 18 },
+    { node: 'node_q7e2', compute: 12.4, runs: 9 },
+  ];
+  board.sort((a, b) => b.compute - a.compute);
+  
+  const me = board.findIndex(b => b.node === STATE.nodeId);
+  document.getElementById('your-rank').textContent = me >= 0 ? '#' + (me + 1) : 'unranked';
+  document.getElementById('compute-hours').textContent = board[me]?.compute.toFixed(1) + 'h' || '0h';
+  document.getElementById('cells-trained').textContent = STATE.runs.length;
+  
+  alert('🏆 Leaderboard\n\n' +
+    board.map((b, i) => `${i+1}. ${b.node} — ${b.compute.toFixed(1)}h, ${b.runs} runs`).join('\n'));
+};
+
+// ─── Init ──────────────────────────────────────────────────
+
+initNode();
+detectHardware();
+
+setInterval(() => {
+  drawIoTNetwork();
+  const load = Math.random() * 30 + 10;
+  document.getElementById('network-load').textContent = load.toFixed(0) + '%';
+}, 100);
+
+setInterval(() => {
+  document.getElementById('witness-count').textContent = 
+    (parseInt(document.getElementById('witness-count').textContent) + Math.floor(Math.random() * 10)).toString();
+}, 1000);
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Quilt 基板 — ブラウザネイティブ</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3em 2em;
+    line-height: 1.6;
+  }
+  h1 { color: #fbbf24; }
+  .card {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1.5em;
+    margin: 1.5em 0;
+  }
+  .card h2 { color: #fbbf24; margin-top: 0; }
+  a.btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #0f172a;
+    padding: 0.7em 1.4em;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+  }
+  code { background: rgba(0,0,0,0.3); padding: 0.1em 0.4em; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>Quilt 基板 — ブラウザネイティブ</h1>
+<p>ブラウザで基板を実行。サーバー不要。</p>
+
+<div class="card">
+  <h2>基板コア</h2>
+  <p>証人ログ、JEV、波動関数、3D可視化、IndexedDB、ブラウザ内LR+MLPトレーニング、Burgers 1Dソルバーを備えたインタラクティブなセルグラフ。</p>
+  <a class="btn" href="../substrate.html">開く →</a>
+</div>
+
+<div class="card">
+  <h2>基板 ML</h2>
+  <p>ブラウザでのトレーニングとPDE/SAT解決。実際の勾配降下。WebGPU/WebNN/WASMバックエンド検出。</p>
+  <a class="btn" href="../substrate-ml.html">開く →</a>
+</div>
+
+<div class="card">
+  <h2>基板 GPU</h2>
+  <p>FNV-1aハッシュとJEVコサイン類似度のWebGPU計算シェーダー。カナリアを検証。</p>
+  <a class="btn" href="../substrate-gpu.html">開く →</a>
+</div>
+
+<div class="card">
+  <h2>基板 WebNN</h2>
+  <p>MatMul、Softmax、MLP用のWebNNグラフビルダー。ハードウェア加速ML。</p>
+  <a class="btn" href="../substrate-webnn.html">開く →</a>
+</div>
+
+<div class="card">
+  <h2>3D基板</h2>
+  <p>実際の3Dセルグラフ。ドラッグ、ズーム、クエリ。純粋なWebGL2 + Canvas。</p>
+  <a class="btn" href="../substrate-3d.html">開く →</a>
+</div>
+
+<div class="card">
+  <h2>基板プレイグラウンド</h2>
+  <p>マルチタブブラウザ基板。JEV、波動関数、証人ログ、PDE、トレーニング、SAT、2Dキャンバス。</p>
+  <a class="btn" href="../substrate-playground.html">開く →</a>
+</div>
+
+<div class="card">
+  <h2>📡 Distributed Training & IoT</h2>
+  <p>Enable your hardware. Train models overnight. Submit to the Quilt Cloud.</p>
+  <a class="btn" href="../distributed-training.html">開く →</a>
+  <a class="btn" href="../iot-nodes.html" style="margin-left:0.5em;">IoT Nodes →</a>
+</div>
+
+</body>
+</html>
