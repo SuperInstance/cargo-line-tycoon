@@ -40,7 +40,7 @@ The substrate runs in your browser. Same primitives as the canon. No server requ
 
 ## Live deployment
 
-**Browser apps**: https://0rhjifxqnh88w.space.minimax.io/
+**Browser apps**: https://quilt-e4m.pages.dev/
 
 19 paths available: 11 apps + 7 i18n + SDK.
 

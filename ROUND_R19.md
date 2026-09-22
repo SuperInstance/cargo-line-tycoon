@@ -23,9 +23,9 @@ Quilt Truman:
 
 ### Live URLs
 
-- **Garden**: https://3eihi3bltog18.space.minimax.io/garden/
-- **Visitor Guide**: https://3eihi3bltog18.space.minimax.io/garden/visitor-guide.html
-- **Truman Architecture**: https://3eihi3bltog18.space.minimax.io/garden/truman.html
+- **Garden**: https://quilt-e4m.pages.dev/garden/
+- **Visitor Guide**: https://quilt-e4m.pages.dev/garden/visitor-guide.html
+- **Truman Architecture**: https://quilt-e4m.pages.dev/garden/truman.html
 
 ### How it works
 

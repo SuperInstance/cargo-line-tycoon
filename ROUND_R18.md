@@ -49,7 +49,7 @@ en, zh, pt, es, ja, ar, vi
 
 ## Live deployments
 
-- **Browser substrate**: https://0rhjifxqnh88w.space.minimax.io/
+- **Browser substrate**: https://quilt-e4m.pages.dev/
 - **GitHub**: github.com/SuperInstance/cargo-line-tycoon (10 new commits)
 
 ## Architecture patterns

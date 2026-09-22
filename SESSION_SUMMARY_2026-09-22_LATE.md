@@ -26,7 +26,7 @@ en, zh (中文), pt (Português), es (Español), ja (日本語), ar (العرب�
 
 ### Live URLs
 
-- **Browser substrate**: https://0rhjifxqnh88w.space.minimax.io/
+- **Browser substrate**: https://quilt-e4m.pages.dev/
 - **GitHub**: github.com/SuperInstance/cargo-line-tycoon (15+ commits this session)
 
 ### Background lanes (this session, total)
