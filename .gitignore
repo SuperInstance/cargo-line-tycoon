@@ -2,3 +2,5 @@ substrate-bundle/.wrangler/
 browser-deploy/substrate-bundle.zip
 shipwright/__pycache__/
 composite_jev/__pycache__/
+motif_quilt/agents/__pycache__/
+multi_model_iteration/__pycache__/
