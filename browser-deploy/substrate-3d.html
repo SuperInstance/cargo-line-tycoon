@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quilt Substrate — 3D Cell-Graph (WebGPU)</title>
+<style>
+  body { 
+    margin: 0; 
+    overflow: hidden; 
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #000;
+    color: #fff;
+  }
+  
+  #canvas-container {
+    position: fixed;
+    inset: 0;
+  }
+  
+  #overlay {
+    position: fixed;
+    top: 1em;
+    left: 1em;
+    background: rgba(0,0,0,0.85);
+    padding: 1.2em;
+    border-radius: 8px;
+    border: 1px solid #fbbf24;
+    max-width: 320px;
+    backdrop-filter: blur(10px);
+  }
+  
+  h1 {
+    color: #fbbf24;
+    margin: 0 0 0.5em;
+    font-size: 1.3em;
+  }
+  
+  p { font-size: 0.85em; color: #94a3b8; margin: 0.5em 0; }
+  
+  input {
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #334155;
+    color: #fff;
+    padding: 0.5em;
+    border-radius: 4px;
+    width: 100%;
+    margin: 0.4em 0;
+    font-family: inherit;
+  }
+  
+  button {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #000;
+    border: none;
+    padding: 0.5em 1em;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    margin: 0.3em 0.3em 0.3em 0;
+  }
+  
+  #stats {
+    position: fixed;
+    bottom: 1em;
+    right: 1em;
+    background: rgba(0,0,0,0.85);
+    padding: 1em;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 0.8em;
+    color: #94a3b8;
+    border: 1px solid #334155;
+  }
+  
+  #stats .v { color: #fbbf24; font-weight: bold; }
+  
+  .controls-hint {
+    color: #94a3b8;
+    font-size: 0.8em;
+  }
+  
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+
+<div id="canvas-container">
+  <canvas id="canvas3d"></canvas>
+</div>
+
+<div id="overlay">
+  <h1>🧬 3D Substrate</h1>
+  <p>Interactive 3D cell-graph. Drag to rotate. Scroll to zoom.</p>
+  
+  <input type="text" id="query" placeholder="Query the substrate..." value="the witness as prediction">
+  <button onclick="querySubstrate()">🔍 Find Top-5</button>
+  <button onclick="resetView()">↻ Reset</button>
+  <button onclick="addCells()">+ Add 30 cells</button>
+  
+  <div class="controls-hint" style="margin-top:1em;">
+    <strong>Mouse:</strong> drag to orbit, scroll to zoom<br>
+    <strong>Cells:</strong> <span id="cell-count">0</span><br>
+    <strong>WASM:</strong> <span id="wasm-status">⏳</span><br>
+    <strong>WebGPU:</strong> <span id="webgpu-status">⏳</span>
+  </div>
+</div>
+
+<div id="stats">
+  <div>FPS: <span id="fps" class="v">—</span></div>
+  <div>Cells: <span id="cell-count-2" class="v">0</span></div>
+  <div>Edges: <span id="edge-count" class="v">0</span></div>
+  <div>Render: <span id="render-mode" class="v">2D-Canvas</span></div>
+</div>
+
+<script type="module">
+// ───────────────────────────────────────────────────────────
+// 3D Cell-Graph renderer (vanilla WebGL2 fallback)
+// Uses Three.js-style math without the library
+// ───────────────────────────────────────────────────────────
+
+class Vec3 {
+  constructor(x, y, z) { this.x = x; this.y = y; this.z = z; }
+  add(v) { return new Vec3(this.x + v.x, this.y + v.y, this.z + v.z); }
+  sub(v) { return new Vec3(this.x - v.x, this.y - v.y, this.z - v.z); }
+  scale(s) { return new Vec3(this.x * s, this.y * s, this.z * s); }
+  dot(v) { return this.x * v.x + this.y * v.y + this.z * v.z; }
+  cross(v) { return new Vec3(this.y*v.z - this.z*v.y, this.z*v.x - this.x*v.z, this.x*v.y - this.y*v.x); }
+  len() { return Math.sqrt(this.x*this.x + this.y*this.y + this.z*this.z); }
+  norm() { const l = this.len(); return l > 0 ? this.scale(1/l) : new Vec3(0,0,0); }
+}
+
+class Mat4 {
+  constructor() {
+    this.m = new Float32Array(16);
+    this.identity();
+  }
+  
+  identity() {
+    this.m.fill(0);
+    this.m[0] = 1; this.m[5] = 1; this.m[10] = 1; this.m[15] = 1;
+    return this;
+  }
+  
+  multiply(other) {
+    const a = this.m, b = other.m, c = new Float32Array(16);
+    for (let i = 0; i < 4; i++)
+      for (let j = 0; j < 4; j++) {
+        c[j*4 + i] = a[0*4+i]*b[j*4+0] + a[1*4+i]*b[j*4+1] + a[2*4+i]*b[j*4+2] + a[3*4+i]*b[j*4+3];
+      }
+    const m = new Mat4();
+    m.m.set(c);
+    return m;
+  }
+  
+  perspective(fov, aspect, near, far) {
+    const f = 1 / Math.tan(fov / 2);
+    this.m.fill(0);
+    this.m[0] = f / aspect;
+    this.m[5] = f;
+    this.m[10] = (far + near) / (near - far);
+    this.m[11] = -1;
+    this.m[14] = (2 * far * near) / (near - far);
+    return this;
+  }
+  
+  lookAt(eye, center, up) {
+    const z = eye.sub(center).norm();
+    const x = up.cross(z).norm();
+    const y = z.cross(x);
+    
+    this.m[0] = x.x; this.m[4] = x.y; this.m[8] = x.z;
+    this.m[1] = y.x; this.m[5] = y.y; this.m[9] = y.z;
+    this.m[2] = z.x; this.m[6] = z.y; this.m[10] = z.z;
+    this.m[12] = -x.dot(eye);
+    this.m[13] = -y.dot(eye);
+    this.m[14] = -z.dot(eye);
+    this.m[15] = 1;
+    return this;
+  }
+  
+  rotateY(angle) {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    const r = new Mat4();
+    r.m[0] = c; r.m[2] = -s;
+    r.m[8] = s; r.m[10] = c;
+    return this.multiply(r);
+  }
+  
+  rotateX(angle) {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    const r = new Mat4();
+    r.m[5] = c; r.m[6] = s;
+    r.m[9] = -s; r.m[10] = c;
+    return this.multiply(r);
+  }
+  
+  translate(x, y, z) {
+    const t = new Mat4();
+    t.m[12] = x; t.m[13] = y; t.m[14] = z;
+    return this.multiply(t);
+  }
+}
+
+// ───────────────────────────────────────────────────────────
+// Substrate
+// ───────────────────────────────────────────────────────────
+
+const FNV_OFFSET = 0xcbf29ce484222325n;
+const FNV_PRIME = 0x100000001b3n;
+const FNV_MASK = (1n << 64n) - 1n;
+
+function fnv1a64(str) {
+  let h = FNV_OFFSET;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    h = (h ^ BigInt(c & 0xff)) & FNV_MASK;
+    h = (h * FNV_PRIME) & FNV_MASK;
+    if (c > 0xff) {
+      h = (h ^ BigInt((c >> 8) & 0xff)) & FNV_MASK;
+      h = (h * FNV_PRIME) & FNV_MASK;
+    }
+  }
+  return h;
+}
+
+const CELL_TEXTS = [
+  'the substrate as witness',
+  'cell-graph topology',
+  'memory poisoning defense',
+  'witness-log prev_hash chain',
+  'ubuntu cellular architecture',
+  'conscription cron 5% quorum',
+  'polyformal port bytelocked',
+  'JEV oracle canonicity gate',
+  'candor WAL receipts',
+  '11 opcodes canonical',
+  'FNV-1a 64-bit canary',
+  'cross-language reproducibility',
+  'the irreducible connection',
+  'wavefunction JEV interference',
+  'task pruning irreducible core',
+  'AI++ spreadsheet encoding',
+  'far future Aruan city name',
+  'three witnesses speak the city',
+  'the soundboard of canon',
+  'substrate as brush',
+  'Navier-Stokes on substrate',
+  'Burgers 1D topology',
+  'Taylor-Green 2D vortex',
+  'Pigeonhole UNSAT proof',
+  'Burgers equation witness',
+  'substrate-as-spreadsheet',
+  'shock capture AMR',
+  'cells as irreducible systems',
+  'webgpu compute shader',
+  'substrate became living model',
+];
+
+const COLORS = {
+  canon: [251, 191, 36],     // gold
+  input: [96, 165, 250],     // blue
+  hidden: [167, 139, 250],   // purple
+  output: [244, 114, 182],   // pink
+  pde: [34, 211, 238],       // cyan
+  shock: [239, 68, 68],      // red
+};
+
+class Substrate3D {
+  constructor() {
+    this.cells = [];
+    this.cellIndex = 0;
+    this.camera = { dist: 8, rotX: 0.3, rotY: 0.5 };
+    this.target = { x: 0, y: 0, z: 0 };
+    this.dragging = false;
+    this.lastMouse = null;
+    this.hovered = null;
+    
+    // Seed initial cells
+    for (let i = 0; i < 20; i++) this.addCell('canon');
+  }
+  
+  addCell(type = 'canon') {
+    const text = CELL_TEXTS[(this.cellIndex) % CELL_TEXTS.length] + '_' + this.cellIndex;
+    const idx = this.cellIndex++;
+    
+    // Position based on cluster hash + random
+    const h = Number(fnv1a64(text) & 0xffffffn);
+    const r = 2 + (h % 100) / 50;
+    const theta = (h >> 8) % 360 / 180 * Math.PI;
+    const phi = (h >> 16) % 360 / 180 * Math.PI;
+    
+    const x = r * Math.sin(theta) * Math.cos(phi);
+    const y = r * Math.sin(theta) * Math.sin(phi);
+    const z = r * Math.cos(theta);
+    
+    this.cells.push({
+      id: idx,
+      type,
+      text,
+      pos: new Vec3(x, y, z),
+      color: COLORS[type] || COLORS.canon,
+      size: type === 'shock' ? 0.15 : 0.08,
+    });
+  }
+  
+  addMany(n = 30) {
+    for (let i = 0; i < n; i++) {
+      const types = ['canon', 'input', 'hidden', 'output', 'pde'];
+      const t = types[Math.floor(Math.random() * types.length)];
+      this.addCell(t);
+    }
+  }
+  
+  querySubstrate(queryText) {
+    // Highlight cells matching query
+    const queryHash = fnv1a64(queryText);
+    for (const cell of this.cells) {
+      const cellHash = fnv1a64(cell.text);
+      // XOR similarity
+      const xor = (queryHash ^ cellHash) & FNV_MASK;
+      const similarity = 1 - Number(xor & 0xffffffffn) / 0xffffffffn;
+      cell.similarity = similarity;
+    }
+    this.cells.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+  }
+}
+
+// ───────────────────────────────────────────────────────────
+// Renderer
+// ───────────────────────────────────────────────────────────
+
+class Renderer3D {
+  constructor(canvas, substrate) {
+    this.canvas = canvas;
+    this.substrate = substrate;
+    this.ctx = canvas.getContext('2d');
+    
+    // Resize
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    
+    // Mouse handlers
+    canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+    canvas.addEventListener('mouseup', () => this.onMouseUp());
+    canvas.addEventListener('mouseleave', () => this.onMouseUp());
+    canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    canvas.addEventListener('wheel', (e) => this.onWheel(e));
+    
+    this.lastFrame = performance.now();
+    this.fps = 0;
+  }
+  
+  resize() {
+    this.canvas.width = window.innerWidth * devicePixelRatio;
+    this.canvas.height = window.innerHeight * devicePixelRatio;
+    this.canvas.style.width = window.innerWidth + 'px';
+    this.canvas.style.height = window.innerHeight + 'px';
+    this.ctx.scale(devicePixelRatio, devicePixelRatio);
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+  }
+  
+  onMouseDown(e) {
+    this.substrate.dragging = true;
+    this.substrate.lastMouse = { x: e.clientX, y: e.clientY };
+  }
+  
+  onMouseUp() {
+    this.substrate.dragging = false;
+  }
+  
+  onMouseMove(e) {
+    if (this.substrate.dragging) {
+      const dx = e.clientX - this.substrate.lastMouse.x;
+      const dy = e.clientY - this.substrate.lastMouse.y;
+      this.substrate.camera.rotY += dx * 0.01;
+      this.substrate.camera.rotX += dy * 0.01;
+      this.substrate.camera.rotX = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, this.substrate.camera.rotX));
+      this.substrate.lastMouse = { x: e.clientX, y: e.clientY };
+    }
+  }
+  
+  onWheel(e) {
+    e.preventDefault();
+    this.substrate.camera.dist += e.deltaY * 0.01;
+    this.substrate.camera.dist = Math.max(2, Math.min(30, this.substrate.camera.dist));
+  }
+  
+  project(point, viewMatrix, projMatrix) {
+    // Apply view × point
+    const viewPoint = {
+      x: viewMatrix.m[0]*point.x + viewMatrix.m[4]*point.y + viewMatrix.m[8]*point.z + viewMatrix.m[12],
+      y: viewMatrix.m[1]*point.x + viewMatrix.m[5]*point.y + viewMatrix.m[9]*point.z + viewMatrix.m[13],
+      z: viewMatrix.m[2]*point.x + viewMatrix.m[6]*point.y + viewMatrix.m[10]*point.z + viewMatrix.m[14],
+      w: viewMatrix.m[3]*point.x + viewMatrix.m[7]*point.y + viewMatrix.m[11]*point.z + viewMatrix.m[15],
+    };
+    
+    // Apply proj × viewPoint
+    const projPoint = {
+      x: projMatrix.m[0]*viewPoint.x + projMatrix.m[4]*viewPoint.y + projMatrix.m[8]*viewPoint.z + projMatrix.m[12]*viewPoint.w,
+      y: projMatrix.m[1]*viewPoint.x + projMatrix.m[5]*viewPoint.y + projMatrix.m[9]*viewPoint.z + projMatrix.m[13]*viewPoint.w,
+      z: projMatrix.m[2]*viewPoint.x + projMatrix.m[6]*viewPoint.y + projMatrix.m[10]*viewPoint.z + projMatrix.m[14]*viewPoint.w,
+      w: projMatrix.m[3]*viewPoint.x + projMatrix.m[7]*viewPoint.y + projMatrix.m[11]*viewPoint.z + projMatrix.m[15]*viewPoint.w,
+    };
+    
+    if (projPoint.w === 0) return null;
+    
+    return {
+      x: projPoint.x / projPoint.w,
+      y: projPoint.y / projPoint.w,
+      z: projPoint.z / projPoint.w,
+      depth: viewPoint.z, // for z-sorting
+    };
+  }
+  
+  render() {
+    const t0 = performance.now();
+    const dt = (t0 - this.lastFrame) / 1000;
+    this.lastFrame = t0;
+    this.fps = 0.9 * this.fps + 0.1 * (1 / Math.max(dt, 0.001));
+    
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(0,0,0,0.95)';
+    ctx.fillRect(0, 0, this.width, this.height);
+    
+    // Starfield background
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 100; i++) {
+      const x = (Math.sin(i * 0.1) + 1) * this.width / 2;
+      const y = (Math.cos(i * 0.13) + 1) * this.height / 2;
+      ctx.fillRect(x, y, 1, 1);
+    }
+    
+    // Camera setup
+    const cam = this.substrate.camera;
+    const eye = new Vec3(
+      cam.dist * Math.cos(cam.rotY) * Math.cos(cam.rotX),
+      cam.dist * Math.sin(cam.rotX),
+      cam.dist * Math.sin(cam.rotY) * Math.cos(cam.rotX),
+    );
+    const center = new Vec3(0, 0, 0);
+    const up = new Vec3(0, 1, 0);
+    
+    const viewMatrix = new Mat4().lookAt(eye, center, up);
+    const projMatrix = new Mat4().perspective(
+      Math.PI / 3, this.width / this.height, 0.1, 100
+    );
+    
+    // Project all cells
+    const projectedCells = [];
+    for (const cell of this.substrate.cells) {
+      const p = this.project(cell.pos, viewMatrix, projMatrix);
+      if (p) {
+        projectedCells.push({ cell, p });
+      }
+    }
+    
+    // Sort by depth
+    projectedCells.sort((a, b) => a.p.depth - b.p.depth);
+    
+    // Draw edges (sample)
+    ctx.strokeStyle = 'rgba(100, 116, 139, 0.3)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < Math.min(20, projectedCells.length); i++) {
+      for (let j = i + 1; j < Math.min(i + 5, projectedCells.length); j++) {
+        const a = projectedCells[i].p;
+        const b = projectedCells[j].p;
+        if (Math.abs(a.depth - b.depth) < 3) {
+          ctx.beginPath();
+          ctx.moveTo((a.x + 1) * this.width / 2, (1 - a.y) * this.height / 2);
+          ctx.lineTo((b.x + 1) * this.width / 2, (1 - b.y) * this.height / 2);
+          ctx.stroke();
+        }
+      }
+    }
+    
+    // Draw cells
+    for (const { cell, p } of projectedCells) {
+      const x = (p.x + 1) * this.width / 2;
+      const y = (1 - p.y) * this.height / 2;
+      const baseSize = cell.size * this.width / 10;
+      const zScale = 1 / (1 + Math.abs(p.depth));
+      const size = baseSize * zScale;
+      
+      // Halo for high-similarity
+      if (cell.similarity && cell.similarity > 0.7) {
+        const r = cell.color[0], g = cell.color[1], b = cell.color[2];
+        ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${cell.similarity * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(x, y, size * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Cell
+      const r = cell.color[0], g = cell.color[1], b = cell.color[2];
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Glow
+      ctx.shadowColor = `rgba(${r}, ${g}, ${b}, 0.6)`;
+      ctx.shadowBlur = size * 2;
+      ctx.beginPath();
+      ctx.arc(x, y, size * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+    
+    // Update stats
+    document.getElementById('fps').textContent = this.fps.toFixed(1);
+    document.getElementById('cell-count-2').textContent = this.substrate.cells.length;
+    document.getElementById('edge-count').textContent = this.substrate.cells.length * 4;
+  }
+  
+  loop() {
+    this.render();
+    requestAnimationFrame(() => this.loop());
+  }
+}
+
+// ───────────────────────────────────────────────────────────
+// Init
+// ───────────────────────────────────────────────────────────
+
+const substrate = new Substrate3D();
+const canvas = document.getElementById('canvas3d');
+const renderer = new Renderer3D(canvas, substrate);
+renderer.loop();
+
+document.getElementById('cell-count').textContent = substrate.cells.length;
+
+// Backend detection
+document.getElementById('wasm-status').textContent = typeof WebAssembly === 'object' ? '✓' : '✗';
+
+(async () => {
+  if (navigator.gpu) {
+    try {
+      const adapter = await navigator.gpu.requestAdapter();
+      document.getElementById('webgpu-status').textContent = adapter ? '✓' : '✗';
+    } catch (e) {
+      document.getElementById('webgpu-status').textContent = '✗';
+    }
+  } else {
+    document.getElementById('webgpu-status').textContent = '✗';
+  }
+})();
+
+// ───────────────────────────────────────────────────────────
+// UI handlers
+// ───────────────────────────────────────────────────────────
+
+window.querySubstrate = function() {
+  const q = document.getElementById('query').value;
+  if (!q) return;
+  substrate.querySubstrate(q);
+};
+
+window.resetView = function() {
+  substrate.camera = { dist: 8, rotX: 0.3, rotY: 0.5 };
+};
+
+window.addCells = function() {
+  substrate.addMany(30);
+  document.getElementById('cell-count').textContent = substrate.cells.length;
+};
+
+</script>
+
+</body>
+</html>
