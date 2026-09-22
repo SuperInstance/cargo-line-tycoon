@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Substrate SDK Demo — Drop-in Anywhere</title>
+<style>
+  body {
+    font-family: monospace;
+    background: #0a0e1a;
+    color: #e2e8f0;
+    padding: 2em;
+  }
+  h1 { color: #fbbf24; }
+  pre { background: rgba(0,0,0,0.5); padding: 1em; border-radius: 4px; overflow-x: auto; }
+  .output { background: rgba(0,0,0,0.5); padding: 1em; border-radius: 4px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+  button { background: #fbbf24; color: #0f172a; border: none; padding: 0.6em 1.2em; border-radius: 4px; font-weight: bold; cursor: pointer; }
+  code { background: rgba(0,0,0,0.4); padding: 0.1em 0.4em; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<h1>🧩 Substrate SDK — Drop-in Demo</h1>
+<p>Same primitives. From the canon. Drop into any page.</p>
+
+<h2>The SDK</h2>
+<pre><code>import { 
+  Substrate, Cell, LocalEmbedder, 
+  fnv1a64, FLEET_CANARY_HEX 
+} from './substrate-sdk.js';
+
+const s = new Substrate();
+
+// Add cells
+s.add('hello', 'canon', { text: 'hello world' });
+s.add('foo', 'canon', { text: 'foo bar' });
+s.add('witness', 'canon', { text: 'witness as prediction' });
+
+// BIND: connect two cells
+s.BIND('hello', 'foo');
+
+// Find top-5 by similarity
+console.log(s.findTopK('hello'));
+
+// Wavefunction JEV
+console.log(s.wavefunction('hello'));
+
+// Local embedder
+const emb = new LocalEmbedder(32).embed('hello world');
+
+// Save to IndexedDB
+await s.saveToIndexedDB();
+
+// Distributed
+await s.registerWithCoordinator('https://quilt-distributed.example.workers.dev');
+const r = await s.submitToCoordinator(coordinator, 'linreg', { w: 2.9, b: 2.1, loss: 0.01 });
+console.log('Submitted:', r);
+</code></pre>
+
+<h2>Live Demo</h2>
+<button id="run-demo">▶ Run Demo</button>
+<div class="output" id="demo-output">Click "Run Demo" to execute the SDK in your browser.</div>
+
+<h2>Try it yourself</h2>
+<input type="text" id="user-query" placeholder="Query the substrate..." value="the witness as prediction" style="background:rgba(0,0,0,0.5);color:#fff;border:1px solid #334155;padding:0.4em;width:300px;">
+<button id="user-q">🔍 Find Top-5</button>
+<div class="output" id="user-output">Awaiting query...</div>
+
+<h2>Add a cell</h2>
+<input type="text" id="cell-text" placeholder="Cell text..." style="background:rgba(0,0,0,0.5);color:#fff;border:1px solid #334155;padding:0.4em;width:300px;">
+<button id="add-cell">+ Add</button>
+<button id="save-state">💾 Save</button>
+<button id="load-state">📥 Load</button>
+<div class="output" id="add-output">Awaiting...</div>
+
+<h3>Status</h3>
+<div class="output" id="status">Initializing...</div>
+
+<script type="module">
+import { Substrate, Cell, LocalEmbedder, fnv1a64, FLEET_CANARY_HEX } from './substrate-sdk.js';
+
+const SUB = new Substrate();
+SUB.nodeName = 'sdk-demo-' + Math.random().toString(36).slice(2, 6);
+
+// Seed
+SUB.add('c1', 'canon', { text: 'the irreducible connection' });
+SUB.add('c2', 'canon', { text: 'witness-log prev_hash chain' });
+SUB.add('c3', 'canon', { text: 'cells linked by JEV' });
+SUB.add('c4', 'canon', { text: 'AI++ spreadsheet encoding' });
+SUB.add('c5', 'canon', { text: 'wavefunction across canon' });
+SUB.add('c6', 'canon', { text: 'task pruning irreducible core' });
+SUB.add('c7', 'canon', { text: 'substrate as living model' });
+SUB.add('c8', 'canon', { text: 'pedagogical quartet' });
+SUB.add('c9', 'canon', { text: 'three witnesses speak the city' });
+SUB.add('c10', 'canon', { text: 'Navier-Stokes on substrate' });
+
+// BIND some pairs
+SUB.BIND('c1', 'c3');
+SUB.BIND('c5', 'c7');
+SUB.BIND('c8', 'c9');
+
+document.getElementById('status').textContent = 
+  `Substrate initialized\n` +
+  `Cells: ${SUB.cells.size}\n` +
+  `Witnesses: ${SUB.witness_log.length}\n` +
+  `Canary: ${FLEET_CANARY_HEX}\n` +
+  `Node name: ${SUB.nodeName}`;
+
+document.getElementById('run-demo').onclick = () => {
+  const out = document.getElementById('demo-output');
+  out.textContent = 
+    '═══ Substrate SDK Demo ═══\n\n' +
+    `Fleet canary: ${FLEET_CANARY_HEX}\n` +
+    `Cells: ${SUB.cells.size}\n` +
+    `Witnesses: ${SUB.witness_log.length}\n\n` +
+    `═══ Top-5 for "the witness as prediction" ═══\n` +
+    SUB.findTopK('the witness as prediction', 5).map((m, i) => 
+      `${i+1}. ${m.cell.id} — score ${m.score.toFixed(4)}\n   ${m.cell.state.text}`
+    ).join('\n\n') +
+    `\n\n═══ Wavefunction JEV ═══\n` +
+    JSON.stringify({
+      psiMagnitude: SUB.wavefunction('witness').psiMagnitude,
+      coherence: SUB.wavefunction('witness').coherence.toFixed(4),
+      ratio: SUB.wavefunction('witness').ratio.toFixed(4),
+    }, null, 2) +
+    `\n\n═══ Opcodes Demo ═══\n` +
+    `BIND applied. cells with bound_to: ${
+      Array.from(SUB.cells.values()).filter(c => c.state.bound_to && c.state.bound_to.length > 0).length
+    }\n`;
+};
+
+document.getElementById('user-q').onclick = () => {
+  const q = document.getElementById('user-query').value;
+  const top = SUB.findTopK(q, 5);
+  document.getElementById('user-output').textContent = 
+    `Query: "${q}"\n\n` +
+    top.map((m, i) => `${i+1}. ${m.cell.id} — score ${m.score.toFixed(4)} — "${m.cell.state.text}"`).join('\n');
+};
+
+document.getElementById('add-cell').onclick = () => {
+  const text = document.getElementById('cell-text').value.trim();
+  if (!text) return;
+  const id = 'user_' + Date.now();
+  SUB.add(id, 'canon', { text, addedAt: Date.now() });
+  document.getElementById('add-output').textContent = `Added ${id}\nTotal cells: ${SUB.cells.size}\nWitnesses: ${SUB.witness_log.length}`;
+  document.getElementById('cell-text').value = '';
+  document.getElementById('status').textContent = 
+    `Cells: ${SUB.cells.size}\n` +
+    `Witnesses: ${SUB.witness_log.length}\n` +
+    `Canary: ${FLEET_CANARY_HEX}`;
+};
+
+document.getElementById('save-state').onclick = async () => {
+  try {
+    await SUB.saveToIndexedDB();
+    document.getElementById('add-output').textContent = '✅ Saved to IndexedDB';
+  } catch (e) {
+    document.getElementById('add-output').textContent = '❌ ' + e.message;
+  }
+};
+
+document.getElementById('load-state').onclick = async () => {
+  try {
+    const r = await SUB.loadFromIndexedDB();
+    document.getElementById('add-output').textContent = `✅ Loaded ${r.cells} cells, ${r.witnesses} witnesses`;
+  } catch (e) {
+    document.getElementById('add-output').textContent = '❌ ' + e.message;
+  }
+};
+
+</script>
+
+</body>
+</html>
