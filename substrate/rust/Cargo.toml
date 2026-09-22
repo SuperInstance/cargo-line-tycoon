@@ -1,6 +1,6 @@
 [package]
 name = "cargo-line-tycoon-substrate"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Polyformal Quilt substrate for cargo-line-tycoon - Rust port"
 license = "MIT"
