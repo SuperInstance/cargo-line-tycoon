@@ -1,0 +1,15 @@
+[package]
+name = "cargo-line-tycoon-substrate"
+version = "0.1.0"
+edition = "2021"
+description = "Cargo Line Tycoon polyformal substrate - Rust port of signal-chain + Quilt cell algebra"
+license = "MIT"
+authors = ["SuperInstance"]
+repository = "https://github.com/SuperInstance/cargo-line-tycoon"
+readme = "README.md"
+keywords = ["cargo-line-tycoon", "substrate", "quilt", "signal-chain", "polyformalism"]
+categories = ["data-structures"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

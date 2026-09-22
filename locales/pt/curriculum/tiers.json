@@ -1,0 +1,31 @@
+{
+  "locale": "pt",
+  "framing": "ubuntu",
+  "standards_alignment": ["BNCC - Base Nacional Comum Curricular (Geografia)", "Currículo Paulista"],
+  "tiers": {
+    "tier_1_elementary": {
+      "age_range": "7-11",
+      "lessons": [
+        { "id": "L1.1", "title": "Os Grandes Portos do Brasil", "objective": "Identificar 10 portos brasileiros principais", "vocab": ["porto", "navio", "contêiner"] },
+        { "id": "L1.2", "title": "Rota Marítima do Atlântico Sul", "objective": "Traçar a rota Santos-Roterdã", "vocab": ["rota ortodrômica", "nós", "tempo de trânsito"] },
+        { "id": "L1.3", "title": "O Que os Navios Transportam", "objective": "Relacionar cargas a embarcações", "vocab": ["granel", "contêiner", "petroleiro"] }
+      ]
+    },
+    "tier_2_middle": {
+      "age_range": "11-14",
+      "lessons": [
+        { "id": "L2.1", "title": "Economia da Navegação Lenta", "objective": "Calcular economia de combustível vs. tempo", "vocab": ["bunker", "tonelagem", "velocidade"] },
+        { "id": "L2.2", "title": "Roteirização Meteorológica", "objective": "Desviar de tempestades com dados reais", "vocab": ["vendaval", "arrebentação", "altura de onda"] },
+        { "id": "L2.3", "title": "Estado de Bandeira e Inspeção", "objective": "Passar uma inspeção da ANTAQ", "vocab": ["estado de bandeira", "fiscalização", "deficiência"] }
+      ]
+    },
+    "tier_3_advanced": {
+      "age_range": "14-18",
+      "lessons": [
+        { "id": "L3.1", "title": "Bandeira de Conveniência", "objective": "Comparar Libéria, Panamá e Ilhas Marshall", "vocab": ["bandeira de conveniência", "registro aberto", "conformidade IMO"] },
+        { "id": "L3.2", "title": "Compliance de Sanções", "objective": "Evitar violações OFAC/CSNU", "vocab": ["sanções", "CSNU", "controles de exportação"] },
+        { "id": "L3.3", "title": "Mercado de Carbono Marítimo", "objective": "Comprar e vender créditos de emissão", "vocab": ["mercado de carbono", "MRV", "crédito de carbono"] }
+      ]
+    }
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "locale": "zh",
+  "framing": "confucian",
+  "region": "East Asia",
+  "ports": [
+    { "id": "shanghai", "name": "上海港", "lat": 31.3458, "lng": 121.5912, "country": "CN", "annual_teus": 49000000, "notable": ["全球最大集装箱港", "洋山深水港"], "tier": 1, "cultural_note": "上海港的历史可追溯至唐代青龙镇" },
+    { "id": "shenzhen", "name": "深圳港", "lat": 22.5431, "lng": 114.0579, "country": "CN", "annual_teus": 28000000, "notable": ["珠三角枢纽", "盐田港区"], "tier": 1 },
+    { "id": "ningbo_zhoushan", "name": "宁波舟山港", "lat": 29.8683, "lng": 121.5440, "country": "CN", "annual_teus": 33000000, "notable": ["全球货物吞吐量第一"], "tier": 1 },
+    { "id": "guangzhou", "name": "广州港", "lat": 23.0960, "lng": 113.3245, "country": "CN", "annual_teus": 24000000, "notable": ["千年不衰的海上丝路起点"], "tier": 1, "cultural_note": "广州港自秦汉以来即为重要通商口岸" },
+    { "id": "qingdao", "name": "青岛港", "lat": 36.0671, "lng": 120.3826, "country": "CN", "annual_teus": 23000000, "notable": ["中国北方重要枢纽"], "tier": 2 },
+    { "id": "tianjin", "name": "天津港", "lat": 38.9658, "lng": 117.7480, "country": "CN", "annual_teus": 18000000, "notable": ["京津冀出海通道"], "tier": 2 },
+    { "id": "hong_kong", "name": "香港港", "lat": 22.3193, "lng": 114.1694, "country": "HK", "annual_teus": 14000000, "notable": ["全球最繁忙转口港之一"], "tier": 1 },
+    { "id": "singapore", "name": "新加坡港", "lat": 1.2643, "lng": 103.8220, "country": "SG", "annual_teus": 37000000, "notable": ["马六甲海峡咽喉"], "tier": 1, "cultural_note": "区域华商网络枢纽" },
+    { "id": "busan", "name": "釜山港", "lat": 35.1031, "lng": 129.0403, "country": "KR", "annual_teus": 22000000, "notable": ["韩国第一大港"], "tier": 1 },
+    { "id": "tokyo", "name": "东京港", "lat": 35.6528, "lng": 139.8395, "country": "JP", "annual_teus": 9000000, "notable": ["日本关东门户"], "tier": 1 }
+  ],
+  "vessel_types": [
+    { "id": "tu_boat", "name": "拖船", "size_tier": "small", "uses": ["港口协助"] },
+    { "id": "container_small", "name": "支线集装箱船", "size_tier": "small", "uses": ["区域航线"] },
+    { "id": "container_medium", "name": "巴拿马型集装箱", "size_tier": "medium", "uses": ["跨太平洋"] },
+    { "id": "container_large", "name": "超大型集装箱船", "size_tier": "large", "uses": ["亚欧航线"] },
+    { "id": "tanker", "name": "原油运输船", "size_tier": "large", "uses": ["石油运输"] },
+    { "id": "bulk_carrier", "name": "散货船", "size_tier": "medium", "uses": ["粮食、矿石"] }
+  ],
+  "example_cargo": ["电子产品", "服装", "汽车", "粮食", "原油"]
+}

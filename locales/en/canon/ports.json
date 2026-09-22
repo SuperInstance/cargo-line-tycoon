@@ -1,0 +1,26 @@
+{
+  "locale": "en",
+  "framing": "socratic",
+  "region": "North America",
+  "ports": [
+    { "id": "los_angeles", "name": "Port of Los Angeles", "lat": 33.7395, "lng": -118.2610, "country": "US", "annual_teus": 9000000, "notable": ["San Pedro Bay complex", "LA-Long Beach combined"], "tier": 1 },
+    { "id": "long_beach", "name": "Port of Long Beach", "lat": 33.7550, "lng": -118.2160, "country": "US", "annual_teus": 9000000, "notable": ["2nd busiest US container port"], "tier": 1 },
+    { "id": "new_york", "name": "Port of New York and New Jersey", "lat": 40.6699, "lng": -74.0431, "country": "US", "annual_teus": 7000000, "notable": ["East coast gateway"], "tier": 1 },
+    { "id": "savannah", "name": "Port of Savannah", "lat": 32.0809, "lng": -81.0912, "country": "US", "annual_teus": 5000000, "notable": ["Largest single-terminal facility on East coast"], "tier": 1 },
+    { "id": "houston", "name": "Port of Houston", "lat": 29.7355, "lng": -95.3018, "country": "US", "annual_teus": 4000000, "notable": ["Largest US port by tonnage"], "tier": 1 },
+    { "id": "vancouver", "name": "Port of Vancouver", "lat": 49.2884, "lng": -123.1152, "country": "CA", "annual_teus": 3500000, "notable": ["Largest Canadian port"], "tier": 1 },
+    { "id": "miami", "name": "PortMiami", "lat": 25.7785, "lng": -80.1772, "country": "US", "annual_teus": 1100000, "notable": ["Cruise capital of the world"], "tier": 1 },
+    { "id": "seattle", "name": "Port of Seattle", "lat": 47.5903, "lng": -122.3343, "country": "US", "annual_teus": 1900000, "notable": ["Pacific Northwest gateway"], "tier": 2 },
+    { "id": "new_orleans", "name": "Port of New Orleans", "lat": 29.9450, "lng": -90.0668, "country": "US", "annual_teus": 500000, "notable": ["Mississippi River deepwater"], "tier": 2 },
+    { "id": "baltimore", "name": "Port of Baltimore", "lat": 39.2672, "lng": -76.5779, "country": "US", "annual_teus": 1100000, "notable": ["Roll-on/roll-off cars"], "tier": 2 }
+  ],
+  "vessel_types": [
+    { "id": "tugboat", "name": "Tugboat", "size_tier": "small", "uses": ["harbor assistance"] },
+    { "id": "container_small", "name": "Feeder Container Ship", "size_tier": "small", "uses": ["regional routes"] },
+    { "id": "container_medium", "name": "Panamax Container", "size_tier": "medium", "uses": ["trans-Pacific"] },
+    { "id": "container_large", "name": "ULCV Container", "size_tier": "large", "uses": ["Asia-Europe"] },
+    { "id": "tanker", "name": "Crude Tanker", "size_tier": "large", "uses": ["oil transport"] },
+    { "id": "bulk_carrier", "name": "Bulk Carrier", "size_tier": "medium", "uses": ["grain, ore"] }
+  ],
+  "example_cargo": ["electronics", "apparel", "automobiles", "grain", "crude oil"]
+}

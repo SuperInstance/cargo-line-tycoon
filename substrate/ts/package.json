@@ -1,0 +1,10 @@
+{
+  "name": "@superinstance/cargo-line-tycoon-substrate",
+  "version": "0.1.0",
+  "description": "Cargo Line Tycoon polyformal substrate - TypeScript port of signal-chain + Quilt cell algebra.",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "keywords": ["cargo-line-tycoon", "substrate", "quilt", "signal-chain", "polyformalism"],
+  "author": "SuperInstance",
+  "license": "MIT"
+}

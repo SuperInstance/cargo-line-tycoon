@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cargo-line-tycoon-substrate"
+version = "0.1.0"
+description = "Cargo Line Tycoon polyformal substrate - Python port"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{name = "SuperInstance", email = "casey.digennaro@gmail.com"}]
+
+[tool.setuptools]
+py-modules = ["clt_substrate"]

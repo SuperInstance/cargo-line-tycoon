@@ -1,0 +1,12 @@
+{
+  "name": "@superinstance/classroom-en",
+  "version": "0.1.0",
+  "description": "Cargo Line Tycoon classroom app - English locale (Socratic framing)",
+  "main": "src/index.js",
+  "keywords": ["cargo-line-tycoon", "classroom", "en", "socratic", "quilt"],
+  "author": "SuperInstance",
+  "license": "MIT",
+  "dependencies": {
+    "@superinstance/cargo-line-tycoon-substrate": "file:../../substrate/ts"
+  }
+}

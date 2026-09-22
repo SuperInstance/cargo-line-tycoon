@@ -1,0 +1,31 @@
+{
+  "locale": "en",
+  "framing": "socratic",
+  "standards_alignment": ["US Common Core Geography", "C3 Framework for Social Studies"],
+  "tiers": {
+    "tier_1_elementary": {
+      "age_range": "7-11",
+      "lessons": [
+        { "id": "L1.1", "title": "The Big Ports", "objective": "Identify 10 major world ports", "vocab": ["port", "ship", "container"] },
+        { "id": "L1.2", "title": "Across the Pacific", "objective": "Trace the LA-Tokyo route", "vocab": ["great circle", "knots", "transit time"] },
+        { "id": "L1.3", "title": "What Ships Carry", "objective": "Match cargo types to vessels", "vocab": ["bulk", "container", "tanker"] }
+      ]
+    },
+    "tier_2_middle": {
+      "age_range": "11-14",
+      "lessons": [
+        { "id": "L2.1", "title": "Slow Steaming Economics", "objective": "Calculate fuel savings vs. transit time", "vocab": ["bunker fuel", "tonnage", "speed"] },
+        { "id": "L2.2", "title": "Weather Routing", "objective": "Reroute around storms using real data", "vocab": ["gale", "fetch", "wave height"] },
+        { "id": "L2.3", "title": "Port State Control", "objective": "Pass an inspection", "vocab": ["flag state", "PSC", "deficiency"] }
+      ]
+    },
+    "tier_3_advanced": {
+      "age_range": "14-18",
+      "lessons": [
+        { "id": "L3.1", "title": "Flag of Convenience", "objective": "Compare Liberia, Panama, Marshall Islands", "vocab": ["FOC", "open registry", "IMO compliance"] },
+        { "id": "L3.2", "title": "Sanctions Compliance", "objective": "Avoid OFAC violations", "vocab": ["sanctions", "OFAC", "export controls"] },
+        { "id": "L3.3", "title": "EU ETS and Emissions", "objective": "Buy/sell allowances", "vocab": ["emissions trading", "MRV", "EUA"] }
+      ]
+    }
+  }
+}

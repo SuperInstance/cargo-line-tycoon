@@ -1,0 +1,31 @@
+{
+  "locale": "zh",
+  "framing": "confucian",
+  "standards_alignment": ["中国义务教育地理课程标准 (2022)", "普通高中地理课程标准 (2017年版2020年修订)"],
+  "tiers": {
+    "tier_1_elementary": {
+      "age_range": "7-11",
+      "lessons": [
+        { "id": "L1.1", "title": "世界大港", "objective": "识别10个世界主要港口", "vocab": ["港口", "船舶", "集装箱"] },
+        { "id": "L1.2", "title": "海上丝路", "objective": "描绘上海-鹿特丹航线", "vocab": ["大圆航线", "节", "航行时间"] },
+        { "id": "L1.3", "title": "船舶与货物", "objective": "匹配货种与船型", "vocab": ["散货", "集装箱", "油轮"] }
+      ]
+    },
+    "tier_2_middle": {
+      "age_range": "11-14",
+      "lessons": [
+        { "id": "L2.1", "title": "经济航速", "objective": "计算燃油节省与航时", "vocab": ["船用燃油", "吨位", "航速"] },
+        { "id": "L2.2", "title": "气象导航", "objective": "依据实时数据绕避风暴", "vocab": ["大风", "风浪区", "浪高"] },
+        { "id": "L2.3", "title": "港口国监督", "objective": "通过PSC检查", "vocab": ["船旗国", "港口国监督", "缺陷"] }
+      ]
+    },
+    "tier_3_advanced": {
+      "age_range": "14-18",
+      "lessons": [
+        { "id": "L3.1", "title": "方便旗", "objective": "比较利比里亚、巴拿马、马绍尔群岛船旗", "vocab": ["方便旗", "开放登记", "IMO合规"] },
+        { "id": "L3.2", "title": "制裁合规", "objective": "规避制裁违规", "vocab": ["制裁", "出口管制", "合规"] },
+        { "id": "L3.3", "title": "欧盟碳排放交易", "objective": "买卖排放配额", "vocab": ["碳交易", "MRV", "EUA"] }
+      ]
+    }
+  }
+}

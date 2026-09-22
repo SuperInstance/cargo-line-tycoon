@@ -1,0 +1,9 @@
+{
+  "name": "@superinstance/classroom-pt",
+  "version": "0.1.0",
+  "description": "Cargo Line Tycoon classroom app - Portuguese locale (Ubuntu framing)",
+  "main": "src/index.js",
+  "keywords": ["cargo-line-tycoon", "classroom", "pt", "ubuntu", "quilt"],
+  "author": "SuperInstance",
+  "license": "MIT"
+}

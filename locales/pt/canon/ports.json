@@ -1,0 +1,26 @@
+{
+  "locale": "pt",
+  "framing": "ubuntu",
+  "region": "South America",
+  "ports": [
+    { "id": "santos", "name": "Porto de Santos", "lat": -23.9608, "lng": -46.3336, "country": "BR", "annual_teus": 5000000, "notable": ["Maior porto da América Latina"], "tier": 1, "cultural_note": "Homenagem ao mártir santista" },
+    { "id": "rio_grande", "name": "Porto do Rio Grande", "lat": -32.0333, "lng": -52.0997, "country": "BR", "annual_teus": 700000, "notable": ["Porto do extremo sul do Brasil"], "tier": 2 },
+    { "id": "paranagua", "name": "Porto de Paranaguá", "lat": -25.5163, "lng": -48.5058, "country": "BR", "annual_teus": 1500000, "notable": ["Maior exportador de grãos"], "tier": 1 },
+    { "id": "itaguaí", "name": "Porto de Itaguaí", "lat": -22.9231, "lng": -43.7847, "country": "BR", "annual_teus": 1200000, "notable": ["Siderúrgico do Atlântico"], "tier": 2 },
+    { "id": "salvador", "name": "Porto de Salvador", "lat": -12.9714, "lng": -38.5014, "country": "BR", "annual_teus": 600000, "notable": ["Primeira capital do Brasil"], "tier": 2, "cultural_note": "Ponto de chegada dos portugueses em 1500" },
+    { "id": "manaus", "name": "Porto de Manaus", "lat": -3.1190, "lng": -60.0217, "country": "BR", "annual_teus": 300000, "notable": ["Hub da Amazônia"], "tier": 3, "cultural_note": "Rio Negro e Solimões se encontram aqui" },
+    { "id": "buenos_aires", "name": "Puerto de Buenos Aires", "lat": -34.6037, "lng": -58.3816, "country": "AR", "annual_teus": 1500000, "notable": ["Porto do prata"], "tier": 2 },
+    { "id": "valparaiso", "name": "Puerto de Valparaíso", "lat": -33.0472, "lng": -71.6127, "country": "CL", "annual_teus": 800000, "notable": ["Pacífico Sul"], "tier": 3 },
+    { "id": "cartagena", "name": "Puerto de Cartagena", "lat": 10.3910, "lng": -75.4794, "country": "CO", "annual_teus": 3000000, "notable": ["Caribe colombiano"], "tier": 2 },
+    { "id": "callao", "name": "Puerto del Callao", "lat": -12.0566, "lng": -77.1181, "country": "PE", "annual_teus": 2300000, "notable": ["Pacífico Sul, hub regional"], "tier": 2 }
+  ],
+  "vessel_types": [
+    { "id": "rebocador", "name": "Rebocador", "size_tier": "small", "uses": ["assistência portuária"] },
+    { "id": "container_feeder", "name": "Navio feeder", "size_tier": "small", "uses": ["cabotagem"] },
+    { "id": "container_panamax", "name": "Panamax", "size_tier": "medium", "uses": ["Atlântico Sul"] },
+    { "id": "container_ulcv", "name": "ULCV", "size_tier": "large", "uses": ["Ásia-Europa"] },
+    { "id": "petroleiro", "name": "Petroleiro", "size_tier": "large", "uses": ["transporte de petróleo"] },
+    { "id": "graneleiro", "name": "Graneleiro", "size_tier": "medium", "uses": ["soja, milho, minério"] }
+  ],
+  "example_cargo": ["café", "soja", "minério de ferro", "carne", "etanol", "calçados"]
+}

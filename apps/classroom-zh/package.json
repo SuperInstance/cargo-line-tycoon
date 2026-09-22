@@ -1,0 +1,9 @@
+{
+  "name": "@superinstance/classroom-zh",
+  "version": "0.1.0",
+  "description": "Cargo Line Tycoon classroom app - Chinese locale (Confucian framing)",
+  "main": "src/index.js",
+  "keywords": ["cargo-line-tycoon", "classroom", "zh", "confucian", "quilt"],
+  "author": "SuperInstance",
+  "license": "MIT"
+}

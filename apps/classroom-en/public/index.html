@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cargo Line Tycoon — English Classroom</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; max-width: 900px; margin: 2em auto; padding: 1em; }
+    h1 { color: #1e40af; }
+    .port { display: inline-block; margin: 0.5em; padding: 0.5em 1em; background: #dbeafe; border-radius: 4px; }
+    .agent { background: #fef3c7; }
+    .port.tier1 { background: #bfdbfe; }
+    .port.tier2 { background: #e0e7ff; }
+    .port.tier3 { background: #f5f3ff; }
+  </style>
+</head>
+<body>
+  <h1>🚢 Cargo Line Tycoon — English Locale (Socratic Framing)</h1>
+  <p><strong>Pedagogical framing:</strong> Socratic dialectic — agents ask questions, students discover.</p>
+  <p><strong>Curriculum:</strong> US Common Core Geography (Tier 1) → Maritime Economics (Tier 2) → Governance (Tier 3)</p>
+
+  <h2>Ports</h2>
+  <div id="ports"></div>
+
+  <h2>Agents</h2>
+  <div id="agents"></div>
+
+  <script>
+    fetch('../../../locales/en/canon/ports.json')
+      .then(r => r.json())
+      .then(data => {
+        const html = data.ports.map(p =>
+          `<div class="port tier${p.tier}"><strong>${p.name}</strong> (${p.country}) — ${p.annual_teus.toLocaleString()} TEU/year</div>`
+        ).join('');
+        document.getElementById('ports').innerHTML = html;
+      });
+    fetch('../../../locales/en/agents/personas.json')
+      .then(r => r.json())
+      .then(data => {
+        const html = data.agents.map(a =>
+          `<div class="port agent"><strong>${a.name}</strong> — ${a.role}<br><em>${a.persona}</em></div>`
+        ).join('');
+        document.getElementById('agents').innerHTML = html;
+      });
+  </script>
+</body>
+</html>
