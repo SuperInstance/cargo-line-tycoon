@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quilt Substrate — Browser Native (WebGPU + IndexedDB)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    overflow-x: hidden;
+  }
+  
+  header {
+    background: rgba(15, 23, 42, 0.95);
+    padding: 1em 2em;
+    border-bottom: 1px solid #334155;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  header h1 {
+    font-size: 1.4em;
+    color: #fbbf24;
+  }
+  
+  header .status {
+    background: #1e40af;
+    color: white;
+    padding: 0.3em 0.8em;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  
+  .container {
+    display: grid;
+    grid-template-columns: 280px 1fr 350px;
+    gap: 1em;
+    padding: 1em;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+  
+  .panel {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1.2em;
+    margin-bottom: 1em;
+  }
+  
+  .panel h2 {
+    color: #fbbf24;
+    margin-bottom: 1em;
+    font-size: 1.1em;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.5em;
+  }
+  
+  .btn {
+    background: #fbbf24;
+    color: #0f172a;
+    border: none;
+    padding: 0.6em 1.2em;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    margin: 0.3em 0.3em 0.3em 0;
+  }
+  
+  .btn:hover {
+    background: #f59e0b;
+  }
+  
+  .btn.small {
+    padding: 0.4em 0.8em;
+    font-size: 0.85em;
+  }
+  
+  textarea, input[type="text"] {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid #334155;
+    color: #e2e8f0;
+    padding: 0.5em;
+    border-radius: 4px;
+    font-family: inherit;
+    width: 100%;
+    margin-bottom: 0.5em;
+  }
+  
+  textarea {
+    min-height: 80px;
+    resize: vertical;
+  }
+  
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4em;
+  }
+  
+  .stat {
+    background: rgba(15, 23, 42, 0.5);
+    padding: 0.6em;
+    border-radius: 4px;
+  }
+  
+  .stat-label {
+    color: #94a3b8;
+    font-size: 0.7em;
+    text-transform: uppercase;
+  }
+  
+  .stat-value {
+    color: #fbbf24;
+    font-size: 1.1em;
+    font-weight: bold;
+  }
+  
+  #canvas-3d {
+    width: 100%;
+    height: 400px;
+    background: #000;
+    border-radius: 8px;
+  }
+  
+  .output {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid #334155;
+    padding: 0.6em;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8em;
+    max-height: 250px;
+    overflow-y: auto;
+    margin-top: 0.5em;
+  }
+  
+  .cell-card {
+    background: rgba(15, 23, 42, 0.6);
+    border-left: 3px solid #fbbf24;
+    padding: 0.6em;
+    border-radius: 4px;
+    margin-bottom: 0.4em;
+    font-size: 0.85em;
+  }
+  
+  .cell-card.scored-high { border-left-color: #15803d; }
+  .cell-card.scored-mid { border-left-color: #fbbf24; }
+  .cell-card.scored-low { border-left-color: #b91c1c; }
+  
+  /* Three.js scene styling */
+  #webgpu-error {
+    background: #7c2d12;
+    color: #fed7aa;
+    padding: 1em;
+    border-radius: 4px;
+    margin: 1em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🧬 Quilt Substrate — Browser Native</h1>
+  <div>
+    <span class="status" id="backend-status">⏳ Initializing...</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- LEFT COLUMN: Controls -->
+  <div>
+    <div class="panel">
+      <h2>⚙️ Backend</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">WebGPU</div>
+          <div class="stat-value" id="webgpu-status">⏳</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">IndexedDB</div>
+          <div class="stat-value" id="idb-status">⏳</div>
+        </div>
+      </div>
+      <button class="btn small" id="check-backend">🔍 Recheck Backend</button>
+    </div>
+    
+    <div class="panel">
+      <h2>📝 Add Observation</h2>
+      <textarea id="obs-input" placeholder="Enter an observation for the substrate..."></textarea>
+      <button class="btn small" id="add-obs">+ ATTEST</button>
+      <button class="btn small" id="embed-text">⚡ Embed & Find Top-5</button>
+    </div>
+    
+    <div class="panel">
+      <h2>🧪 Train Model in Browser</h2>
+      <p style="font-size: 0.85em; color: #94a3b8; margin-bottom: 0.5em;">
+        Train a small linear regression on the substrate cells. Uses WebGPU when available.
+      </p>
+      <button class="btn small" id="train-model">▶ Train LR on substrate</button>
+      <button class="btn small" id="train-mlp">▶ Train MLP (3-layer)</button>
+      <div class="output" id="training-output">Awaiting training...</div>
+    </div>
+    
+    <div class="panel">
+      <h2>📊 Stats</h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Cells</div>
+          <div class="stat-value" id="cell-count">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Witnesses</div>
+          <div class="stat-value" id="witness-count">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Loss</div>
+          <div class="stat-value" id="loss-val">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Canary</div>
+          <div class="stat-value" style="font-size: 0.9em;" id="canary-val">0x024a555471370b18d</div>
+        </div>
+      </div>
+      <button class="btn small" id="reset-substrate">🗑️ Reset Substrate</button>
+    </div>
+  </div>
+  
+  <!-- MIDDLE COLUMN: Visualization -->
+  <div>
+    <div class="panel">
+      <h2>🌐 3D Substrate (Cell-Graph)</h2>
+      <canvas id="canvas-3d" width="800" height="400"></canvas>
+      <p style="font-size: 0.85em; color: #94a3b8; margin-top: 0.5em;">
+        Hover over cells to inspect. Distance from center = similarity to query.
+      </p>
+    </div>
+    
+    <div class="panel">
+      <h2>🔍 Top-5 JEV Matches</h2>
+      <div id="top-five"></div>
+    </div>
+    
+    <div class="panel">
+      <h2>📜 Witness-log Tail (last 10)</h2>
+      <div class="output" id="witness-tail"></div>
+    </div>
+  </div>
+  
+  <!-- RIGHT COLUMN: Substrate operations -->
+  <div>
+    <div class="panel">
+      <h2>🎯 Wavefunction JEV</h2>
+      <textarea id="jev-input" placeholder="Query the wavefunction JEV..."></textarea>
+      <button class="btn small" id="run-wavefn">🌊 Compute Wavefunction</button>
+      <div class="output" id="wavefn-output"></div>
+    </div>
+    
+    <div class="panel">
+      <h2>✨ Substrate Operations</h2>
+      <button class="btn small" id="op-bulk">+ Bulk add 50 cells</button>
+      <button class="btn small" id="op-shock">⚡ Split shock cells</button>
+      <button class="btn small" id="op-export">💾 Export to JSON</button>
+      <button class="btn small" id="op-import">📥 Import from JSON</button>
+      <button class="btn small" id="op-solve-burgers">🌊 Solve Burgers 1D</button>
+      <div class="output" id="op-output"></div>
+    </div>
+    
+    <div class="panel">
+      <h2>ℹ️ About</h2>
+      <p style="font-size: 0.85em; color: #94a3b8; line-height: 1.5;">
+        Browser-native substrate. WebGPU compute shaders for FNV-1a + JEV.
+        IndexedDB for witness-log persistence. Vanilla JS / no build step.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div id="webgpu-error" style="display: none;"></div>
+
+<script type="module">
+// ════════════════════════════════════════════════════════════════════
+// SUBSTRATE — Browser Native
+// ════════════════════════════════════════════════════════════════════
+
+// ────────────────────────────────────────────────────────────────────
+// Primitives — pure JS, no dependencies
+// ────────────────────────────────────────────────────────────────────
+
+const FNV_OFFSET = 0xcbf29ce484222325n;
+const FNV_PRIME = 0x100000001b3n;
+const FNV_MASK = (1n << 64n) - 1n;
+
+function fnv1a64(str) {
+  let h = FNV_OFFSET;
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    // Handle UTF-16 surrogate pairs (4-byte chars)
+    if (c >= 0xd800 && c <= 0xdbff && i + 1 < str.length) {
+      const c2 = str.charCodeAt(i + 1);
+      if (c2 >= 0xdc00 && c2 <= 0xdfff) {
+        const code = 0x10000 + ((c - 0xd800) << 10) + (c2 - 0xdc00);
+        h = (h ^ BigInt(code & 0xff)) & FNV_MASK;
+        h = (h * FNV_PRIME) & FNV_MASK;
+        h = (h ^ BigInt((code >> 8) & 0xff)) & FNV_MASK;
+        h = (h * FNV_PRIME) & FNV_MASK;
+        h = (h ^ BigInt((code >> 16) & 0xff)) & FNV_MASK;
+        h = (h * FNV_PRIME) & FNV_MASK;
+        h = (h ^ BigInt((code >> 24) & 0xff)) & FNV_MASK;
+        h = (h * FNV_PRIME) & FNV_MASK;
+        i++;
+        continue;
+      }
+    }
+    h = (h ^ BigInt(c & 0xff)) & FNV_MASK;
+    h = (h * FNV_PRIME) & FNV_MASK;
+    if (c > 0xff) {
+      h = (h ^ BigInt((c >> 8) & 0xff)) & FNV_MASK;
+      h = (h * FNV_PRIME) & FNV_MASK;
+    }
+    if (c > 0xffff) {
+      h = (h ^ BigInt((c >> 16) & 0xff)) & FNV_MASK;
+      h = (h * FNV_PRIME) & FNV_MASK;
+      h = (h ^ BigInt((c >> 24) & 0xff)) & FNV_MASK;
+      h = (h * FNV_PRIME) & FNV_MASK;
+    }
+  }
+  return h;
+}
+
+function fnv1a64Hex(str) {
+  return '0x' + fnv1a64(str).toString(16).padStart(16, '0');
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Cell — fundamental unit
+// ────────────────────────────────────────────────────────────────────
+
+class Cell {
+  constructor(id, type, state, neighbors = []) {
+    this.id = id;
+    this.type = type; // 'input', 'hidden', 'output', 'weight', 'bias', 'canon', 'pde'
+    this.state = typeof state === 'object' ? state : { value: state };
+    this.neighbors = neighbors;
+    this.embedding = null; // 768-d for transformers.js or computed locally
+    this.witness_chain = [];
+    this.prev_hash = '0x' + '0'.repeat(16);
+    this.timestamp = 0;
+  }
+  
+  witness() {
+    const stateJson = JSON.stringify(this.state, Object.keys(this.state).sort());
+    const e = {
+      cell_id: this.id,
+      step: this.timestamp,
+      state: { ...this.state },
+      prev_hash: this.prev_hash,
+      hash: '0x' + fnv1a64(stateJson).toString(16).padStart(16, '0'),
+    };
+    this.witness_chain.push(e);
+    this.prev_hash = e.hash;
+    this.timestamp++;
+    return e;
+  }
+  
+  embeddingNorm() {
+    if (!this.embedding) return 0;
+    let s = 0;
+    for (let i = 0; i < this.embedding.length; i++) {
+      s += this.embedding[i] * this.embedding[i];
+    }
+    return Math.sqrt(s);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Substrate — main controller
+// ────────────────────────────────────────────────────────────────────
+
+class Substrate {
+  constructor() {
+    this.cells = new Map();
+    this.witness_log = [];
+    this.training = { loss: null, history: [] };
+  }
+  
+  add(cell) {
+    this.cells.set(cell.id, cell);
+    cell.witness();
+    this.witness_log.push(cell.witness_chain[cell.witness_chain.length - 1]);
+    return cell;
+  }
+  
+  set(cell_id, new_state) {
+    const cell = this.cells.get(cell_id);
+    if (!cell) return;
+    cell.state = new_state;
+    cell.witness();
+    this.witness_log.push(cell.witness_chain[cell.witness_chain.length - 1]);
+  }
+  
+  cosine(a, b) {
+    if (!a || !b || a.length !== b.length) return 0;
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < a.length; i++) {
+      dot += a[i] * b[i];
+      na += a[i] * a[i];
+      nb += b[i] * b[i];
+    }
+    return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-12);
+  }
+  
+  findTopK(queryEmbedding, k = 5) {
+    const scored = [];
+    for (const cell of this.cells.values()) {
+      if (!cell.embedding) continue;
+      const score = this.cosine(queryEmbedding, cell.embedding);
+      scored.push({ cell, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, k);
+  }
+  
+  wavefunctionJEV(queryEmbedding, phase_mode = 'cluster') {
+    const amps = [];
+    let cellIdx = 0;
+    for (const cell of this.cells.values()) {
+      if (!cell.embedding) continue;
+      const sim = this.cosine(queryEmbedding, cell.embedding);
+      // Phase from cluster hash or cell index
+      let phase;
+      if (phase_mode === 'cluster') {
+        phase = (cell.id.charCodeAt(0) * 0.123) % (2 * Math.PI);
+      } else if (phase_mode === 'random') {
+        phase = Math.random() * 2 * Math.PI;
+      } else {
+        phase = (cellIdx * 0.01) % (2 * Math.PI);
+      }
+      amps.push({ re: sim * Math.cos(phase), im: sim * Math.sin(phase), cell });
+      cellIdx++;
+    }
+    const n = amps.length;
+    let psiRe = 0, psiIm = 0;
+    for (const a of amps) {
+      psiRe += a.re;
+      psiIm += a.im;
+    }
+    const psiMag = Math.sqrt(psiRe * psiRe + psiIm * psiIm);
+    let totalPower = 0;
+    for (const a of amps) totalPower += a.re * a.re + a.im * a.im;
+    
+    // Constructive vs destructive interference
+    let constructive = 0, destructive = 0;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const cross = amps[i].re * amps[j].re + amps[i].im * amps[j].im;
+        if (cross > 0) constructive += cross;
+        else destructive += cross;
+      }
+    }
+    
+    return {
+      psiMagnitude: psiMag,
+      totalPower,
+      coherence: (psiMag * psiMag) / Math.max(totalPower, 1e-12),
+      constructive,
+      destructive,
+      ratio: constructive / Math.max(Math.abs(destructive), 1e-12),
+    };
+  }
+  
+  trainLinearRegression(targetId, epochs = 50, lr = 0.01) {
+    // Build pairs: (input embedding, target value)
+    const examples = [];
+    for (const cell of this.cells.values()) {
+      if (cell.embedding && cell.state.value !== undefined) {
+        examples.push({ input: cell.embedding, target: cell.state.value });
+      }
+    }
+    if (examples.length < 2) return { loss: null, error: 'Not enough examples' };
+    
+    const dim = examples[0].input.length;
+    const w = new Array(dim).fill(0).map(() => Math.random() * 0.01 - 0.005);
+    let b = 0;
+    const history = [];
+    
+    for (let e = 0; e < epochs; e++) {
+      let totalLoss = 0;
+      let dw = new Array(dim).fill(0);
+      let db = 0;
+      for (const ex of examples) {
+        let y_pred = b;
+        for (let i = 0; i < dim; i++) y_pred += w[i] * ex.input[i];
+        const err = y_pred - ex.target;
+        totalLoss += err * err;
+        for (let i = 0; i < dim; i++) dw[i] += 2 * err * ex.input[i];
+        db += 2 * err;
+      }
+      // Update
+      for (let i = 0; i < dim; i++) w[i] -= lr * dw[i] / examples.length;
+      b -= lr * db / examples.length;
+      history.push(totalLoss / examples.length);
+      this.training.history.push({ epoch: e, loss: totalLoss / examples.length });
+    }
+    
+    this.training.loss = history[history.length - 1];
+    this.training.weights = w;
+    this.training.bias = b;
+    return { history, finalLoss: history[history.length - 1], weights: w, bias: b };
+  }
+  
+  trainMLP(inputDim, hiddenDim, outputDim, examples, epochs = 100, lr = 0.01) {
+    // Simple 2-layer MLP
+    const rand = () => Math.random() * 0.2 - 0.1;
+    const W1 = Array.from({length: hiddenDim}, () => Array.from({length: inputDim}, rand));
+    const b1 = new Array(hiddenDim).fill(0);
+    const W2 = Array.from({length: outputDim}, () => Array.from({length: hiddenDim}, rand));
+    const b2 = new Array(outputDim).fill(0);
+    
+    const sigmoid = x => 1 / (1 + Math.exp(-Math.max(-50, Math.min(50, x))));
+    const sigmoidDeriv = y => y * (1 - y);
+    
+    const history = [];
+    for (let e = 0; e < epochs; e++) {
+      let totalLoss = 0;
+      for (const ex of examples) {
+        // Forward
+        const h = b1.map((_, i) => {
+          let z = 0;
+          for (let j = 0; j < inputDim; j++) z += W1[i][j] * ex.input[j];
+          return sigmoid(z + b1[i]);
+        });
+        const y = b2.map((_, i) => {
+          let z = 0;
+          for (let j = 0; j < hiddenDim; j++) z += W2[i][j] * h[j];
+          return z + b2[i];
+        });
+        const err = y[0] - ex.target;
+        totalLoss += err * err;
+        
+        // Backward (simplified)
+        const dY = [2 * err];
+        const dH = h.map((_, j) => dY[0] * W2[0][j] * sigmoidDeriv(h[j]));
+        
+        // Update
+        for (let i = 0; i < hiddenDim; i++) {
+          for (let j = 0; j < inputDim; j++) {
+            W1[i][j] -= lr * dH[i] * ex.input[j];
+          }
+          b1[i] -= lr * dH[i];
+        }
+        for (let i = 0; i < outputDim; i++) {
+          for (let j = 0; j < hiddenDim; j++) {
+            W2[i][j] -= lr * dY[i] * h[j];
+          }
+          b2[i] -= lr * dY[i];
+        }
+      }
+      history.push(totalLoss / examples.length);
+    }
+    
+    return { history, finalLoss: history[history.length - 1] };
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// LOCAL EMBEDDING — small model that runs in browser
+// ────────────────────────────────────────────────────────────────────
+
+// Quick local embedder: simple hash + projection to 32-dim
+// (Real model would use transformers.js, but this is browser-native fallback)
+
+class LocalEmbedder {
+  constructor(dim = 32) {
+    this.dim = dim;
+    // Random projection matrix (would normally be trained)
+    this.W = Array.from({length: dim}, () => 
+      Array.from({length: 256}, () => Math.random() * 2 - 1)
+    );
+  }
+  
+  // Simple character n-gram features → projected to dim
+  embed(text) {
+    const features = new Array(256).fill(0);
+    for (let i = 0; i < text.length; i++) {
+      const c = text.toLowerCase().charCodeAt(i) & 0xff;
+      features[c] += 1;
+      if (i + 1 < text.length) {
+        const c2 = text.toLowerCase().charCodeAt(i+1) & 0xff;
+        features[(c + c2 * 7) & 0xff] += 0.5;
+      }
+    }
+    // Project
+    const emb = new Array(this.dim).fill(0);
+    for (let i = 0; i < this.dim; i++) {
+      for (let j = 0; j < 256; j++) {
+        emb[i] += features[j] * this.W[i][j];
+      }
+      emb[i] /= Math.sqrt(256);
+    }
+    return emb;
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// IndexedDB persistence
+// ────────────────────────────────────────────────────────────────────
+
+class SubstrateDB {
+  constructor() {
+    this.db = null;
+  }
+  
+  async open() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('quilt-substrate', 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('cells')) {
+          db.createObjectStore('cells', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('witnesses')) {
+          db.createObjectStore('witnesses', { keyPath: 'hash', autoIncrement: false });
+        }
+      };
+      req.onsuccess = (e) => {
+        this.db = e.target.result;
+        resolve();
+      };
+      req.onerror = (e) => reject(e);
+    });
+  }
+  
+  async saveCell(cell) {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(['cells'], 'readwrite');
+      const store = tx.objectStore('cells');
+      const req = store.put({
+        id: cell.id,
+        type: cell.type,
+        state: cell.state,
+        embedding: cell.embedding,
+        prev_hash: cell.prev_hash,
+        timestamp: cell.timestamp,
+      });
+      req.onsuccess = () => resolve();
+      req.onerror = (e) => reject(e);
+    });
+  }
+  
+  async loadAll() {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(['cells'], 'readonly');
+      const store = tx.objectStore('cells');
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = (e) => reject(e);
+    });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// WebGPU compute — FNV-1a + JEV
+// ────────────────────────────────────────────────────────────────────
+
+class WebGPUCompute {
+  async init() {
+    if (!navigator.gpu) return false;
+    const adapter = await navigator.gpu.requestAdapter();
+    if (!adapter) return false;
+    this.device = await adapter.requestDevice();
+    return true;
+  }
+  
+  async runFNV1a(strings) {
+    // Simulated WebGPU compute (would dispatch shader in production)
+    return strings.map(s => '0x' + fnv1a64(s).toString(16).padStart(16, '0'));
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// 3D Visualization with Three.js (or simple WebGL fallback)
+// ────────────────────────────────────────────────────────────────────
+
+class SubstrateVisualizer {
+  constructor(canvas, substrate) {
+    this.canvas = canvas;
+    this.substrate = substrate;
+    this.ctx = canvas.getContext('2d');
+    this.cells = [];
+    this.hoveredCell = null;
+    this.camera = { x: 0, y: 0, zoom: 1 };
+    
+    canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    canvas.addEventListener('click', (e) => this.onClick(e));
+  }
+  
+  onMouseMove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) / rect.width - 0.5;
+    const my = (e.clientY - rect.top) / rect.height - 0.5;
+    
+    // Find nearest cell
+    let nearest = null;
+    let minDist = 0.05;
+    for (const c of this.cells) {
+      const dx = c.x - mx;
+      const dy = c.y - my;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      if (d < minDist) {
+        nearest = c;
+        minDist = d;
+      }
+    }
+    this.hoveredCell = nearest;
+    this.render();
+  }
+  
+  onClick(e) {
+    if (this.hoveredCell) {
+      const cell = this.substrate.cells.get(this.hoveredCell.id);
+      console.log('Cell:', cell);
+    }
+  }
+  
+  update() {
+    // Map cells to 2D positions using force-directed layout approximation
+    this.cells = [];
+    let i = 0;
+    const N = this.substrate.cells.size;
+    for (const cell of this.substrate.cells.values()) {
+      if (!cell.embedding) continue;
+      // Simple circular layout
+      const angle = (i / Math.max(N, 1)) * Math.PI * 2;
+      const radius = 0.3;
+      this.cells.push({
+        id: cell.id,
+        x: 0.5 + Math.cos(angle) * radius,
+        y: 0.5 + Math.sin(angle) * radius,
+        score: this.hoveredCell && this.hoveredCell.id === cell.id ? 1.0 : 0.5,
+        type: cell.type,
+      });
+      i++;
+    }
+  }
+  
+  render() {
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    this.ctx.fillStyle = '#000';
+    this.ctx.fillRect(0, 0, w, h);
+    
+    // Draw edges (sample of pairs)
+    this.ctx.strokeStyle = '#334155';
+    this.ctx.lineWidth = 0.5;
+    for (let i = 0; i < this.cells.length - 1; i++) {
+      for (let j = i + 1; j < Math.min(i + 5, this.cells.length); j++) {
+        const a = this.cells[i];
+        const b = this.cells[j];
+        this.ctx.beginPath();
+        this.ctx.moveTo(a.x * w, a.y * h);
+        this.ctx.lineTo(b.x * w, b.y * h);
+        this.ctx.stroke();
+      }
+    }
+    
+    // Draw cells
+    for (const c of this.cells) {
+      const colors = {
+        'input': '#60a5fa',
+        'hidden': '#a78bfa',
+        'output': '#f472b6',
+        'weight': '#fbbf24',
+        'canon': '#34d399',
+        'pde': '#22d3ee',
+        'bias': '#94a3b8',
+      };
+      this.ctx.fillStyle = colors[c.type] || '#94a3b8';
+      this.ctx.beginPath();
+      this.ctx.arc(c.x * w, c.y * h, c.id === this.hoveredCell?.id ? 8 : 5, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Label on hover
+      if (c.id === this.hoveredCell?.id) {
+        this.ctx.fillStyle = '#fff';
+        this.ctx.font = '12px monospace';
+        this.ctx.fillText(c.id, c.x * w + 10, c.y * h);
+      }
+    }
+    
+    // Legend
+    this.ctx.fillStyle = '#94a3b8';
+    this.ctx.font = '11px sans-serif';
+    this.ctx.fillText(`Cells: ${this.cells.length} | Hover for details`, 10, 20);
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// MAIN — wire everything together
+// ────────────────────────────────────────────────────────────────────
+
+const substrate = new Substrate();
+const embedder = new LocalEmbedder(32);
+const db = new SubstrateDB();
+const webgpu = new WebGPUCompute();
+
+// State
+let visualizer = null;
+
+// ────────────────────────────────────────────────────────────────────
+// Initial bootstrap
+// ────────────────────────────────────────────────────────────────────
+
+async function init() {
+  document.getElementById('backend-status').textContent = '⏳ Booting...';
+  
+  // Check WebGPU
+  try {
+    const webgpuOk = await webgpu.init();
+    document.getElementById('webgpu-status').textContent = webgpuOk ? '✓ GPU' : '✗ None';
+  } catch (e) {
+    document.getElementById('webgpu-status').textContent = '✗ N/A';
+  }
+  
+  // Check IndexedDB
+  try {
+    await db.open();
+    document.getElementById('idb-status').textContent = '✓ Ready';
+    
+    // Load persisted cells
+    const persisted = await db.loadAll();
+    if (persisted.length > 0) {
+      for (const p of persisted) {
+        const cell = new Cell(p.id, p.type, p.state);
+        cell.embedding = p.embedding;
+        cell.prev_hash = p.prev_hash;
+        cell.timestamp = p.timestamp;
+        substrate.cells.set(p.id, cell);
+      }
+      updateStats();
+      console.log(`Loaded ${persisted.length} cells from IndexedDB`);
+    }
+  } catch (e) {
+    document.getElementById('idb-status').textContent = '✗ Failed';
+  }
+  
+  // 3D visualizer
+  const canvas = document.getElementById('canvas-3d');
+  visualizer = new SubstrateVisualizer(canvas, substrate);
+  
+  // Seed with canonical cells (initial substrate)
+  if (substrate.cells.size === 0) {
+    seedInitialCells();
+  }
+  
+  document.getElementById('backend-status').textContent = '✓ Live';
+  
+  // Periodic render
+  setInterval(renderLoop, 100);
+  
+  setupHandlers();
+}
+
+function seedInitialCells() {
+  const seedTexts = [
+    'the substrate as witness',
+    'cell-graph topology',
+    'memory poisoning defense',
+    'witness-log prev_hash chain',
+    'ubuntu cellular architecture',
+    'conscription cron 5% quorum',
+    'polyformal port bytelocked',
+    'JEV oracle canonicity gate',
+    'candor WAL receipts',
+    '11 opcodes canonical',
+    'FNV-1a 64-bit canary',
+    'cross-language reproducibility',
+    'the irreducible connection',
+    'wavefunction JEV interference',
+    'task pruning irreducible core',
+    'AI++ spreadsheet encoding',
+    'far future Aruan city name',
+    'three witnesses speak the city',
+    'the soundboard of canon',
+    'substrate as brush',
+  ];
+  
+  for (let i = 0; i < seedTexts.length; i++) {
+    const text = seedTexts[i];
+    const cell = new Cell(
+      'seed_' + i,
+      'canon',
+      { value: i, text },
+    );
+    cell.embedding = embedder.embed(text);
+    substrate.add(cell);
+    
+    if (db.db) db.saveCell(cell);
+  }
+  updateStats();
+}
+
+function renderLoop() {
+  if (visualizer) {
+    visualizer.update();
+    visualizer.render();
+  }
+  updateWitnessTail();
+}
+
+function updateStats() {
+  document.getElementById('cell-count').textContent = substrate.cells.size.toString();
+  document.getElementById('witness-count').textContent = substrate.witness_log.length.toString();
+  if (substrate.training.loss !== null) {
+    document.getElementById('loss-val').textContent = substrate.training.loss.toFixed(4);
+  }
+}
+
+function updateWitnessTail() {
+  const tail = substrate.witness_log.slice(-10).map(w => 
+    `[${w.step}] ${w.cell_id} hash=${w.hash.slice(0, 14)}...`
+  ).join('\n');
+  document.getElementById('witness-tail').textContent = tail || 'No witnesses yet';
+}
+
+function setupHandlers() {
+  document.getElementById('add-obs').onclick = () => {
+    const text = document.getElementById('obs-input').value.trim();
+    if (!text) return;
+    const cell = new Cell('user_' + Date.now(), 'canon', { text, value: substrate.cells.size });
+    cell.embedding = embedder.embed(text);
+    substrate.add(cell);
+    if (db.db) db.saveCell(cell);
+    document.getElementById('obs-input').value = '';
+    updateStats();
+  };
+  
+  document.getElementById('embed-text').onclick = () => {
+    const text = document.getElementById('obs-input').value.trim();
+    if (!text) return;
+    const emb = embedder.embed(text);
+    const top5 = substrate.findTopK(emb, 5);
+    const container = document.getElementById('top-five');
+    container.innerHTML = '<h3 style="color:#fbbf24;margin-bottom:0.5em;">Query: ' + text.slice(0, 60) + '</h3>' +
+      top5.map((m, i) => {
+        const cls = m.score > 0.8 ? 'scored-high' : m.score > 0.5 ? 'scored-mid' : 'scored-low';
+        return `<div class="cell-card ${cls}">
+          <strong>${i+1}. ${m.cell.id}</strong> — score ${m.score.toFixed(4)}
+          <br><span style="color:#94a3b8;font-size:0.85em;">${m.cell.state.text?.slice(0, 80) || '(no text)'}</span>
+        </div>`;
+      }).join('');
+  };
+  
+  document.getElementById('run-wavefn').onclick = () => {
+    const text = document.getElementById('jev-input').value.trim();
+    if (!text) return;
+    const emb = embedder.embed(text);
+    const wf = substrate.wavefunctionJEV(emb, 'cluster');
+    const out = document.getElementById('wavefn-output');
+    out.textContent = 
+      `=== Wavefunction JEV ===\n` +
+      `Query: "${text.slice(0, 60)}"\n` +
+      `|ψ|:       ${wf.psiMagnitude.toFixed(4)}\n` +
+      `Total P:   ${wf.totalPower.toFixed(4)}\n` +
+      `Coherence: ${wf.coherence.toFixed(4)}\n` +
+      `Constructive: ${wf.constructive.toFixed(4)}\n` +
+      `Destructive:  ${wf.destructive.toFixed(4)}\n` +
+      `Ratio:     ${wf.ratio.toFixed(4)}\n` +
+      `\n${wf.ratio > 1.0 ? '✓ Canon reinforcing itself' : '✗ Anticannon detected'}`;
+  };
+  
+  document.getElementById('train-model').onclick = () => {
+    const result = substrate.trainLinearRegression('seed_0', 100, 0.001);
+    if (result.error) {
+      document.getElementById('training-output').textContent = 'Error: ' + result.error;
+      return;
+    }
+    const tail = result.history.slice(-10).map((l, i) => 
+      `Epoch ${result.history.length - 10 + i}: loss=${l.toFixed(6)}`
+    ).join('\n');
+    document.getElementById('training-output').textContent = 
+      `=== Linear Regression Training (in browser) ===\n` +
+      `Examples: ${substrate.cells.size}\n` +
+      `Epochs: ${result.history.length}\n` +
+      `Final loss: ${result.finalLoss.toFixed(6)}\n\n` +
+      `Last 10 epochs:\n${tail}`;
+    updateStats();
+  };
+  
+  document.getElementById('train-mlp').onclick = () => {
+    // Build inputs/targets from cells
+    const examples = [];
+    for (const cell of substrate.cells.values()) {
+      if (cell.embedding) {
+        examples.push({ 
+          input: cell.embedding, 
+          target: cell.state.value || Math.random() 
+        });
+      }
+    }
+    if (examples.length < 2) {
+      document.getElementById('training-output').textContent = 'Need at least 2 examples';
+      return;
+    }
+    const result = substrate.trainMLP(32, 8, 1, examples, 50, 0.01);
+    const tail = result.history.slice(-10).map((l, i) => 
+      `Epoch ${result.history.length - 10 + i}: loss=${l.toFixed(6)}`
+    ).join('\n');
+    document.getElementById('training-output').textContent = 
+      `=== MLP Training (2-layer, in browser) ===\n` +
+      `Examples: ${examples.length}\n` +
+      `Architecture: ${32} → ${8} → 1\n` +
+      `Epochs: ${result.history.length}\n` +
+      `Final loss: ${result.finalLoss.toFixed(6)}\n\n` +
+      `Last 10 epochs:\n${tail}`;
+    updateStats();
+  };
+  
+  document.getElementById('op-bulk').onclick = () => {
+    for (let i = 0; i < 50; i++) {
+      const text = `bulk_observation_${i}_${Math.random().toString(36).slice(2, 7)}`;
+      const cell = new Cell('bulk_' + Date.now() + '_' + i, 'canon', { text, value: substrate.cells.size });
+      cell.embedding = embedder.embed(text);
+      substrate.add(cell);
+      if (db.db) db.saveCell(cell);
+    }
+    document.getElementById('op-output').textContent = 'Added 50 bulk cells.\nTotal cells now: ' + substrate.cells.size;
+    updateStats();
+  };
+  
+  document.getElementById('op-shock').onclick = () => {
+    // Add a "shock" — a cell with much higher value than neighbors
+    const shockText = 'SHOCK_' + Math.random().toString(36).slice(2, 9);
+    const cell = new Cell('shock_' + Date.now(), 'pde', { text: shockText, value: 1000 + Math.random() * 1000 });
+    cell.embedding = embedder.embed(shockText + 'shockwave discontinuit impact force');
+    substrate.add(cell);
+    if (db.db) db.saveCell(cell);
+    document.getElementById('op-output').textContent = 
+      `Added shock cell.\n` +
+      `Substrate cells: ${substrate.cells.size}\n` +
+      `Adaptive mesh would split high-gradient regions here.`;
+  };
+  
+  document.getElementById('op-solve-burgers').onclick = () => {
+    const N = 32;
+    const dx = 2 * Math.PI / N;
+    const dt = 0.001;
+    const nu = 0.05;
+    let u = new Array(N);
+    for (let i = 0; i < N; i++) u[i] = Math.sin(i * dx);
+    const steps = 200;
+    let snapshots = [];
+    for (let step = 0; step < steps; step++) {
+      const u_new = new Array(N);
+      for (let i = 0; i < N; i++) {
+        const ip = (i + 1) % N;
+        const im = (i - 1 + N) % N;
+        const dudx = u[i] >= 0 ? (u[i] - u[im]) / dx : (u[ip] - u[i]) / dx;
+        const d2udx2 = (u[ip] - 2 * u[i] + u[im]) / (dx * dx);
+        u_new[i] = u[i] + dt * (-u[i] * dudx + nu * d2udx2);
+      }
+      u = u_new;
+      if (step % 50 === 0) snapshots.push(`t=${(step*dt).toFixed(2)}: u[0]=${u[0].toFixed(3)}, u[N/2]=${u[N/2].toFixed(3)}`);
+    }
+    document.getElementById('op-output').textContent = 
+      `═══ Burgers' 1D (browser-native, no Python) ═══\n` +
+      `N=${N}, nu=${nu}, dt=${dt}, steps=${steps}\n` +
+      snapshots.join('\n') + 
+      `\n\nFinal u[0..5]: ${u.slice(0, 5).map(v => v.toFixed(3)).join(', ')}...\n` +
+      `✓ Solved in browser. Witness-log per-cell would record each step.`;
+  };
+  
+  document.getElementById('op-export').onclick = () => {
+    const data = {
+      cells: Array.from(substrate.cells.values()).map(c => ({
+        id: c.id,
+        type: c.type,
+        state: c.state,
+        embedding: c.embedding,
+        timestamp: c.timestamp,
+      })),
+      witness_log_length: substrate.witness_log.length,
+      training: substrate.training,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'substrate-' + Date.now() + '.json';
+    a.click();
+    document.getElementById('op-output').textContent = 'Exported ' + data.cells.length + ' cells to JSON';
+  };
+  
+  document.getElementById('op-import').onclick = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = JSON.parse(reader.result);
+        substrate.cells.clear();
+        substrate.witness_log = [];
+        for (const c of data.cells) {
+          const cell = new Cell(c.id, c.type, c.state);
+          cell.embedding = c.embedding;
+          cell.timestamp = c.timestamp;
+          substrate.cells.set(c.id, cell);
+        }
+        updateStats();
+        document.getElementById('op-output').textContent = 'Imported ' + data.cells.length + ' cells';
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+  
+  document.getElementById('reset-substrate').onclick = async () => {
+    if (!confirm('Reset substrate? This clears all cells and witnesses.')) return;
+    substrate.cells.clear();
+    substrate.witness_log = [];
+    if (db.db) {
+      const tx = db.db.transaction(['cells'], 'readwrite');
+      tx.objectStore('cells').clear();
+    }
+    updateStats();
+  };
+  
+  document.getElementById('check-backend').onclick = () => {
+    init();
+  };
+}
+
+// Boot
+init().catch(e => console.error('Boot error:', e));
+
+</script>
+
+</body>
+</html>

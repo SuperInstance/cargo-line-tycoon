@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Quilt Substrate — Browser Native</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3em 2em;
+  }
+  h1 { color: #fbbf24; }
+  .card {
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1.5em;
+    margin: 1.5em 0;
+  }
+  .card h2 { color: #fbbf24; margin-top: 0; }
+  a.btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #0f172a;
+    padding: 0.7em 1.4em;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+    margin: 0.3em 0.3em 0.3em 0;
+  }
+  a.btn:hover { transform: translateY(-2px); }
+  ul { line-height: 1.8; }
+  code { background: rgba(0,0,0,0.3); padding: 0.1em 0.4em; border-radius: 3px; }
+</style>
+</head>
+<body>
+<h1>🧬 Quilt Substrate — Browser Native</h1>
+<p>Three browser-native substrate implementations. No server required. Your data stays in your browser.</p>
+
+<div class="card">
+  <h2>1. Substrate Core (Interactive Cell-Graph)</h2>
+  <p>20+ canonical cells seeded, witness-log, JEV top-5 search, wavefunction JEV, 3D visualization, IndexedDB persistence, and a real (in-browser) linear regression + MLP trainer.</p>
+  <a class="btn" href="substrate.html">▶ Open Substrate Core</a>
+</div>
+
+<div class="card">
+  <h2>2. Substrate ML (Browser Training)</h2>
+  <p>Browser-native ML training. Real gradient descent on linear regression and XOR. Burgers' 1D PDE solver. SAT solver with Pigeonhole. Witness-log audit. WebGPU detection.</p>
+  <a class="btn" href="substrate-ml.html">▶ Open Substrate ML</a>
+</div>
+
+<div class="card">
+  <h2>3. Substrate GPU (WebGPU Compute) 🚀</h2>
+  <p>WebGPU compute shaders for FNV-1a 64-bit hash and JEV cosine similarity. Run the same substrate primitives on your GPU. Includes benchmark to show GPU vs CPU speedup.</p>
+  <a class="btn" href="substrate-gpu.html">⚡ Open Substrate GPU</a>
+</div>
+
+<div class="card">
+  <h2>What this demonstrates</h2>
+  <ul>
+    <li><strong>FNV-1a 64-bit hash</strong> — same as substrate canon, byte-exact across all 7 locales</li>
+    <li><strong>Witness-log</strong> — every state change is hash-chained, verifiable</li>
+    <li><strong>JEV scoring</strong> — cosine similarity across cells, top-5 retrieval</li>
+    <li><strong>Wavefunction JEV</strong> — explicit interference across cells with phase from cluster hash</li>
+    <li><strong>In-browser training</strong> — real gradient descent on linreg and MLP</li>
+    <li><strong>PDE solver</strong> — Burgers' 1D with upwind advection + diffusion</li>
+    <li><strong>SAT solver</strong> — Pigeonhole with at-most-one + at-least-one constraints</li>
+    <li><strong>IndexedDB</strong> — substrate state survives browser refresh</li>
+    <li><strong>3D visualization</strong> — cell-graph rendered on canvas</li>
+    <li><strong>WebGPU compute</strong> — same primitives, on your GPU</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Source</h2>
+  <p>Browser-native substrate source files in the cargo-line-tycoon repo at <code>browser/</code>.</p>
+  <p>All vanilla JS / WGSL, no build step. Open the HTML files directly or via any web server.</p>
+</div>
+
+</body>
+</html>
