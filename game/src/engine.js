@@ -22,20 +22,26 @@
       require('../data/chokepoints.js'),
       require('../data/fuel_freight_snapshot.js'),
       require('./provenance.js'),
+      require('../data/pool.js'),
+      require('./pencil.js'),
     );
   } else {
-    root.CLTEngine = factory(root.CLTWorld, root.CLTEconomy, root.CLT_PORTS, root.CLT_CHOKEPOINTS, root.CLT_SNAPSHOT, root.CLTProvenance);
+    root.CLTEngine = factory(root.CLTWorld, root.CLTEconomy, root.CLT_PORTS, root.CLT_CHOKEPOINTS, root.CLT_SNAPSHOT, root.CLTProvenance, root.CLT_POOL, root.CLTPencil);
   }
-})(typeof window !== 'undefined' ? window : this, function (kernel, economy, portsData, chokepointsData, snapshotData, provenance) {
+})(typeof window !== 'undefined' ? window : this, function (kernel, economy, portsData, chokepointsData, snapshotData, provenance, poolData, pencil) {
   const { World, makeCompanyCell, makeShipCell, makeRouteCell, makePortCell, makeMarketCell } = kernel;
   const {
     SHIP_CLASSES, initialMarketState, driftPrice,
     applyLoadPressure, applyDeliverPressure, tripRevenue,
     computeGlobalRouteLeg, adjustedDailyOpCost,
+    haversineNm, CORRIDORS, corridorKey, currentChokepointStatus,
+    PANAMA_DETOUR_MULT,
   } = economy;
   const { PORTS, PORTS_BY_ID } = portsData;
   const { CHOKEPOINTS, CHOKEPOINT_IDS } = chokepointsData;
   const { read, describe, reattestSimulated } = provenance;
+  const { POOL, POOL_BY_ID } = poolData;
+  const { generatePencilPorts, buildRevealSchedule } = pencil;
 
   const STARTING_CASH = 10_000_000;
   const HOME_PORT_ID = 'los_angeles';
@@ -120,6 +126,44 @@
         }));
       }
 
+      // Pencil Sea (arch/cargo-line-fact-landed.md §5): the pencil generator
+      // emits one pencil port per pool fact (game/data/pool.js), jittered
+      // ±0.3°, plus ~25% decoys with no fact behind them — seeded via
+      // world.rng.fork('procgen:ports') so this is replay-deterministic and
+      // never touches Math.random(). `this.pencilPorts` is the per-id
+      // registry (parent/coast/seed metadata); the actual world-facts live
+      // as ordinary port:<id>/market:<id> cells alongside the real ports, so
+      // every existing lookup that reads through EntityStore (this.world.
+      // entities.get(`port:${id}`)) already works uniformly for both.
+      this.pencilPorts = {};
+      const pencilRng = this.world.rng.fork('procgen:ports');
+      const pencilList = generatePencilPorts(pencilRng, POOL, PORTS);
+      for (const pp of pencilList) {
+        this.pencilPorts[pp.id] = pp;
+        this.world.entities.put(`port:${pp.id}`, makePortCell({
+          id: pp.id, name: pp.name, lat: pp.lat, lng: pp.lng, country: null, annualTeus: 0, tier: 3,
+          provenance: { source: 'procgen', trust: pp.trust, seed_label: pp.seedLabel },
+        }));
+        const parentCommodity = PORTS_BY_ID[pp.parentPortId].commodity;
+        const base = economy.basePriceForPort(pp.parentPortId);
+        const priceRng = this.world.rng.fork(`market:${pp.id}:init`);
+        const price = Math.round(base * (1 + priceRng.float(-0.15, 0.15)));
+        this.world.entities.put(`market:${pp.id}`, makeMarketCell({
+          portId: pp.id, commodity: parentCommodity, basePrice: base, price, demand: 1.0,
+          provenance: { source: 'procgen', trust: pp.trust, seed_label: pp.seedLabel },
+        }));
+      }
+      // The seeded reveal schedule (arch/cargo-line-fact-landed.md §5.2):
+      // deterministic from world.rng.fork('pool:reveal') + entry index.
+      // Tuned so the first landing fires at ~tick 4 and reveals land roughly
+      // every 3 ticks thereafter; a `snapshot`-kind entry (a `revised`
+      // landing on the first pool port to ink) rides along so all three
+      // fact_landed verdicts are reachable inside a 60-tick window, fully
+      // offline (no L1/roster dependency).
+      const revealRng = this.world.rng.fork('pool:reveal');
+      this.revealSchedule = buildRevealSchedule(revealRng, pencilList);
+      this._firstScar = false;
+
       this.world.entities.put(companyId, makeCompanyCell({
         id: companyId, name: companyName, cashMinorUnits: STARTING_CASH, reputation: 0, unlocks: [],
       }));
@@ -151,6 +195,287 @@
       return next;
     }
 
+    // All world-fact port ids currently in play: the real canon ports plus
+    // every generated pencil port (proven or not, erased or not — a ghost
+    // still has a market cell, it just shouldn't be routed to; see
+    // _computeLegAny / _reroutePencilPort).
+    _allPortIds() { return [...Object.keys(PORTS_BY_ID), ...Object.keys(this.pencilPorts)]; }
+
+    _portName(portId) {
+      if (PORTS_BY_ID[portId]) return PORTS_BY_ID[portId].name;
+      const cell = this.world.entities.get(`port:${portId}`);
+      return cell ? cell.state.name : portId;
+    }
+
+    // Uniform port metadata for BOTH real and pencil ports — both are stored
+    // as ordinary port:<id> cells, so this is just one EntityStore read; the
+    // medium (ink/pencil/ghost) is read straight off the cell's own
+    // provenance, never guessed from the id's shape.
+    _portMeta(portId) {
+      const cell = this.world.entities.get(`port:${portId}`);
+      if (!cell) throw new Error(`_portMeta: unknown port ${portId}`);
+      const s = cell.state;
+      return {
+        id: portId, name: s.name, lat: s.lat, lng: s.lng, provenance: s.provenance,
+        isPencil: s.provenance.source === 'procgen', erased: !!s.provenance.erased,
+      };
+    }
+
+    // Pencil ports have no entry in portsData.REGIONS, so region/lat-lng
+    // lookups fall back to the pencil registry's `parentPortId` (the
+    // nearest real port at generation time — see game/src/pencil.js) for
+    // anything that isn't a real port. This is the L4 "this-week bound"
+    // named in arch/cargo-line-fact-landed.md §5.3/§8: every pencil port
+    // inherits a real coast/region rather than needing its own footprint
+    // rule.
+    _regionAny(portId) {
+      if (PORTS_BY_ID[portId]) return portsData.regionOf(portId);
+      const pp = this.pencilPorts[portId];
+      if (pp) return portsData.regionOf(pp.parentPortId);
+      throw new Error(`_regionAny: unknown port ${portId}`);
+    }
+
+    _latlngAny(portId) {
+      if (PORTS_BY_ID[portId]) return PORTS_BY_ID[portId];
+      const cell = this.world.entities.get(`port:${portId}`);
+      if (cell) return { lat: cell.state.lat, lng: cell.state.lng };
+      throw new Error(`_latlngAny: unknown port ${portId}`);
+    }
+
+    // Generalizes economy.computeGlobalRouteLeg() to a leg where either end
+    // may be a pencil port. When both ends are real ports this delegates
+    // straight to the untouched Phase 1/2 function (byte-identical
+    // behavior, same as economy.js's own WEST_COAST<->EAST_GULF_COAST fast
+    // path). Otherwise it re-derives the same same-region / cross-region
+    // corridor math using the pencil port's own jittered lat/lng and its
+    // parent's region — same corridor table, same chokepoint gating
+    // (Hormuz's blocksTransit refusal included), just not delegated because
+    // economy.js's own PORTS_BY_ID-keyed regionOf() would throw on a pencil
+    // id. Kept here (not in economy.js) so economy.js — the Phase 1/2
+    // foundation — stays untouched.
+    _computeLegAny(fromId, toId, shipClass) {
+      if (PORTS_BY_ID[fromId] && PORTS_BY_ID[toId]) {
+        return computeGlobalRouteLeg(fromId, toId, shipClass, this._chokepointStatusSnapshot());
+      }
+      const regionA = this._regionAny(fromId);
+      const regionB = this._regionAny(toId);
+      const a = this._latlngAny(fromId);
+      const b = this._latlngAny(toId);
+      const directNm = haversineNm(a, b);
+
+      if (regionA === regionB) {
+        const steamingDays = directNm / (shipClass.speedKn * 24);
+        return {
+          ok: true, usesPanama: false, chokepointsUsed: [], distanceNm: directNm,
+          legDurationTicks: Math.max(1, Math.round(steamingDays)), tollTotal: 0, tollBreakdown: [],
+        };
+      }
+
+      const key = corridorKey(regionA, regionB);
+      let corridor = CORRIDORS[key];
+      let usesPanamaFastPath = false;
+      if (key === corridorKey('WEST_COAST', 'EAST_GULF_COAST')) {
+        corridor = { chokepoints: ['panama'], detourMult: PANAMA_DETOUR_MULT, forwardFrom: 'WEST_COAST' };
+        usesPanamaFastPath = true;
+      }
+      if (!corridor) throw new Error(`_computeLegAny: no corridor defined for ${regionA} <-> ${regionB}`);
+
+      const distanceNm = directNm * corridor.detourMult;
+      const steamingDays = distanceNm / (shipClass.speedKn * 24);
+      let extraDays = 0;
+      let tollTotal = 0;
+      const tollBreakdown = [];
+      const chokepointsUsed = [];
+      const orderedChokepoints = regionA === corridor.forwardFrom ? corridor.chokepoints : [...corridor.chokepoints].reverse();
+
+      for (const cpId of orderedChokepoints) {
+        const cp = CHOKEPOINTS[cpId];
+        const status = currentChokepointStatus(cpId, this._chokepointStatusSnapshot());
+        chokepointsUsed.push(cpId);
+        if (cpId === 'panama' && !shipClass.canTransitPanama) {
+          return { ok: false, reason: `${shipClass.name} is too large to transit the Panama Canal — pick a route that avoids it.` };
+        }
+        if (cp.blocksTransit && status === 'disrupted') {
+          return { ok: false, reason: `${cp.name} is effectively closed to commercial shipping right now — there is no sea route around it for this corridor.` };
+        }
+        const baseToll = read(cp.tollPerTeu);
+        const baseSurcharge = cp.warRiskSurchargePerTeu ? read(cp.warRiskSurchargePerTeu) : 0;
+        const baseTransitDays = read(cp.transitDays);
+        let tollMult = 1, transitMult = 1, riskMult = 1;
+        if (status === 'congested' && cp.congestion) {
+          tollMult = cp.congestion.tollMult ?? 1; transitMult = cp.congestion.transitMult ?? 1; riskMult = cp.congestion.warRiskMult ?? 1;
+        } else if (status === 'disrupted' && cp.disruption) {
+          tollMult = cp.disruption.tollMult ?? 1; transitMult = cp.disruption.transitMult ?? 1; riskMult = cp.disruption.warRiskMult ?? 1;
+        }
+        const legCost = Math.round((baseToll * tollMult + baseSurcharge * riskMult) * shipClass.capacityTeu);
+        tollTotal += legCost;
+        tollBreakdown.push({ chokepointId: cpId, name: cp.name, status, amount: legCost });
+        extraDays += baseTransitDays * transitMult;
+      }
+
+      return {
+        ok: true, usesPanama: usesPanamaFastPath || corridor.chokepoints.includes('panama'),
+        chokepointsUsed, distanceNm,
+        legDurationTicks: Math.max(1, Math.round(steamingDays + extraDays)),
+        tollTotal, tollBreakdown,
+      };
+    }
+
+    // Nearest real (ink) port on the erased pencil port's own coast/region —
+    // "reroute affected ships ... nearest ink port same coast" (Fable §7.2).
+    _nearestInkPortSameCoast(pencilPortId) {
+      const pp = this.pencilPorts[pencilPortId];
+      const region = portsData.regionOf(pp.parentPortId);
+      let best = null, bestNm = Infinity;
+      for (const p of PORTS) {
+        if (portsData.regionOf(p.id) !== region) continue;
+        const nm = haversineNm({ lat: pp.lat, lng: pp.lng }, p);
+        if (nm < bestNm) { bestNm = nm; best = p.id; }
+      }
+      return best || pp.parentPortId;
+    }
+
+    // A decoy just erased: any route/ship pointed at it is rerouted to the
+    // nearest ink port on the same coast — `stake_rerouted` booked
+    // separately from the fact_landed entry itself (arch/cargo-line-fact-
+    // landed.md §2). Simplification, named as a deviation in PLAYTEST.md: a
+    // ship already mid-leg keeps its current ticksRemaining rather than
+    // recomputing a partial-leg ETA to the new destination — it is
+    // "this-week"-buildable and never leaves the ship stranded or the book
+    // inconsistent, but it is not a literal recomputation of a ship's
+    // position on the new leg.
+    _reroutePencilPort(pencilPortId, seedLabel) {
+      const inkId = this._nearestInkPortSameCoast(pencilPortId);
+      for (const routeId of this.routeIds) {
+        const route = this.world.entities.get(routeId).state;
+        if (route.fromPortId !== pencilPortId && route.toPortId !== pencilPortId) continue;
+        const newFrom = route.fromPortId === pencilPortId ? inkId : route.fromPortId;
+        const newTo = route.toPortId === pencilPortId ? inkId : route.toPortId;
+        this.world.entities.put(routeId, makeRouteCell({ ...route, fromPortId: newFrom, toPortId: newTo }));
+        for (const shipId of route.assignedShipIds) {
+          const t = this.transit[shipId];
+          if (t) {
+            if (t.routeFrom === pencilPortId) t.routeFrom = inkId;
+            if (t.routeTo === pencilPortId) t.routeTo = inkId;
+          }
+          this.world.book({
+            type: 'stake_rerouted', ship_id: shipId, route_id: routeId,
+            erased_port_id: pencilPortId, rerouted_to_port_id: inkId,
+            provenance: { source: 'procgen', trust: 0.6, seed_label: seedLabel },
+          });
+          this._log(`${shipId} rerouted — nearest real port is ${this._portName(inkId)}.`);
+        }
+      }
+    }
+
+    // ── fact_landed: the one event the ring shares (arch/cargo-line-fact-
+    // landed.md §1-2). Three booking occasions, all reachable OFFLINE via
+    // the seeded reveal schedule — no L1/roster dependency.
+
+    _revealPoolFact(entry) {
+      const pp = this.pencilPorts[entry.pencilPortId];
+      if (!pp || pp.proven || pp.erased) return;
+      const poolFact = POOL_BY_ID[pp.poolId];
+      const portCell = this.world.entities.get(`port:${pp.id}`).state;
+      const fromProv = portCell.provenance;
+      const toProv = { source: 'canon', trust: poolFact.trust, as_of: poolFact.as_of, source_url: poolFact.source_url };
+      this.world.entities.put(`port:${pp.id}`, makePortCell({
+        id: pp.id, name: poolFact.value.name, lat: poolFact.value.lat, lng: poolFact.value.lng,
+        country: portCell.country, annualTeus: poolFact.value.teu || 0, tier: portCell.tier,
+        provenance: toProv,
+      }));
+      pp.lat = poolFact.value.lat; pp.lng = poolFact.value.lng; pp.name = poolFact.value.name; pp.proven = true;
+      this.world.book({
+        type: 'fact_landed', entity_id: `port:${pp.id}`, cell_type: 'port',
+        from: { source: fromProv.source, trust: fromProv.trust, seed_label: fromProv.seed_label },
+        to: { source: 'canon', trust: toProv.trust, as_of: toProv.as_of, source_url: toProv.source_url },
+        verdict: 'proven', landed_by: 'pool',
+      });
+      this._log(`SCOUT · ${poolFact.value.name} · PROVEN · as of ${toProv.as_of} · trust ${Math.round(toProv.trust * 100)}% · source ▸ ${toProv.source_url}`);
+    }
+
+    _eraseDecoy(entry) {
+      const pp = this.pencilPorts[entry.pencilPortId];
+      if (!pp || pp.proven || pp.erased) return;
+      const portCell = this.world.entities.get(`port:${pp.id}`).state;
+      const fromProv = portCell.provenance;
+      const toProv = { source: 'procgen', trust: 0, seed_label: fromProv.seed_label, erased: true };
+      this.world.entities.put(`port:${pp.id}`, makePortCell({ ...portCell, provenance: toProv }));
+      pp.erased = true;
+      this.world.book({
+        type: 'fact_landed', entity_id: `port:${pp.id}`, cell_type: 'port',
+        from: { source: fromProv.source, trust: fromProv.trust, seed_label: fromProv.seed_label },
+        to: toProv,
+        verdict: 'erased', landed_by: 'decoy',
+      });
+      const seedLabel = `decoy_erase:${pp.id}:${this.world.tick_no}`;
+      this._log(`✎ ghost — ${pp.name} was never there. Erased.${this._firstScar ? '' : ' first scar — every navigator has one.'}`);
+      this._firstScar = true;
+      this._reroutePencilPort(pp.id, seedLabel);
+    }
+
+    _reviseSnapshot(entry) {
+      const pp = this.pencilPorts[entry.pencilPortId];
+      if (!pp || !pp.proven) return; // only revises an already-inked cell
+      const portCell = this.world.entities.get(`port:${pp.id}`).state;
+      const fromProv = portCell.provenance;
+      if (fromProv.source !== 'canon') return;
+      const toProv = { source: 'canon', trust: Math.min(1, fromProv.trust + 0.05), as_of: entry.newAsOf, source_url: fromProv.source_url };
+      this.world.entities.put(`port:${pp.id}`, makePortCell({ ...portCell, provenance: toProv }));
+      this.world.book({
+        type: 'fact_landed', entity_id: `port:${pp.id}`, cell_type: 'port',
+        from: { source: fromProv.source, trust: fromProv.trust, as_of: fromProv.as_of, source_url: fromProv.source_url },
+        to: { source: 'canon', trust: toProv.trust, as_of: toProv.as_of, source_url: toProv.source_url },
+        verdict: 'revised', landed_by: 'snapshot',
+      });
+      this._log(`AS OF re-stamp · ${portCell.name} · now as of ${toProv.as_of} (trust ${Math.round(toProv.trust * 100)}%).`);
+    }
+
+    _tickRevealSchedule() {
+      const dueTick = this.world.tick_no;
+      for (const entry of this.revealSchedule) {
+        if (entry.tick !== dueTick) continue;
+        if (entry.kind === 'pool') this._revealPoolFact(entry);
+        else if (entry.kind === 'decoy') this._eraseDecoy(entry);
+        else if (entry.kind === 'snapshot') this._reviseSnapshot(entry);
+      }
+    }
+
+    // The Tell rendered as numbers (Fable §3.3): ink gives a number, pencil
+    // gives a spread whose width is (1 - trust). `via` names each
+    // chokepoint the leg transits AND the medium of its current weather
+    // (ink = a real, dated disruption; pencil = the seeded toy/simulated
+    // mechanic — Fable §3.2's chokepoint-weather distinction).
+    previewStake(shipId, portId) {
+      const shipCell = this.world.entities.get(shipId);
+      if (!shipCell) return { ok: false, reason: `Unknown ship ${shipId}` };
+      const ship = shipCell.state;
+      const cls = SHIP_CLASSES[ship.classId];
+      const fromId = ship.positionPortId;
+      const leg = this._computeLegAny(fromId, portId, cls);
+      if (!leg.ok) return { ok: false, reason: leg.reason };
+      const meta = this._portMeta(portId);
+      if (meta.erased) return { ok: false, reason: `${meta.name} was erased — it was never there. Pick another port.` };
+      const buyPrice = this._market(fromId).price;
+      const destMarket = this._market(portId);
+      const netMid = tripRevenue({ teu: cls.capacityTeu, buyPrice, sellPrice: destMarket.price }) - leg.tollTotal;
+      let low, high;
+      if (meta.isPencil) {
+        const trust = meta.provenance.trust;
+        const spread = 0.35 * (1 - trust) + 0.1; // pencil pays more — the decoy rate IS the risk premium
+        low = Math.round(netMid * (1 - spread));
+        high = Math.round(netMid * (1 + spread * 1.8));
+      } else {
+        low = netMid; high = netMid;
+      }
+      const via = (leg.chokepointsUsed || []).map((id) => {
+        if (id === 'panama') return { id, medium: this.panama.disrupted ? 'pencil' : 'ink' };
+        const c = this.chokepoints[id];
+        return { id, medium: c && c.current.source === 'procgen' ? 'pencil' : 'ink' };
+      });
+      return { ok: true, low, high, days: leg.legDurationTicks, unproven: meta.isPencil, via };
+    }
+
     // Phase 2: the current status of every chokepoint, in the shape
     // economy.computeGlobalRouteLeg()'s chokepointStatusById param expects —
     // panama included (from the Phase 1 toy mechanic, not this.chokepoints),
@@ -169,7 +494,7 @@
       const cls = SHIP_CLASSES[ship.classId];
       const originId = leg === 'outbound' ? routeFrom : routeTo;
       const destId = leg === 'outbound' ? routeTo : routeFrom;
-      const legInfo = computeGlobalRouteLeg(originId, destId, cls, this._chokepointStatusSnapshot());
+      const legInfo = this._computeLegAny(originId, destId, cls);
       if (!legInfo.ok) {
         this._log(`${shipId} cannot start leg ${originId} -> ${destId}: ${legInfo.reason}`);
         return false;
@@ -296,7 +621,7 @@
       const chokeSuffix = (t.chokepointsUsed && t.chokepointsUsed.length)
         ? ` (via ${t.chokepointsUsed.map((id) => CHOKEPOINTS[id].name).join(' + ')}, $${t.tollTotal.toLocaleString()} toll/risk)`
         : '';
-      this._log(`${cls.name} ${shipId} arrived at ${PORTS_BY_ID[destId].name}: ${net >= 0 ? '+' : ''}$${net.toLocaleString()}${chokeSuffix}`);
+      this._log(`${cls.name} ${shipId} arrived at ${this._portName(destId)}: ${net >= 0 ? '+' : ''}$${net.toLocaleString()}${chokeSuffix}`);
 
       const nextLeg = t.leg === 'outbound' ? 'inbound' : 'outbound';
       this._startLeg(shipId, t.routeId, t.routeFrom, t.routeTo, nextLeg);
@@ -341,18 +666,25 @@
     previewRoute(fromPortId, toPortId, classId) {
       const cls = SHIP_CLASSES[classId];
       if (!cls) return { ok: false, reason: `Unknown ship class ${classId}` };
-      return computeGlobalRouteLeg(fromPortId, toPortId, cls, this._chokepointStatusSnapshot());
+      return this._computeLegAny(fromPortId, toPortId, cls);
     }
 
+    // Generalized to accept a pencil port as `toPortId` — the whole point of
+    // STAKE (Fable §2/§3.3): every action is putting a ship on a fact you
+    // cannot yet prove. Returns `medium: 'ink'|'pencil'` so the renderer can
+    // count pencil-stakes-placed vs ink-stakes-placed (the Tell's first
+    // telemetry instrument, Fable §7.3/§8).
     assignShip(shipId, fromPortId, toPortId) {
       const shipCell = this.world.entities.get(shipId);
       if (!shipCell) return { ok: false, reason: `Unknown ship ${shipId}` };
       const ship = shipCell.state;
       if (ship.companyId !== this.companyId) return { ok: false, reason: 'Not your ship' };
       const cls = SHIP_CLASSES[ship.classId];
-      const probe = computeGlobalRouteLeg(fromPortId, toPortId, cls, this._chokepointStatusSnapshot());
+      const destMeta = this._portMeta(toPortId);
+      if (destMeta.erased) return { ok: false, reason: `${destMeta.name} was erased — it was never there. Pick another port.` };
+      const probe = this._computeLegAny(fromPortId, toPortId, cls);
       if (!probe.ok) {
-        this._log(`Cannot assign ${shipId} on ${PORTS_BY_ID[fromPortId].name} → ${PORTS_BY_ID[toPortId].name}: ${probe.reason}`);
+        this._log(`Cannot assign ${shipId} on ${this._portName(fromPortId)} → ${this._portName(toPortId)}: ${probe.reason}`);
         return { ok: false, reason: probe.reason };
       }
       this.routeSeq += 1;
@@ -363,9 +695,9 @@
       }));
       this.routeIds.push(routeId);
       this._startLeg(shipId, routeId, fromPortId, toPortId, 'outbound');
-      this.world.book({ type: 'ship_assigned', ship_id: shipId, route_id: routeId, from: fromPortId, to: toPortId });
-      this._log(`${cls.name} ${shipId} assigned: ${PORTS_BY_ID[fromPortId].name} → ${PORTS_BY_ID[toPortId].name}${probe.usesPanama ? ' (via Panama)' : ''}.`);
-      return { ok: true, routeId };
+      this.world.book({ type: 'ship_assigned', ship_id: shipId, route_id: routeId, from: fromPortId, to: toPortId, medium: destMeta.isPencil ? 'pencil' : 'ink' });
+      this._log(`${cls.name} ${shipId} assigned: ${this._portName(fromPortId)} → ${this._portName(toPortId)}${probe.usesPanama ? ' (via Panama)' : ''}.`);
+      return { ok: true, routeId, medium: destMeta.isPencil ? 'pencil' : 'ink' };
     }
 
     unassignShip(shipId) {
@@ -376,7 +708,7 @@
       delete this.transit[shipId];
       this.world.entities.put(shipId, makeShipCell({ ...ship, routeId: null }));
       this.world.book({ type: 'ship_unassigned', ship_id: shipId });
-      this._log(`${shipId} pulled off its route, parked at ${PORTS_BY_ID[ship.positionPortId].name}.`);
+      this._log(`${shipId} pulled off its route, parked at ${this._portName(ship.positionPortId)}.`);
       return { ok: true };
     }
 
@@ -384,7 +716,8 @@
       this.world.tick(() => {
         this._tickPanamaEvent();
         this._tickChokepointEvents();
-        for (const portId of Object.keys(PORTS_BY_ID)) {
+        this._tickRevealSchedule();
+        for (const portId of this._allPortIds()) {
           const m = this._market(portId);
           const rng = this.world.rng.fork(`market:${portId}:${this.world.tick_no}`);
           this._setMarket(portId, { price: driftPrice(m, rng) });
@@ -412,7 +745,25 @@
       });
       const routes = this.routeIds.map((id) => this.world.entities.get(id).state);
       const markets = {};
-      for (const portId of Object.keys(PORTS_BY_ID)) markets[portId] = this._market(portId);
+      for (const portId of this._allPortIds()) markets[portId] = this._market(portId);
+
+      // Pencil Sea: every generated pencil port's CURRENT cell (proven,
+      // still pencil, or erased/ghost) — the renderer draws medium straight
+      // off `provenance.source` (+ `.erased`), per Fable §5.5 ("provenance =
+      // medium; there is no fourth medium, so there is no way to draw an
+      // unmarked fact"). `breatheSeed` is the pencil port's own seed_label,
+      // for the renderer's per-cell breathing phase (Fable §5.2, φ from the
+      // cell's seed hash).
+      const pencilPorts = {};
+      for (const id of Object.keys(this.pencilPorts)) {
+        const meta = this._portMeta(id);
+        const pp = this.pencilPorts[id];
+        pencilPorts[id] = {
+          id, name: meta.name, lat: meta.lat, lng: meta.lng, provenance: meta.provenance,
+          isPencil: meta.isPencil, erased: meta.erased, parentPortId: pp.parentPortId,
+          isDecoy: pp.isDecoy, breatheSeed: pp.seedLabel,
+        };
+      }
 
       // Phase 2: every chokepoint's live status for the UI, carrying BOTH
       // its real researched cell and its current (possibly simulated) one —
@@ -439,6 +790,7 @@
         markets,
         panama: { ...this.panama },
         chokepoints,
+        pencilPorts,
         worldFacts: {
           panamaCanon: { name: CHOKEPOINTS.panama.name, description: describe(CHOKEPOINTS.panama.status) },
           bunkerFuelUsdPerTonne: { value: read(snapshotData.BUNKER_FUEL_VLSFO), description: describe(snapshotData.BUNKER_FUEL_VLSFO) },

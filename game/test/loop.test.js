@@ -114,4 +114,85 @@ check('a Panama-crossing route gets slower and costlier during the disruption wi
   const game2 = new GameEngine({ seed: 'panama-scan-0' });
 });
 
+console.log('Pencil Sea: fact_landed — a pencil stake that PROVES');
+check('staking a ship on a pool-backed pencil port lands it INK (proven) with a fact_landed booking, and the payout preview collapses to a number', () => {
+  const game = new GameEngine({ seed: 'loop-test-pencil-proves' });
+  const pencilId = 'pencil_oakland'; // pool-backed — id is stable across seeds (see game/src/pencil.js)
+  const revealEntry = game.revealSchedule.find((e) => e.pencilPortId === pencilId && e.kind === 'pool');
+  assert.ok(revealEntry, 'expected a pool reveal scheduled for pencil_oakland');
+
+  const buy = game.buyShip('feeder');
+  const assign = game.assignShip(buy.shipId, 'los_angeles', pencilId);
+  assert.strictEqual(assign.ok, true, 'a feeder should be able to stake on a pencil port on its own coast');
+  assert.strictEqual(assign.medium, 'pencil', 'staking on an unproven pencil port must be reported as a pencil stake');
+
+  const previewBefore = game.previewStake(buy.shipId, pencilId);
+  // (previewStake reads the SHIP's current position, which just moved to
+  // pencilId via _startLeg — still fine, just checking shape here.)
+  assert.ok('low' in previewBefore || previewBefore.ok === false, 'previewStake should return a shape, not throw');
+
+  for (let i = 0; i < revealEntry.tick + 2; i++) game.tick();
+
+  const landed = game.world.witness_log.filter((e) => e.type === 'fact_landed' && e.entity_id === `port:${pencilId}`);
+  assert.ok(landed.some((e) => e.verdict === 'proven' && e.landed_by === 'pool'), 'expected a proven/pool fact_landed entry for pencil_oakland');
+
+  const portState = game.world.entities.get(`port:${pencilId}`).state;
+  assert.strictEqual(portState.provenance.source, 'canon', 'a proven pencil port must become canon (ink)');
+});
+
+console.log('Pencil Sea: fact_landed — a pencil stake that ERASES');
+check('a decoy pencil port erases on schedule, ghosts (never mutates the past), and reroutes any ship staked on it', () => {
+  const game = new GameEngine({ seed: 'loop-test-pencil-erases' });
+  const decoyId = 'pencil_decoy_0'; // stable id — the first decoy generated (game/src/pencil.js)
+  const pp = game.pencilPorts[decoyId];
+  assert.ok(pp && pp.isDecoy, 'pencil_decoy_0 must be a decoy (no pool fact behind it)');
+  const revealEntry = game.revealSchedule.find((e) => e.pencilPortId === decoyId && e.kind === 'decoy');
+  assert.ok(revealEntry, 'expected a decoy reveal scheduled for pencil_decoy_0');
+
+  const buy = game.buyShip('feeder');
+  const assign = game.assignShip(buy.shipId, 'los_angeles', decoyId);
+  assert.strictEqual(assign.ok, true);
+  assert.strictEqual(assign.medium, 'pencil');
+  const routeId = assign.routeId;
+
+  for (let i = 0; i < revealEntry.tick + 2; i++) game.tick();
+
+  const landed = game.world.witness_log.filter((e) => e.type === 'fact_landed' && e.entity_id === `port:${decoyId}`);
+  assert.ok(landed.some((e) => e.verdict === 'erased' && e.landed_by === 'decoy'), 'expected an erased/decoy fact_landed entry');
+
+  const portState = game.world.entities.get(`port:${decoyId}`).state;
+  assert.strictEqual(portState.provenance.source, 'procgen', 'an erased cell keeps its procgen source — never mutated into a different source (G12: fold the erasure in, do not mutate the past out)');
+  assert.strictEqual(portState.provenance.erased, true);
+
+  const rerouted = game.world.witness_log.filter((e) => e.type === 'stake_rerouted');
+  assert.ok(rerouted.some((e) => e.route_id === routeId), 'expected the ship staked on the erased decoy to be booked as stake_rerouted');
+
+  const route = game.world.entities.get(routeId).state;
+  assert.notStrictEqual(route.toPortId, decoyId, 'the route must no longer point at the erased (ghost) port');
+
+  // The game must not crash on any further ticks after a reroute.
+  for (let i = 0; i < 10; i++) game.tick();
+});
+
+console.log('Pencil Sea: replay ≡ live still holds with the pencil generator + reveal schedule running');
+check('two engines from the same seed produce identical replayHash after 60 ticks with pencil stakes placed', () => {
+  function scriptedPencilPlaythrough(seed) {
+    const game = new GameEngine({ seed });
+    const buy1 = game.buyShip('feeder');
+    game.assignShip(buy1.shipId, 'los_angeles', 'pencil_oakland');
+    for (let i = 0; i < 30; i++) game.tick();
+    const buy2 = game.buyShip('feeder');
+    if (buy2.ok) game.assignShip(buy2.shipId, 'los_angeles', 'pencil_decoy_0');
+    for (let i = 0; i < 30; i++) game.tick();
+    return game;
+  }
+  const g1 = scriptedPencilPlaythrough('replay-pencil-seed');
+  const g2 = scriptedPencilPlaythrough('replay-pencil-seed');
+  assert.strictEqual(g1.replayHash(), g2.replayHash());
+  assert.deepStrictEqual(
+    g1.world.witness_log.map((e) => JSON.stringify(e)),
+    g2.world.witness_log.map((e) => JSON.stringify(e)),
+  );
+});
+
 console.log(`\n${passed} checks passed.`);

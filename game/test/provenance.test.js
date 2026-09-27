@@ -158,4 +158,27 @@ check('every port/market cell and every *_start/*_end/chokepoint_status_change b
   assert.strictEqual(g1.replayHash(), g2.replayHash());
 });
 
+console.log('The Opus predicate (arch/cargo-line-fact-landed.md §6): all three fact_landed verdicts land OFFLINE inside 60 ticks');
+check('a 60-tick scripted run books >=1 fact_landed of each verdict (proven/erased/revised), all landed_by pool/decoy/snapshot — no L1/roster dependency, no player pencil-staking required', () => {
+  function scriptedPlaythrough(seed) {
+    const game = new GameEngine({ seed });
+    const buy1 = game.buyShip('feeder');
+    game.assignShip(buy1.shipId, 'los_angeles', 'new_york');
+    for (let i = 0; i < 60; i++) game.tick();
+    return game;
+  }
+  const game = scriptedPlaythrough('provenance-sweep-seed');
+  const landings = game.world.witness_log.filter((e) => e.type === 'fact_landed');
+  const verdicts = new Set(landings.map((e) => e.verdict));
+  const landedBy = new Set(landings.map((e) => e.landed_by));
+  assert.ok(verdicts.has('proven'), 'expected >=1 proven fact_landed within 60 ticks');
+  assert.ok(verdicts.has('erased'), 'expected >=1 erased fact_landed within 60 ticks');
+  assert.ok(verdicts.has('revised'), 'expected >=1 revised fact_landed within 60 ticks');
+  assert.ok(landedBy.has('pool') && landedBy.has('decoy') && landedBy.has('snapshot'), `expected pool/decoy/snapshot landed_by, got ${[...landedBy]}`);
+  for (const entry of landings) {
+    assert.ok(provenance.isCell(entry.from), `fact_landed ${entry.entity_id} .from must be provenance-shaped`);
+    assert.ok(provenance.isCell(entry.to), `fact_landed ${entry.entity_id} .to must be provenance-shaped`);
+  }
+});
+
 console.log(`\n${passed} checks passed.`);
