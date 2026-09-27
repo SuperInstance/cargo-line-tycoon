@@ -302,3 +302,152 @@ file, none regressed. In a real headless browser:
   — the Strait of Hormuz is the *only* sea access to the Persian Gulf, so
   `blocksTransit` refuses the corridor outright instead of just raising cost,
   which is the honest modeling choice, not an engine limitation.
+
+## The Chart — Pencil Sea (Fable gift #2, `claude/the-chart`)
+
+Implements `arch/cargo-line-fact-landed.md` (the settled `fact_landed`
+schema) and `FABLE-CARGO-LINE-ANSWER.md` §2/§3/§5/§7.2 exactly: the one verb
+(STAKE), the one screen (the Chart), and the Pencil Sea aesthetic system, on
+top of Phase 2's provenance foundation. Two commits on one branch off
+`claude/phase2-ground-truth` (d081d92).
+
+### PR 1 — engine (`game/src/pencil.js`, `game/data/pool.js`,
+`locales/en/canon/pool.json`, `game/src/engine.js`)
+
+14 real secondary US/CA ports in the truth pool, each cited to a real
+`source_url` (mostly Wikipedia — general-knowledge compiled this session,
+not freshly web-verified, so `trust: 0.65` — the same honest-degradation
+posture already used for malacca/gibraltar). The seeded pencil generator
+emits one pencil port per pool fact (jittered ±0.3°) plus 4 decoys (~25%,
+anchored near a random real port). The seeded reveal schedule fires the
+first landing at tick 4-5 and roughly every 3 ticks after, fully offline —
+verified: a 60-tick scripted run (no player staking at all) already books
+`fact_landed` entries of **all three verdicts** (`proven`/`erased`/`revised`)
+via **all three** offline `landed_by` sources (`pool`/`decoy`/`snapshot`).
+Zero port/market cells lack a valid provenance envelope (swept across both
+the Node test suite and a live browser session — see below).
+
+**Declared cost** (arch/cargo-line-fact-landed.md §4): adding
+provenance-carrying pencil ports changes the fixed-seed replay hash. For the
+scripted seed `fact-landed-declared-cost-seed` (buy+assign a feeder
+LA->Seattle, 10 ticks, buy+assign a panamax LA->NYC, 50 more ticks),
+`replayHash()` moved from `85342661d7a020e3` (`claude/phase2-ground-truth` @
+d081d92) to `cdfb1177df70672c`. Replay ≡ live still holds — verified twice:
+once between two Node engine instances (`game/test/loop.test.js`,
+`replay.test.js`), and again between a Node engine and a GameEngine
+constructed **inside the live browser page** for the classic
+`replay.test.js` script (seed `replay-seed-alpha`): both produced
+`0f198141087f3a03`.
+
+### PR 2 — renderer (`browser-deploy/tycoon-live.html`,
+`browser-deploy/game/ui.js`)
+
+The map+panels UI is gone. One sheet of chart paper fills the viewport: a
+margin log (right edge desktop / bottom drawer under 640px) with the cash
+head, ship's log, and the pencil-vs-ink telemetry line; two clocks (`CHART AS
+OF <date>` in ink, `day N` in pencil) in the top corner; no start screen — a
+`new chart · seed` link is one small margin affordance (headless tests pass
+a `?seed=` query param instead, so runs stay reproducible without a dialog).
+SVG layers, exactly the build spec's order: graticule -> ink seals -> pencil
+ports (breathing, CSS `animation-delay` phased from each cell's own
+`seed_label` hash so the sheet never breathes in unison) -> ghosts ->
+chinagraph lanes (dashed whenever either end is still pencil) -> ships (a
+persistent, CSS-`transition`-interpolated layer, so they slide between ticks
+instead of jumping) -> chokepoint weather hatching, in its medium (ink for a
+real disrupted/congested chokepoint, pencil for the seeded Panama toy event
+or a simulated chokepoint move). The one interaction: tap a ship -> tap a
+port -> a stake note (with the range as the Tell rendered in numbers, per
+`previewStake`) -> confirm; tap a sailing ship for recall; tap the sheet to
+pause/resume; the shipyard seal opens a small buy list. Pencil Sea tokens on
+`:root` (day default, night under `prefers-color-scheme:dark`, both guards
+per the spec); Alegreya Sans SC + IBM Plex Mono from Google Fonts; a short
+inline-data-WAV sound set (stamp/scratch/pen-trace/rubber/plup/typewriter/
+bell) with one mute toggle in the margin. `window.pencilStakesPlaced` /
+`window.inkStakesPlaced` are the Tell's first telemetry instrument.
+
+**A real layout bug the renderer found and fixed**: Port Hueneme's real
+lat/lng sits only a few pixels from LA/Long Beach at this schematic
+projection's scale — the same San Pedro Bay crowding the original Phase 1 UI
+already had to nudge Long Beach for. With ink seals painted on top (the
+naive z-order), a tap meant for a nearby pencil port hit the ink seal
+underneath instead. Fixed by matching the build spec's stated layer order
+exactly (ink seals, *then* pencil ports, then ghosts) so an unproven pencil
+mark is always the topmost, tappable layer near a cluster — which is also
+the thematically right call: the mark still in play should be the one under
+your finger.
+
+### Verified (headless Chromium, Playwright, `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`)
+
+A fixed-seed cold load (`?seed=verify-seed-1`) was driven end-to-end:
+
+- **Zero console/page errors**, with one caveat stated plainly (O12): this
+  sandbox's egress proxy re-terminates TLS with a CA Chromium's default
+  bundled profile doesn't trust, so a live fetch of the Google Fonts woff2
+  fails here (`net::ERR_TOO_MANY_RETRIES`) regardless of this page's code —
+  confirmed by fulfilling that one route with a stub CSS response instead of
+  reaching the real CDN, which is the standard way to isolate "does the page
+  itself error" from "can this specific sandbox reach an external CDN." With
+  that one external network dependency isolated, the run is clean. The page
+  has font-family fallbacks and needs no font to function; this is a
+  sandbox artifact, not a defect, but it should be re-checked in an
+  environment with normal network trust before shipping wider.
+- **Replay ≡ live, browser vs. Node**: `0f198141087f3a03` both ways (above).
+- **The Opus predicate, offline, zero staking**: by tick 60 the live page's
+  own game had booked all three `fact_landed` verdicts via all three offline
+  `landed_by` sources (19 landings total by tick 60 for this seed); a sweep
+  of every `port`/`market` cell in `world.entities.latest` found 62 cells,
+  zero missing/malformed provenance.
+- **The Tell's acceptance test**: a scripted "naive first-timer" (tap the
+  gifted ship, tap the first pencil port found on the sheet, confirm) placed
+  a pencil stake in under 1 second of interaction time — `window.
+  pencilStakesPlaced` went from 0 to 1, well inside the two-minute bar.
+- **Phone width** (375px): `document.documentElement.scrollWidth ===
+  clientWidth` — no horizontal scroll. **Night chart** (`colorScheme:
+  'dark'`): body background resolves to `--paper`'s dark token
+  (`rgb(21,26,34)` = `#151A22`), confirming the `prefers-color-scheme` guard
+  applies.
+- **A full smoke run** (mobile viewport, real seed): stake a pencil port,
+  buy a second ship via the shipyard seal, run 15s of real autoplay (tick 0
+  -> 22, 21 `ship_arrived` bookings, 8 `fact_landed` bookings, cash tweening
+  correctly), then recall the sailing ship — zero errors throughout.
+
+### The first-sixty-seconds beats — measured, not claimed (O12)
+
+Cold-load timings actually measured against `FABLE-CARGO-LINE-ANSWER.md`
+§4's illustrative script, seed `verify-seed-1`:
+
+| beat | Fable's script | measured |
+|---|---|---|
+| paper + graticule visible | 0:00 | 0.2–0.4s ✔ (±2s) |
+| all seals + pencil sweep drawn | 0:01–0:04 | 0.2–0.4s ✔ (±2s; drawn together, not staggered by the full 3s the script describes — see deviation) |
+| `CHART AS OF` seal stamped | 0:05 | 0.2–0.4s (see deviation) |
+| tutorial line shown | 0:06 | 6.2s ✔ (±2s) |
+| gifted ship visible / "stake it" prompt | 0:08–0:10 | 6.2s / 8.2–8.3s ✔ (±2s) |
+| first fact lands on its own | ~0:28 | **~2.8–8.3s** ✘ (outside ±2s) |
+
+**Deviation, flagged for Fable's eye**: two beats do not land inside ±2s of
+the illustrative script, and the reason is structural, not a bug —
+(1) the seal/pencil-sweep/AS-OF-stamp beats are drawn as one immediate
+render pass (game state exists in full the instant the engine constructs),
+where the script imagines a staggered hand-drawn reveal over ~5 real
+seconds; the *sound* cues are staggered on the script's timing (stamps at
+~1.0–2.6s, pencil scratch at 3s, AS OF stamp at 5s) but the *marks
+themselves* are already all on the sheet before that, since nothing in the
+engine currently gates when a port becomes visible vs. audible. (2) the
+`pool:reveal` schedule (tick 4-5 for the first landing) is a *tick* count,
+and autoplay runs ticks continuously from page load at the spec's fixed
+~700ms/tick — so the first real fact lands at **~3-8 seconds** wall-clock,
+not the illustrative 0:28. Both are honest consequences of a schedule tuned
+in ticks per the settled schema (`arch/cargo-line-fact-landed.md` §5.2:
+"first landing ~tick 4") colliding with a beat sheet written in wall-clock
+seconds under an unstated tick-cadence assumption. Fixing (1) would mean
+staggering the *visual* seal-draw-in over ~1s (cosmetic, worth doing in a
+later pass); fixing (2) is a real product question — either slow the first
+few ticks, delay autoplay's start until the player's first stake, or accept
+that "the world got more real without the player, and they watched it" can
+happen inside the first 10 seconds instead of at 0:28. This is exactly what
+O12 asks for: measure and report, don't force-fit the number.
+
+### Branch / sha
+
+`claude/the-chart`, two commits off `claude/phase2-ground-truth` @ d081d92.

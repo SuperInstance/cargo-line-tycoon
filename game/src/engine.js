@@ -643,6 +643,30 @@
 
     // ── public actions (each is a booked, replayable step) ──────────
 
+    // The Chart's opening beat (Fable §4, t=0:08): "the first ship is
+    // already at home (a gifted Feeder)". A hull is a stake not yet placed
+    // (Fable §2) — free, once, at game start, never charged to the ledger.
+    // Idempotent per game: calling it twice just returns the same first
+    // ship (a fresh GameEngine never has one yet, so this only ever runs
+    // once in practice, but staying idempotent costs nothing and avoids a
+    // surprise double-gift if a caller re-invokes it).
+    giftStartingShip(classId = 'feeder') {
+      if (this._giftedShipId) return { ok: true, shipId: this._giftedShipId, gifted: true };
+      const cls = SHIP_CLASSES[classId];
+      if (!cls) return { ok: false, reason: `Unknown ship class ${classId}` };
+      this.shipSeq += 1;
+      const shipId = `ship_${this.shipSeq}`;
+      this.world.entities.put(shipId, makeShipCell({
+        id: shipId, companyId: this.companyId, classId, capacityTeu: cls.capacityTeu, speedKn: cls.speedKn,
+        canTransitPanama: cls.canTransitPanama, cargoTeu: 0, positionPortId: HOME_PORT_ID, condition: 100, routeId: null,
+      }));
+      this.world.book({ type: 'ship_gifted', ship_id: shipId, class_id: classId, provenance: { source: 'player', trust: 1.0 } });
+      this.shipIds.push(shipId);
+      this._giftedShipId = shipId;
+      this._log(`${cls.name} ${shipId} — a gift, waiting at home. Stake it.`);
+      return { ok: true, shipId, gifted: true };
+    }
+
     buyShip(classId) {
       const cls = SHIP_CLASSES[classId];
       if (!cls) return { ok: false, reason: `Unknown ship class ${classId}` };
