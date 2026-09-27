@@ -36,6 +36,29 @@ const FILES = {
   'game/data/chokepoints.js': 'game/data/chokepoints.js',
   'game/data/fuel_freight_snapshot.js': 'game/data/fuel_freight_snapshot.js',
   'game/data/ports.js': 'game/data/ports.js',
+  'game/data/coastline.js': 'game/data/coastline.js',
+};
+
+// P1 graphics-pass static raster assets (§3.4): FLUX-schnell textures/
+// accents referenced via CSS `url()` / SVG `<image href>`, never via
+// `<script src>` — so unlike FILES above they are plain-copied, not
+// verified against a matching escaping-script tag. They are already
+// same-directory-relative in the source page (`assets/x.jpg`, exactly like
+// `game/ui.js`), so no path rewriting is needed for them either — copying
+// browser-deploy/assets/* to dist/assets/* preserves the reference as-is.
+// Local files (not data-URIs) so each loads once and is browser-cacheable,
+// while staying just as offline-first as a data-URI would be — dist/ is
+// fully self-contained either way (see the zero-external-request predicate
+// in game/test/ui.smoke.test.js).
+const ASSETS = {
+  'assets/paper-grain.jpg': 'browser-deploy/assets/paper-grain.jpg',
+  'assets/sea-texture.jpg': 'browser-deploy/assets/sea-texture.jpg',
+  'assets/wax-lane.jpg': 'browser-deploy/assets/wax-lane.jpg',
+  'assets/ink-seal.jpg': 'browser-deploy/assets/ink-seal.jpg',
+  'assets/compass-rose.jpg': 'browser-deploy/assets/compass-rose.jpg',
+  'assets/coastal-hatch.jpg': 'browser-deploy/assets/coastal-hatch.jpg',
+  'assets/ship-wake.jpg': 'browser-deploy/assets/ship-wake.jpg',
+  'assets/hero.jpg': 'browser-deploy/assets/hero.jpg',
 };
 
 function log(msg) { console.log(`[build-dist] ${msg}`); }
@@ -100,6 +123,20 @@ export function buildDist() {
     copyFileSync(srcAbs, destAbs);
     log(`copied ${srcRel} -> dist/${destRel}`);
   }
+
+  let assetBytes = 0;
+  for (const [destRel, srcRel] of Object.entries(ASSETS)) {
+    const srcAbs = join(ROOT, srcRel);
+    const destAbs = join(DIST, destRel);
+    if (!existsSync(srcAbs)) {
+      throw new Error(`missing source asset for dist/${destRel}: ${srcAbs}`);
+    }
+    mkdirSync(dirname(destAbs), { recursive: true });
+    copyFileSync(srcAbs, destAbs);
+    assetBytes += readFileSync(srcAbs).length;
+    log(`copied ${srcRel} -> dist/${destRel}`);
+  }
+  log(`P1 raster assets: ${Object.keys(ASSETS).length} files, ${assetBytes} bytes total`);
 
   log(`dist/ built at ${DIST}`);
   return DIST;

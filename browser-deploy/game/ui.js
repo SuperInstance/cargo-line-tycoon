@@ -22,11 +22,18 @@
   window.pencilStakesPlaced = 0;
   window.inkStakesPlaced = 0;
 
-  // ── sound-shape — a desk, not a soundtrack (Fable §5.3) ─────────────────
+  // ── sound-shape — a desk, upgraded (§3.3) ───────────────────────────────
   // Short, inline-data WAV clips synthesized once at load (pure decoration —
   // never read by game logic, so Math.random() here doesn't touch replay
-  // determinism). Everything <=400ms except the pen-trace (900ms).
-  const SR = 8000;
+  // determinism). Everything <=400ms except the pen-trace (900ms). P1.3:
+  // 44.1kHz (was 8kHz — the old set was thin/buzzy) with layered partials
+  // and real attack/decay envelopes standing in for foley: a rubber-stamp
+  // thunk (low thud + a click transient), a wax-pencil scratch (filtered,
+  // textured noise), an eraser drag (soft, slow noise), a brass ship's bell
+  // for a LAND (three inharmonic partials, long decay), and a coin/paper
+  // chlk for cash. Keep the doctrine (Fable §5.3): dry, short, a desk not a
+  // soundtrack.
+  const SR = 44100;
   function wavDataUri(samples) {
     const buf = new ArrayBuffer(44 + samples.length * 2);
     const v = new DataView(buf);
@@ -42,37 +49,89 @@
       off += 2;
     }
     let bin = ''; const bytes = new Uint8Array(buf);
-    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    const CHUNK = 0x8000;
+    for (let i = 0; i < bytes.length; i += CHUNK) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
     return 'data:audio/wav;base64,' + btoa(bin);
   }
-  function tone(freq, dur, decay) {
-    const n = Math.round(SR * dur); const out = new Float32Array(n);
-    for (let i = 0; i < n; i++) { const t = i / SR; out[i] = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * decay); }
+  function mix(...layers) {
+    const n = Math.max(...layers.map((l) => l.length));
+    const out = new Float32Array(n);
+    for (const l of layers) for (let i = 0; i < l.length; i++) out[i] += l[i];
     return out;
   }
-  function noise(dur, decay) {
+  function tone(freq, dur, decay, attackMs) {
     const n = Math.round(SR * dur); const out = new Float32Array(n);
-    let prev = 0;
+    const a = Math.round(SR * (attackMs || 0) / 1000);
     for (let i = 0; i < n; i++) {
       const t = i / SR;
-      prev = prev * 0.7 + (Math.random() * 2 - 1) * 0.3; // softened noise, not pure hiss
-      out[i] = prev * (decay ? Math.exp(-t * decay) : 1);
+      const env = (a > 0 && i < a) ? i / a : 1;
+      out[i] = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * decay) * env;
     }
     return out;
   }
+  // A softened, low-pass-ish noise burst: a leaky integrator (`prev*k`)
+  // stands in for a gentle low-pass so it reads as cloth/paper/wax texture,
+  // not pure hiss, without needing a real filter.
+  function noise(dur, decay, softness, attackMs) {
+    const n = Math.round(SR * dur); const out = new Float32Array(n);
+    const k = typeof softness === 'number' ? softness : 0.55;
+    const a = Math.round(SR * (attackMs || 0) / 1000);
+    let prev = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / SR;
+      prev = prev * k + (Math.random() * 2 - 1) * (1 - k);
+      const env = (a > 0 && i < a) ? i / a : 1;
+      out[i] = prev * (decay ? Math.exp(-t * decay) : 1) * env;
+    }
+    return out;
+  }
+  // A rubber-stamp thunk: a low body thud (sine, fast decay) plus a very
+  // short high-frequency click transient (the stamp's leading edge hitting
+  // paper) layered on top — the combination is what reads as "thunk"
+  // rather than a plain tone.
+  function stampThunk(freq) {
+    const thud = tone(freq * 0.5, 0.1, 22);
+    const click = noise(0.02, 60, 0.15);
+    const body = tone(freq, 0.07, 30);
+    return mix(thud, click, body);
+  }
+  function normalize(samples, peak) {
+    let max = 0; for (let i = 0; i < samples.length; i++) max = Math.max(max, Math.abs(samples[i]));
+    if (max < 1e-6) return samples;
+    const g = (peak || 0.9) / max;
+    const out = new Float32Array(samples.length);
+    for (let i = 0; i < samples.length; i++) out[i] = samples[i] * g;
+    return out;
+  }
   const SOUND_URIS = {
-    stamp1: wavDataUri(tone(880, 0.09, 26)),
-    stamp2: wavDataUri(tone(740, 0.09, 26)),
-    stamp3: wavDataUri(tone(660, 0.09, 26)),
-    scratch: wavDataUri(noise(0.15, 9)),
-    penTrace: wavDataUri(noise(0.9, 1.6)),
-    rubber: wavDataUri(noise(0.4, 5)),
-    plup: wavDataUri(tone(150, 0.16, 18)),
-    typewriter: wavDataUri(noise(0.035, 30)),
+    stamp1: wavDataUri(normalize(stampThunk(340))),
+    stamp2: wavDataUri(normalize(stampThunk(300))),
+    stamp3: wavDataUri(normalize(stampThunk(270))),
+    // wax-pencil scratch: grittier, slightly higher-pitched-feeling texture
+    // than the eraser drag below — shorter, less soft (k lower = grittier).
+    scratch: wavDataUri(normalize(noise(0.16, 11, 0.35, 2))),
+    penTrace: wavDataUri(normalize(mix(noise(0.9, 1.4, 0.6, 30), tone(120, 0.9, 3, 60).map((v, i) => v * 0.06)))),
+    // eraser drag: soft, longer, slow attack/decay — cloth-on-paper.
+    rubber: wavDataUri(normalize(noise(0.42, 4.2, 0.72, 40))),
+    // coin/paper chlk: a short bright metallic tick for cash landing.
+    plup: wavDataUri(normalize(mix(tone(1100, 0.05, 55), tone(2200, 0.03, 90).map((v) => v * 0.35), noise(0.02, 70, 0.2)))),
+    typewriter: wavDataUri(normalize(noise(0.032, 32, 0.3))),
+    // brass ship's bell for a LAND: three slightly inharmonic partials
+    // (a real bell's strike tone + hum + a higher shimmer) over a long,
+    // gentle decay — warm, not buzzy.
     bell: (function () {
-      const n = Math.round(SR * 0.55); const out = new Float32Array(n);
-      for (let i = 0; i < n; i++) { const t = i / SR; out[i] = (Math.sin(2 * Math.PI * 1180 * t) * 0.7 + Math.sin(2 * Math.PI * 1770 * t) * 0.3) * Math.exp(-t * 5); }
-      return wavDataUri(out);
+      const n = Math.round(SR * 0.65); const out = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        const t = i / SR;
+        const strike = Math.exp(-t * 12) * (i < SR * 0.004 ? i / (SR * 0.004) : 1);
+        out[i] = (
+          Math.sin(2 * Math.PI * 660 * t) * 0.55 * Math.exp(-t * 3.2) +
+          Math.sin(2 * Math.PI * 1108 * t) * 0.28 * Math.exp(-t * 4.0) +
+          Math.sin(2 * Math.PI * 1657 * t) * 0.14 * Math.exp(-t * 5.2) +
+          strike * 0.18
+        );
+      }
+      return wavDataUri(normalize(out, 0.85));
     })(),
   };
   const AUDIO_CACHE = {};
@@ -153,6 +212,11 @@
   let cashDisplayed = 0;
   let cashTweenRaf = null;
   let introDone = false;
+  // P1.2 (§3.1 bullet 3): route ids we've already drawn once, so a lane
+  // that already exists doesn't replay its ~240ms draw-in animation every
+  // 700ms redraw — only a genuinely NEW lane gets the stroke-dashoffset
+  // reveal (see renderStatic's routes loop + the post-insert pass below).
+  let seenRouteIds = new Set();
 
   function svgEl(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
 
@@ -185,14 +249,22 @@
   }
 
   // ── witness-log diff -> landings/animations/sound (Fable §3.4) ─────────
+  // P0.5 (§3.2): a batch pass first, so a `ship_arrived` can tell whether
+  // its OWN arrival tick also proved the port it just delivered at — that's
+  // a pencil LAND, which precedes the 380ms stamp beat with the existing
+  // 900ms pen-trace (see handleFactLanded/playLandingBeat below).
   function processNewWitnessEntries(xyOf) {
     const log = game.world.witness_log;
-    for (let i = lastWitnessLen; i < log.length; i++) {
-      const e = log[i];
-      if (e.type === 'fact_landed') handleFactLanded(e, xyOf);
-      else if (e.type === 'ship_arrived') handleShipArrived(e);
-    }
+    const newEntries = log.slice(lastWitnessLen);
     lastWitnessLen = log.length;
+    const provenPortsThisBatch = new Set();
+    for (const e of newEntries) {
+      if (e.type === 'fact_landed' && e.verdict === 'proven') provenPortsThisBatch.add(e.entity_id.replace(/^port:/, ''));
+    }
+    for (const e of newEntries) {
+      if (e.type === 'fact_landed') handleFactLanded(e, xyOf);
+      else if (e.type === 'ship_arrived') handleShipArrived(e, xyOf, provenPortsThisBatch.has(e.port_id));
+    }
   }
 
   function handleFactLanded(e, xyOf) {
@@ -223,12 +295,81 @@
     }
   }
 
-  function handleShipArrived(e) {
+  // P0.5 (§3.2): "big haul" gates the screen-shake — most deliveries don't
+  // shake the sheet at all; a genuinely large payout does.
+  const BIG_HAUL_THRESHOLD = 100000;
+
+  function handleShipArrived(e, xyOf, isPencilLand) {
     playSound('plup');
     playSound('bell');
-    const state = game.getState();
-    document.getElementById('chart-pane').classList.add('anim-paper-shake');
-    setTimeout(() => document.getElementById('chart-pane').classList.remove('anim-paper-shake'), 200);
+    const portXY = xyOf(e.port_id);
+    const beat = () => playLandingBeat({ shipId: e.ship_id, routeId: e.route_id, portXY, net: e.net });
+    // A pencil LAND precedes this beat with the existing 900ms pen-trace
+    // (already playing via handleFactLanded, same batch) — let it finish
+    // before the stamp slams down, per §3.2's ordering. Elements are
+    // looked up live INSIDE playLandingBeat (not captured here) because a
+    // 900ms delay comfortably outlasts the next 700ms autoplay tick, which
+    // rebuilds #static-under's DOM entirely — a reference captured now
+    // would be stale (detached) by the time it fires.
+    if (isPencilLand) setTimeout(beat, 900); else beat();
+  }
+
+  // P0.5 — the one juice beat to nail (§3.2), all in the existing SVG/CSS:
+  // ship squash -> lane flash to full red -> ink-seal slam (scale 1.6->1,
+  // overshoot) -> a pencil-dust puff -> the gold cash count-up with an
+  // underline wipe -> a 1px, 90ms screen-shake on big hauls only. ~380ms
+  // end to end (the dust puff trails a little past that, which is fine —
+  // it's a fade-out, not part of the timing predicate).
+  function playLandingBeat({ shipId, routeId, portXY, net }) {
+    const shipEl = shipId ? document.querySelector(`#ship-layer [data-ship="${shipId}"]`) : null;
+    const laneEl = routeId ? document.querySelector(`#static-under .chinagraph-lane[data-route="${routeId}"]`) : null;
+    if (shipEl) {
+      shipEl.classList.add('anim-ship-squash');
+      setTimeout(() => shipEl.classList.remove('anim-ship-squash'), 220);
+    }
+    if (laneEl) {
+      laneEl.classList.add('anim-lane-flash');
+      setTimeout(() => laneEl.classList.remove('anim-lane-flash'), 260);
+    }
+    if (portXY) {
+      setTimeout(() => {
+        playStamp();
+        // P1.2 apex-quality polish: a soft gold impact glow under the seal,
+        // fading fast — the extra bit of weight a plain stamp doesn't have
+        // on its own (§3.2's "budget the most polish here").
+        const glow = svgEl('circle');
+        glow.setAttribute('cx', portXY.x); glow.setAttribute('cy', portXY.y); glow.setAttribute('r', 3);
+        glow.setAttribute('class', 'fx-gold-glow');
+        fxLayer().appendChild(glow);
+        setTimeout(() => glow.remove(), 300);
+        const seal = svgEl('circle');
+        seal.setAttribute('cx', portXY.x); seal.setAttribute('cy', portXY.y); seal.setAttribute('r', 7);
+        seal.setAttribute('class', 'fx-land-seal anim-seal-slam');
+        fxLayer().appendChild(seal);
+        setTimeout(() => seal.remove(), 260);
+      }, 60);
+      setTimeout(() => {
+        const puff = svgEl('circle');
+        puff.setAttribute('cx', portXY.x); puff.setAttribute('cy', portXY.y); puff.setAttribute('r', 5);
+        puff.setAttribute('class', 'fx-dust-puff');
+        fxLayer().appendChild(puff);
+        setTimeout(() => puff.remove(), 320);
+      }, 120);
+    }
+    setTimeout(() => {
+      const underline = document.getElementById('cash-underline');
+      underline.classList.remove('wipe');
+      // eslint-disable-next-line no-unused-expressions
+      underline.offsetWidth; // force reflow so re-triggering the animation on a rapid second LAND actually restarts it
+      underline.classList.add('wipe');
+    }, 150);
+    if (Math.abs(net) >= BIG_HAUL_THRESHOLD) {
+      setTimeout(() => {
+        const pane = document.getElementById('chart-pane');
+        pane.classList.add('anim-paper-shake-90');
+        setTimeout(() => pane.classList.remove('anim-paper-shake-90'), 90);
+      }, 150);
+    }
   }
 
   // ── cash tween ───────────────────────────────────────────────────────
@@ -280,7 +421,14 @@
       const ringOpacity = Math.max(0.35, Math.min(1, trust));
       const reachable = selectedShipId && !pendingStake;
       const shipyard = isHome ? `<circle class="shipyard-seal${state.company.cash >= Object.values(SHIP_CLASSES)[0].purchaseCost ? ' affordable' : ''}" data-shipyard="1" cx="${xy.x}" cy="${xy.y + r + 9}" r="4" fill="var(--gold)"></circle>` : '';
-      under += `<g class="ink-seal${reachable ? ' reachable' : ''}" data-port="${id}">
+      // P1.2 (§3.4): a faint ink-seal FLUX accent sits UNDER the vector
+      // ring — real texture, but the ring/dot/label above it stay the
+      // pixel-crisp thing a player actually reads (§3.4's "vector is
+      // mandatory for anything that must stay crisp").
+      const accentR = (r + 3) * 2.3;
+      const accent = `<image class="ink-seal-accent" href="assets/ink-seal.jpg" x="${(xy.x - accentR / 2).toFixed(1)}" y="${(xy.y - accentR / 2).toFixed(1)}" width="${accentR.toFixed(1)}" height="${accentR.toFixed(1)}" preserveAspectRatio="xMidYMid meet"></image>`;
+      under += `<g class="ink-seal ink-depth${reachable ? ' reachable' : ''}" data-port="${id}">
+        ${accent}
         ${isHome ? `<circle class="seal-home-ring" cx="${xy.x}" cy="${xy.y}" r="${r + 5}"></circle>` : ''}
         <circle class="seal-ring" cx="${xy.x}" cy="${xy.y}" r="${r + 3}" stroke-width="1.4" opacity="${ringOpacity.toFixed(2)}"></circle>
         <circle class="seal-dot" cx="${xy.x}" cy="${xy.y}" r="${r}"></circle>
@@ -316,6 +464,7 @@
     }
 
     // routes / chinagraph lanes
+    const newRouteIds = [];
     for (const route of state.routes) {
       const shipId = route.assignedShipIds && route.assignedShipIds[0];
       const ship = shipId && state.ships.find((s) => s.id === shipId);
@@ -324,7 +473,14 @@
       const pts = waypointsForLeg(route.fromPortId, route.toPortId, chokepointsUsed, xyOf);
       const dashed = isPencilPort(route.fromPortId, state) || isPencilPort(route.toPortId, state);
       const d = `M ${pts.map((p) => `${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' L ')}`;
-      under += `<path class="chinagraph-lane${dashed ? ' dashed' : ''}" data-route="${route.id}" d="${d}"></path>`;
+      // P1.2 (§3.1 bullet 3): a lane the player just staked draws itself on
+      // via stroke-dashoffset (~240ms) — but only ONCE, the first render
+      // after it exists; every render after that is a plain static line
+      // (see the post-insert pass below), so the 700ms autoplay redraw
+      // never replays the reveal on lanes that were already there.
+      const isNew = !seenRouteIds.has(route.id);
+      if (isNew) newRouteIds.push(route.id);
+      under += `<path class="chinagraph-lane${dashed ? ' dashed' : ''}${isNew ? ' lane-draw-in' : ''}" data-route="${route.id}" d="${d}"></path>`;
     }
     if (pendingStake) {
       const ship = state.ships.find((s) => s.id === pendingStake.shipId);
@@ -336,6 +492,30 @@
     }
 
     document.getElementById('static-under').innerHTML = under;
+
+    // P1.2: run the actual draw-in reveal for lanes that are new this
+    // render, using each path's real length (getTotalLength()) so the
+    // stroke-dashoffset animation traces the exact path, not a guessed
+    // constant. Two rAFs: one to let the dasharray/dashoffset-at-full
+    // values paint before the transition starts (otherwise the browser
+    // coalesces the "set to full" and "animate to 0" into one paint and
+    // nothing visibly draws), one more to actually flip to 0.
+    for (const routeId of newRouteIds) seenRouteIds.add(routeId);
+    if (newRouteIds.length) {
+      const els = newRouteIds
+        .map((id) => document.querySelector(`#static-under .chinagraph-lane[data-route="${id}"]`))
+        .filter(Boolean);
+      for (const el of els) {
+        const len = el.getTotalLength ? el.getTotalLength() : 300;
+        el.style.strokeDasharray = String(len);
+        el.style.strokeDashoffset = String(len);
+      }
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          for (const el of els) el.style.strokeDashoffset = '0';
+        });
+      });
+    }
 
     // chokepoint weather hatching — the LAST layer, above ships too (the
     // build spec's own stated order); sparse/dashed enough not to obscure
@@ -366,7 +546,9 @@
   // interpolate between ticks so they slide, never jump"). ───────────────
   function renderShips(state, xyOf) {
     const layer = document.getElementById('ship-layer');
+    const wakeLayer = document.getElementById('wake-layer');
     const seen = new Set();
+    const WAKE_SIZE = 22;
     for (const ship of state.ships) {
       seen.add(ship.id);
       let pos;
@@ -389,12 +571,33 @@
         el.setAttribute('cx', pos.x); el.setAttribute('cy', pos.y); // no transition on first paint
         layer.appendChild(el);
       }
-      el.setAttribute('class', 'ship-dot' + (ship.id === selectedShipId ? ' selected' : ''));
+      const inTransit = !!ship.transit;
+      el.setAttribute('class', 'ship-dot' + (ship.id === selectedShipId ? ' selected' : '') + (inTransit ? ' transit' : ''));
       el.setAttribute('cx', pos.x);
       el.setAttribute('cy', pos.y);
       el.onclick = (ev) => { ev.stopPropagation(); onShipClick(ship); };
+
+      // P1.2 (§3.4): a faint wake ripple under a MOVING ship only — a
+      // ship sitting at port has no wake. Same persistent-element-updated-
+      // in-place pattern as the ship dot above, one layer behind it.
+      let wake = wakeLayer.querySelector(`[data-wake="${ship.id}"]`);
+      if (inTransit) {
+        if (!wake) {
+          wake = svgEl('image');
+          wake.setAttribute('data-wake', ship.id);
+          wake.setAttribute('class', 'ship-wake-img');
+          wake.setAttribute('href', 'assets/ship-wake.jpg');
+          wake.setAttribute('width', WAKE_SIZE); wake.setAttribute('height', WAKE_SIZE);
+          wakeLayer.appendChild(wake);
+        }
+        wake.setAttribute('x', (pos.x - WAKE_SIZE / 2).toFixed(1));
+        wake.setAttribute('y', (pos.y - WAKE_SIZE / 2).toFixed(1));
+      } else if (wake) {
+        wake.remove();
+      }
     }
     layer.querySelectorAll('[data-ship]').forEach((el) => { if (!seen.has(el.getAttribute('data-ship'))) el.remove(); });
+    wakeLayer.querySelectorAll('[data-wake]').forEach((el) => { if (!seen.has(el.getAttribute('data-wake'))) el.remove(); });
   }
 
   // ── the two clocks + cash head + log + tell line ────────────────────────
@@ -411,12 +614,23 @@
 
     const logEl = document.getElementById('log');
     logEl.innerHTML = state.log.slice(-60).map((e) => {
-      const cls = /🏆/.test(e.msg) ? 'achievement' : (/SCOUT ·/.test(e.msg) ? 'scout' : (/ghost —/.test(e.msg) ? 'ghost' : ''));
+      const cls = /🏆|🏁/.test(e.msg) ? 'achievement' : (/SCOUT ·/.test(e.msg) ? 'scout' : (/ghost —|⚓/.test(e.msg) ? 'ghost' : ''));
       return `<div class="entry ${cls}"><span class="t">d${e.tick}</span>${escapeHtml(e.msg)}</div>`;
     }).join('');
 
+    // P0.4: the streak multiplier, right next to the Tell line it powers.
+    const streakSuffix = state.company.streakMultiplier > 1
+      ? ` · streak ×${state.company.streakMultiplier.toFixed(2)} (${state.company.streak} running)`
+      : '';
     document.getElementById('tell-line').textContent =
-      `pencil stakes ${window.pencilStakesPlaced} · ink stakes ${window.inkStakesPlaced} — the pencil is where the money is.`;
+      `pencil stakes ${window.pencilStakesPlaced} · ink stakes ${window.inkStakesPlaced} — the pencil is where the money is.${streakSuffix}`;
+
+    // P0.3: once a run resolves, autoplay has nothing left to do — the
+    // engine itself already freezes simulation (tick() no-ops); stop the
+    // UI's own 700ms timer too rather than ticking forever into a frozen
+    // state. The resolution itself is already visible in the ship's log
+    // (the 🏁/⚓ lines above) — no separate modal for this first cut.
+    if (state.gameOver && !isPaused()) stopAutoplay();
   }
 
   // ── stake note / buy note ───────────────────────────────────────────────
@@ -507,12 +721,19 @@
   }
 
   // ── autoplay ─────────────────────────────────────────────────────────
+  // P0.5: refresh() FIRST, then process the witness-log diff — renderStatic/
+  // renderShips fully rebuild #static-under's innerHTML and reset every
+  // ship dot's `class` attribute each call, so a transient effect class
+  // (anim-ship-squash, anim-lane-flash) added BEFORE refresh() would be
+  // wiped out again before the browser ever painted a frame of it. Adding
+  // it AFTER refresh() means it survives until the NEXT tick's refresh
+  // (700ms later in autoplay — comfortably longer than the ~380ms beat).
   function tickOnce() {
     const xyOfBefore = allPortXY(game.getState());
     game.tick();
     const xyOfAfter = allPortXY(game.getState());
-    processNewWitnessEntries((id) => xyOfAfter[id] || xyOfBefore[id]);
     refresh();
+    processNewWitnessEntries((id) => xyOfAfter[id] || xyOfBefore[id]);
   }
   function startAutoplay() { if (!autoplayTimer) autoplayTimer = setInterval(tickOnce, 700); }
   function stopAutoplay() { if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; } }
@@ -566,6 +787,7 @@
   function newChart(seed) {
     stopAutoplay();
     lastWitnessLen = 0; firstScarShown = false; selectedShipId = null; pendingStake = null;
+    seenRouteIds = new Set();
     game = new GameEngine({ seed: seed || ('run-' + Math.random().toString(36).slice(2, 10)) });
     window.pencilStakesPlaced = 0; window.inkStakesPlaced = 0;
     cashDisplayed = game.getState().company.cash;
@@ -582,11 +804,67 @@
     svg.setAttribute('id', 'chart');
     svg.setAttribute('viewBox', `0 0 ${MAP_W} ${MAP_H}`);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    // P0.5's pencil-dust puff filter (§3.2: "a ring of pencil dust puffs
+    // out (feTurbulence displacement, fades 300ms)") — defined once, here,
+    // and referenced by .fx-dust-puff's `filter: url(#dust-turbulence)` in
+    // the stylesheet. Pure SVG, no raster/canvas.
+    const defs = svgEl('defs');
+    // P1.2 (§3.1/§3.4): tiling patterns for the two full-sheet FLUX
+    // textures + a stroke-pattern for the coastal hatch ribbon, plus a
+    // soft radial vignette gradient — all defined once, referenced by the
+    // static chrome layer built right below.
+    defs.innerHTML = `<filter id="dust-turbulence" x="-60%" y="-60%" width="220%" height="220%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="noise"></feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="6"></feDisplacementMap>
+    </filter>
+    <pattern id="paper-grain-pattern" patternUnits="userSpaceOnUse" width="260" height="260">
+      <image href="assets/paper-grain.jpg" x="0" y="0" width="260" height="260" preserveAspectRatio="xMidYMid slice"></image>
+    </pattern>
+    <pattern id="sea-texture-pattern" patternUnits="userSpaceOnUse" width="420" height="420">
+      <image href="assets/sea-texture.jpg" x="0" y="0" width="420" height="420" preserveAspectRatio="xMidYMid slice"></image>
+    </pattern>
+    <pattern id="coastal-hatch-pattern" patternUnits="userSpaceOnUse" width="140" height="70">
+      <image href="assets/coastal-hatch.jpg" x="0" y="0" width="140" height="70" preserveAspectRatio="none"></image>
+    </pattern>
+    <radialGradient id="vignette-grad" cx="50%" cy="45%" r="75%">
+      <stop offset="55%" stop-color="#000000" stop-opacity="0"></stop>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.12"></stop>
+    </radialGradient>`;
+
+    // P1.2 the static chrome layer (§3.1): paper grain, a soft vignette,
+    // one faint fold line, the booked-canon coastline (double line: a wide
+    // faint coastal-hatch ribbon under a pencil-hatch offset under a solid
+    // ink line — see game/data/coastline.js for provenance), and one
+    // compass rose accent. Built ONCE here, never touched by refresh() —
+    // this is texture/map-art, not game state, so it must never fight the
+    // per-tick redraw for perf or flicker. Sits BELOW #static-under.
+    const chromeUnder = svgEl('g'); chromeUnder.id = 'chrome-under';
+    let chromeHtml = `<rect class="sheet-bg" x="0" y="0" width="${MAP_W}" height="${MAP_H}"></rect>
+      <rect class="sea-texture-img" x="0" y="0" width="${MAP_W}" height="${MAP_H}" fill="url(#sea-texture-pattern)"></rect>`;
+    const coastPaths = (window.CLT_COASTLINE && Array.isArray(window.CLT_COASTLINE.PATHS)) ? window.CLT_COASTLINE.PATHS : [];
+    if (coastPaths.length) {
+      chromeHtml += '<g id="coastline-layer">';
+      for (const d of coastPaths) chromeHtml += `<path class="coastline-hatch-tex" d="${d}"></path>`;
+      for (const d of coastPaths) chromeHtml += `<path class="coastline-hatch" d="${d}" transform="translate(1.1,1.1)"></path>`;
+      for (const d of coastPaths) chromeHtml += `<path class="coastline-ink ink-depth" d="${d}"></path>`;
+      chromeHtml += '</g>';
+    }
+    chromeHtml += `<path class="sheet-fold" d="M 30 322 Q 590 298 1150 336"></path>
+      <rect class="paper-grain-img" x="0" y="0" width="${MAP_W}" height="${MAP_H}" fill="url(#paper-grain-pattern)"></rect>
+      <rect class="sheet-vignette" x="0" y="0" width="${MAP_W}" height="${MAP_H}" fill="url(#vignette-grad)"></rect>
+      <image class="compass-rose-img" href="assets/compass-rose.jpg" x="28" y="${MAP_H - 148}" width="98" height="98" preserveAspectRatio="xMidYMid meet"></image>`;
+    chromeUnder.innerHTML = chromeHtml;
+
     const staticUnder = svgEl('g'); staticUnder.id = 'static-under';
+    // P1.2 (§3.4): the ship-wake FLUX accent sits in its own persistent
+    // layer, between the static chart and the ship dots, so a wake image
+    // always paints BEHIND every ship — same "persistent, updated in
+    // place" discipline as #ship-layer itself (see renderShips below).
+    const wakeLayer = svgEl('g'); wakeLayer.id = 'wake-layer';
     const shipLayer = svgEl('g'); shipLayer.id = 'ship-layer';
     const staticOver = svgEl('g'); staticOver.id = 'static-over';
     const fx = svgEl('g'); fx.id = 'fx-layer';
-    svg.appendChild(staticUnder); svg.appendChild(shipLayer); svg.appendChild(staticOver); svg.appendChild(fx);
+    svg.appendChild(defs); svg.appendChild(chromeUnder); svg.appendChild(staticUnder); svg.appendChild(wakeLayer); svg.appendChild(shipLayer); svg.appendChild(staticOver); svg.appendChild(fx);
     document.getElementById('chart-pane').prepend(svg);
 
     // tap the sheet (not a ship/port/shipyard) -> pause/resume

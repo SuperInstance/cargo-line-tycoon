@@ -124,14 +124,29 @@
 
   const PLAYER_PROVENANCE = { source: 'player', trust: 1.0 };
 
-  function makeCompanyCell({ id, name, cashMinorUnits, reputation = 0, unlocks = [], provenance = PLAYER_PROVENANCE }) {
-    return cellFor('company', { id, name, cash: cashMinorUnits, reputation, unlocks, provenance });
+  // P0.4 (the reward ladder): `streak`/`streakMultiplier` live ON the
+  // company cell rather than as a bespoke new cell type, because the
+  // company cell already IS the one place in this kernel that is a
+  // `player`-sourced standing fact by construction (PLAYER_PROVENANCE
+  // default below) — exactly "a player-standing number... booked as a
+  // `player` cell, never dressed as a world fact" (arch/CARGO-LINE-FUN-AND-
+  // GRAPHICS.md §2.2). `streak` is the count of consecutive proven
+  // scout-caused LANDs; `streakMultiplier` is the payout multiplier that
+  // count currently earns (see game/src/engine.js streakMultiplierFor()).
+  function makeCompanyCell({ id, name, cashMinorUnits, reputation = 0, unlocks = [], streak = 0, streakMultiplier = 1, provenance = PLAYER_PROVENANCE }) {
+    return cellFor('company', { id, name, cash: cashMinorUnits, reputation, unlocks, streak, streakMultiplier, provenance });
   }
 
-  function makeShipCell({ id, companyId, classId, capacityTeu, speedKn, canTransitPanama = true, cargoTeu = 0, positionPortId, condition = 100, routeId = null, provenance = PLAYER_PROVENANCE }) {
+  // P0.2 (cost of commitment, M3): `needsReassignment` marks a ship whose
+  // contract just ended (finite round-trips exhausted, or its own margin
+  // fell below its ops cost) and is now idling at port, bleeding a reduced
+  // fixed cost until the player re-assigns it — see engine.js's contract
+  // bookkeeping in _tickShip(). Defaults false so every pre-existing call
+  // site (a ship mid-leg, or freshly bought/gifted) is unaffected.
+  function makeShipCell({ id, companyId, classId, capacityTeu, speedKn, canTransitPanama = true, cargoTeu = 0, positionPortId, condition = 100, routeId = null, needsReassignment = false, provenance = PLAYER_PROVENANCE }) {
     return cellFor('ship', {
       id, companyId, classId, capacityTeu, speedKn, canTransitPanama,
-      cargoTeu, positionPortId, condition, routeId, provenance,
+      cargoTeu, positionPortId, condition, routeId, needsReassignment, provenance,
     });
   }
 
@@ -151,8 +166,12 @@
   // game flavor, not observed truth — see game/data/ports.js's own file-header
   // caveat), so every caller must now pass a provenance envelope; cellFor()
   // refuses a missing one. There is deliberately no default here either.
-  function makeMarketCell({ portId, commodity, basePrice, price, demand, provenance }) {
-    return cellFor('market', { portId, commodity, basePrice, price, demand, provenance });
+  // `deliverDebt` (P0.2, M2 — arch/CARGO-LINE-FUN-AND-GRAPHICS.md §2.1): the
+  // persistent "this port has been hammered by deliveries lately" fatigue
+  // accumulator economy.js's bumpDeliverDebt()/decayDeliverDebt() maintain;
+  // defaults to 0 so every pre-existing call site is unaffected.
+  function makeMarketCell({ portId, commodity, basePrice, price, demand, deliverDebt = 0, provenance }) {
+    return cellFor('market', { portId, commodity, basePrice, price, demand, deliverDebt, provenance });
   }
 
   // ─────────────────────────────────────────────────────────────────────

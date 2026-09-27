@@ -46,6 +46,42 @@
   const STARTING_CASH = 10_000_000;
   const HOME_PORT_ID = 'los_angeles';
 
+  // P0.1 (M1, the keystone — arch/CARGO-LINE-FUN-AND-GRAPHICS.md §2.1/§5):
+  // "sails within range R of it" — a ship currently in transit resolves any
+  // unresolved pencil port within this many nautical miles of its
+  // (interpolated) position, landed_by:'scout'. 50nm comfortably covers a
+  // pencil port's own generation jitter (±0.3-0.4°, ~20-28nm) around its
+  // anchor without reaching a neighboring real port.
+  const SCOUT_RANGE_NM = 50;
+
+  // P0.2 (M3, contracts not infinite auto-repeat): every staked route is a
+  // finite contract — at most this many round trips before the ship idles
+  // and pings for reassignment, regardless of how healthy its margin still
+  // is; a route whose margin decays below its own ops cost idles sooner.
+  const CONTRACT_ROUND_TRIPS = 6;
+  // A contract-idled ship still bleeds a reduced fixed cost (dockage, not
+  // full steaming cost) until re-assigned — the "idle-cost pressure" M3
+  // names as what makes a fleet feel like it must be managed.
+  const IDLE_COST_FRAC = 0.4;
+
+  // P0.3 (session goal + fail state): win via EITHER path — bank a real
+  // fortune, or chart enough of the world true — whichever a run's play
+  // style earns first; §2.3's "reach a cash *or* charted-truth target."
+  const WIN_CASH_TARGET = 25_000_000;
+  const WIN_PENCIL_PROVEN_TARGET = 8; // scout-caused (player-charted) proofs only — see _landPoolFact
+
+  // P0.4 (the reward ladder): consecutive proven scout-caused LANDs compound
+  // the payout multiplier (×1.1, ×1.25, ×1.5, then +0.25 per further
+  // consecutive LAND); one scout-caused ERASE resets it to ×1.
+  const STREAK_BASE_LADDER = [1, 1.1, 1.25, 1.5];
+  const STREAK_LADDER_STEP = 0.25;
+  function streakMultiplierFor(streak) {
+    if (streak <= 0) return 1;
+    if (streak < STREAK_BASE_LADDER.length) return STREAK_BASE_LADDER[streak];
+    const extra = streak - (STREAK_BASE_LADDER.length - 1);
+    return STREAK_BASE_LADDER[STREAK_BASE_LADDER.length - 1] + STREAK_LADDER_STEP * extra;
+  }
+
   const PANAMA_EVENT_WARMUP_TICKS = 5;
   const PANAMA_EVENT_CHANCE_PER_TICK = 0.035;
   const PANAMA_EVENT_MIN_DURATION = 8;
@@ -91,6 +127,13 @@
       this.achievements = new Set();
       this._stormProfit = false;
       this._eventLog = [];
+      // P0.3 (session goal + fail state): provenPencilCount is the
+      // "charted-truth" progress counter (any pencil port that becomes
+      // proven, ambient or scout-caused); _gameOver freezes further
+      // simulation once a run resolves (won or folded) — see
+      // _checkGameEnd()/tick().
+      this.provenPencilCount = 0;
+      this._gameOver = null;
 
       // Phase 2: every chokepoint's *current* runtime status, seeded from
       // its real canon cell (game/data/chokepoints.js). `real` never
@@ -183,8 +226,25 @@
       const next = { ...this.company, ...patch };
       this.world.entities.put(this.companyId, makeCompanyCell({
         id: next.id, name: next.name, cashMinorUnits: next.cash, reputation: next.reputation, unlocks: next.unlocks,
+        streak: next.streak, streakMultiplier: next.streakMultiplier,
       }));
       return next;
+    }
+
+    // P0.4 (the reward ladder): the player's own streak of consecutive
+    // proven scout-caused LANDs — booked as a `player`-sourced standing
+    // cell (the company cell itself; see world.js's makeCompanyCell),
+    // never dressed as a world fact. Only scout-caused verdicts (the
+    // player's own stakes resolving) move it — an ambient pool/decoy/
+    // snapshot landing the player never staked on doesn't touch it.
+    _registerStreakEvent(verdict) {
+      const company = this.company;
+      let streak = company.streak || 0;
+      if (verdict === 'proven') streak += 1;
+      else if (verdict === 'erased') streak = 0;
+      const multiplier = streakMultiplierFor(streak);
+      this._setCompany({ streak, streakMultiplier: multiplier });
+      this.world.book({ type: 'streak_updated', streak, multiplier, verdict, provenance: { source: 'player', trust: 1.0 } });
     }
 
     _market(portId) { return this.world.entities.get(`market:${portId}`).state; }
@@ -372,8 +432,17 @@
     // landed.md §1-2). Three booking occasions, all reachable OFFLINE via
     // the seeded reveal schedule — no L1/roster dependency.
 
-    _revealPoolFact(entry) {
-      const pp = this.pencilPorts[entry.pencilPortId];
+    // P0.1 (M1, the keystone): the two fact_landed occasions that used to be
+    // solely schedule-driven are now shared helpers taking an explicit
+    // `landedBy` — called with 'pool'/'decoy' from the ambient schedule
+    // (_tickRevealSchedule, ports the player hasn't staked) and with
+    // 'scout' from _tickScoutRangeForShip (a player's ship reaching / in
+    // range of a staked port). The CONTENT is identical either way (the
+    // real pool fact, or the honest decoy erasure) — only the trigger, and
+    // the landed_by label, differ; provenance stays exactly as legal as
+    // before (arch/CARGO-LINE-FUN-AND-GRAPHICS.md §2.1 M1).
+    _landPoolFact(pencilPortId, landedBy) {
+      const pp = this.pencilPorts[pencilPortId];
       if (!pp || pp.proven || pp.erased) return;
       const poolFact = POOL_BY_ID[pp.poolId];
       const portCell = this.world.entities.get(`port:${pp.id}`).state;
@@ -389,13 +458,22 @@
         type: 'fact_landed', entity_id: `port:${pp.id}`, cell_type: 'port',
         from: { source: fromProv.source, trust: fromProv.trust, seed_label: fromProv.seed_label },
         to: { source: 'canon', trust: toProv.trust, as_of: toProv.as_of, source_url: toProv.source_url },
-        verdict: 'proven', landed_by: 'pool',
+        verdict: 'proven', landed_by: landedBy,
       });
-      this._log(`SCOUT · ${poolFact.value.name} · PROVEN · as of ${toProv.as_of} · trust ${Math.round(toProv.trust * 100)}% · source ▸ ${toProv.source_url}`);
+      // P0.3's "charted-truth" win target counts only what the PLAYER
+      // charted (scout-caused) — an ambient reveal the player never staked
+      // on is the world breathing on its own, not earned reality (Fable
+      // §6.2); counting it too would let a run "win" by sitting idle while
+      // the clock does the work, which is exactly the ungrounded-progression
+      // risk JEV flagged (§0, honesty 0.66).
+      if (landedBy === 'scout') this.provenPencilCount += 1;
+      const scoutLine = landedBy === 'scout' ? ' — sailed true, under your own keel.' : '';
+      this._log(`SCOUT · ${poolFact.value.name} · PROVEN · as of ${toProv.as_of} · trust ${Math.round(toProv.trust * 100)}%${scoutLine} · source ▸ ${toProv.source_url}`);
+      if (landedBy === 'scout') this._registerStreakEvent('proven');
     }
 
-    _eraseDecoy(entry) {
-      const pp = this.pencilPorts[entry.pencilPortId];
+    _landDecoyErase(pencilPortId, landedBy) {
+      const pp = this.pencilPorts[pencilPortId];
       if (!pp || pp.proven || pp.erased) return;
       const portCell = this.world.entities.get(`port:${pp.id}`).state;
       const fromProv = portCell.provenance;
@@ -406,13 +484,18 @@
         type: 'fact_landed', entity_id: `port:${pp.id}`, cell_type: 'port',
         from: { source: fromProv.source, trust: fromProv.trust, seed_label: fromProv.seed_label },
         to: toProv,
-        verdict: 'erased', landed_by: 'decoy',
+        verdict: 'erased', landed_by: landedBy,
       });
-      const seedLabel = `decoy_erase:${pp.id}:${this.world.tick_no}`;
+      const seedLabel = `${landedBy}_erase:${pp.id}:${this.world.tick_no}`;
       this._log(`✎ ghost — ${pp.name} was never there. Erased.${this._firstScar ? '' : ' first scar — every navigator has one.'}`);
       this._firstScar = true;
       this._reroutePencilPort(pp.id, seedLabel);
+      if (landedBy === 'scout') this._registerStreakEvent('erased');
     }
+
+    _revealPoolFact(entry) { this._landPoolFact(entry.pencilPortId, 'pool'); }
+
+    _eraseDecoy(entry) { this._landDecoyErase(entry.pencilPortId, 'decoy'); }
 
     _reviseSnapshot(entry) {
       const pp = this.pencilPorts[entry.pencilPortId];
@@ -431,14 +514,82 @@
       this._log(`AS OF re-stamp · ${portCell.name} · now as of ${toProv.as_of} (trust ${Math.round(toProv.trust * 100)}%).`);
     }
 
+    // P0.1 (M1, the keystone): true while ANY ship currently has an active
+    // route touching this pencil port (either end) — i.e. the player has
+    // staked it. Recomputed live off this.transit rather than a maintained
+    // flag, so recalling a ship (unassignShip) naturally hands the port
+    // back to the ambient clock.
+    _isPencilPortStaked(pencilPortId) {
+      for (const shipId of this.shipIds) {
+        const t = this.transit[shipId];
+        if (t && (t.routeFrom === pencilPortId || t.routeTo === pencilPortId)) return true;
+      }
+      return false;
+    }
+
     _tickRevealSchedule() {
       const dueTick = this.world.tick_no;
       for (const entry of this.revealSchedule) {
         if (entry.tick !== dueTick) continue;
+        // P0.1's keystone: retire the fixed reveal timer for STAKED pencil
+        // ports — once a ship is en route to/from one, it resolves only
+        // under that ship's own keel (_tickScoutRangeForShip), never on the
+        // ambient clock. Unstaked ports keep breathing on their own (a low
+        // ambient rate — arch/CARGO-LINE-FUN-AND-GRAPHICS.md §2.1 M1).
+        if (entry.kind !== 'snapshot' && this._isPencilPortStaked(entry.pencilPortId)) continue;
         if (entry.kind === 'pool') this._revealPoolFact(entry);
         else if (entry.kind === 'decoy') this._eraseDecoy(entry);
         else if (entry.kind === 'snapshot') this._reviseSnapshot(entry);
       }
+    }
+
+    // P0.1 (M1, the keystone): called once per tick for every ship
+    // currently in transit, with its ALREADY-DECREMENTED ticksRemaining for
+    // this tick — i.e. "where is this ship right now" (interpolated
+    // straight lat/lng between the leg's origin and destination — the same
+    // simplified geometry the rest of this engine already uses). Resolves
+    // any STAKED-and-unresolved pencil port within SCOUT_RANGE_NM,
+    // landed_by:'scout'.
+    //
+    // Deliberately scoped to STAKED ports only (never a sweep of every
+    // unresolved pencil port in the registry): an early build resolved
+    // ANY nearby port regardless of staking, and a real port with several
+    // pool/decoy ports jittered around it (a common cluster — a major
+    // port draws pencil facts near it) turned every ordinary ink arrival
+    // there into an unrelated flurry of unstaked pencil landings, which
+    // cheapens the Tell into background noise the player never chose
+    // instead of a decision they made. "Sailing resolves the wager" means
+    // a wager you actually placed — an unstaked port stays on the ambient
+    // clock no matter how close a ship happens to pass.
+    //
+    // Returns the verdict ('proven'|'erased'|null) IFF the ship's own
+    // destination was the port resolved — the caller (_tickShip) uses that
+    // to pay out the pencil-LAND jackpot (P0.4) rather than ordinary trip
+    // revenue.
+    _tickScoutRangeForShip(shipId, t) {
+      const frac = t.legTotalTicks ? Math.max(0, Math.min(1, 1 - t.ticksRemaining / t.legTotalTicks)) : 1;
+      const originId = t.leg === 'outbound' ? t.routeFrom : t.routeTo;
+      const destId = t.leg === 'outbound' ? t.routeTo : t.routeFrom;
+      const a = this._latlngAny(originId);
+      const b = this._latlngAny(destId);
+      const pos = { lat: a.lat + (b.lat - a.lat) * frac, lng: a.lng + (b.lng - a.lng) * frac };
+      let ownDestVerdict = null;
+      for (const id of Object.keys(this.pencilPorts)) {
+        const pp = this.pencilPorts[id];
+        if (pp.proven || pp.erased) continue;
+        if (!this._isPencilPortStaked(id)) continue;
+        const dist = haversineNm(pos, { lat: pp.lat, lng: pp.lng });
+        if (dist > SCOUT_RANGE_NM) continue;
+        const isOwnDest = id === destId;
+        if (pp.isDecoy) {
+          this._landDecoyErase(id, 'scout');
+          if (isOwnDest) ownDestVerdict = 'erased';
+        } else {
+          this._landPoolFact(id, 'scout');
+          if (isOwnDest) ownDestVerdict = 'proven';
+        }
+      }
+      return ownDestVerdict;
     }
 
     // The Tell rendered as numbers (Fable §3.3): ink gives a number, pencil
@@ -458,7 +609,7 @@
       if (meta.erased) return { ok: false, reason: `${meta.name} was erased — it was never there. Pick another port.` };
       const buyPrice = this._market(fromId).price;
       const destMarket = this._market(portId);
-      const netMid = tripRevenue({ teu: cls.capacityTeu, buyPrice, sellPrice: destMarket.price }) - leg.tollTotal;
+      const netMid = tripRevenue({ teu: cls.capacityTeu, buyPrice, sellPrice: economy.effectiveSellPrice(destMarket) }) - leg.tollTotal;
       let low, high;
       if (meta.isPencil) {
         const trust = meta.provenance.trust;
@@ -489,7 +640,13 @@
       return snap;
     }
 
-    _startLeg(shipId, routeId, routeFrom, routeTo, leg) {
+    // `carry` (P0.2, M3) forwards contract bookkeeping across the legs of a
+    // single route/ship: tripsCompleted survives every leg; roundTripNet/
+    // roundTripTicks reset at the start of each new outbound leg (a fresh
+    // round trip) and otherwise carry from outbound into inbound so
+    // _tickShip can judge the WHOLE round trip's margin against its ops
+    // cost at the round-trip boundary.
+    _startLeg(shipId, routeId, routeFrom, routeTo, leg, carry) {
       const ship = this.world.entities.get(shipId).state;
       const cls = SHIP_CLASSES[ship.classId];
       const originId = leg === 'outbound' ? routeFrom : routeTo;
@@ -502,6 +659,27 @@
       const originMarket = this._market(originId);
       const buyPrice = originMarket.price;
       this._setMarket(originId, { price: applyLoadPressure(originMarket, cls.capacityTeu, cls.capacityTeu) });
+
+      // P0.4 (the reward ladder): a pencil LAND collapses the payout range
+      // to the high end on proven — freeze the stake-time "high" figure
+      // now (same spread math as previewStake()) so a scout-caused PROVEN
+      // exactly on arrival pays the jackpot number the player was shown
+      // when they staked, not whatever the market drifted to by delivery.
+      // null for any real-port (ink) destination, or a pencil port already
+      // resolved/erased — normal trip economics apply to those.
+      let pencilPreviewHigh = null;
+      if (!PORTS_BY_ID[destId]) {
+        const destMeta = this._portMeta(destId);
+        if (destMeta.isPencil && !destMeta.erased) {
+          const destMarket = this._market(destId);
+          const netMid = tripRevenue({ teu: cls.capacityTeu, buyPrice, sellPrice: economy.effectiveSellPrice(destMarket) }) - legInfo.tollTotal;
+          const trust = destMeta.provenance.trust;
+          const spread = 0.35 * (1 - trust) + 0.1;
+          pencilPreviewHigh = Math.round(netMid * (1 + spread * 1.8));
+        }
+      }
+
+      const c = carry || {};
       this.transit[shipId] = {
         routeId, routeFrom, routeTo, leg,
         ticksRemaining: legInfo.legDurationTicks,
@@ -511,9 +689,13 @@
         tollBreakdown: legInfo.tollBreakdown || [],
         tollTotal: legInfo.tollTotal, // Phase 2 fix: previously zeroed for any non-Panama leg; a Suez/Hormuz/etc toll must survive too
         buyPrice,
+        pencilPreviewHigh,
+        tripsCompleted: c.tripsCompleted || 0,
+        roundTripNet: leg === 'outbound' ? 0 : (c.roundTripNet || 0),
+        roundTripTicks: leg === 'outbound' ? 0 : (c.roundTripTicks || 0),
       };
       this.world.entities.put(shipId, makeShipCell({
-        ...ship, positionPortId: originId, cargoTeu: cls.capacityTeu, routeId,
+        ...ship, positionPortId: originId, cargoTeu: cls.capacityTeu, routeId, needsReassignment: false,
       }));
       this.world.book({ type: 'leg_started', ship_id: shipId, route_id: routeId, from: originId, to: destId, ticks: legInfo.legDurationTicks, uses_panama: legInfo.usesPanama, chokepoints: legInfo.chokepointsUsed || [] });
       return true;
@@ -591,8 +773,19 @@
 
     _tickShip(shipId) {
       const t = this.transit[shipId];
-      if (!t) return; // idle ship, no route, no cost
       const ship = this.world.entities.get(shipId).state;
+      if (!t) {
+        // P0.2 (M3): a contract-idled ship (needsReassignment) still bleeds
+        // a reduced fixed cost until re-assigned — never a ship that simply
+        // hasn't been given a first route yet.
+        if (ship.needsReassignment) {
+          const cls = SHIP_CLASSES[ship.classId];
+          const idleCost = Math.round(adjustedDailyOpCost(cls) * IDLE_COST_FRAC);
+          this.world.bookLedger({ debit: this.companyId, credit: 'operations', amount: idleCost, memo: `idle dockage ${shipId}` });
+          this._setCompany({ cash: this.company.cash - idleCost });
+        }
+        return;
+      }
       const cls = SHIP_CLASSES[ship.classId];
       const opCost = adjustedDailyOpCost(cls); // Phase 2: fuel-index-adjusted, see economy.js
 
@@ -600,31 +793,101 @@
       this._setCompany({ cash: this.company.cash - opCost });
 
       t.ticksRemaining -= 1;
+      t.roundTripTicks = (t.roundTripTicks || 0) + 1;
+      // P0.1 (M1, the keystone): resolve any staked/nearby pencil port under
+      // this ship's own keel — BEFORE checking arrival, so a same-tick
+      // arrival-and-erasure has already rerouted t.routeTo/routeFrom by the
+      // time destId is read below.
+      const scoutVerdict = this._tickScoutRangeForShip(shipId, t);
       if (t.ticksRemaining > 0) return;
 
-      const destId = t.leg === 'outbound' ? t.routeTo : t.routeFrom;
-      const sellPrice = this._market(destId).price;
-      const revenue = tripRevenue({ teu: cls.capacityTeu, buyPrice: t.buyPrice, sellPrice });
-      const net = revenue - t.tollTotal;
-
-      if (net >= 0) {
-        this.world.bookLedger({ debit: 'buyer', credit: this.companyId, amount: net, memo: `cargo delivered ${shipId} @ ${destId}` });
+      const destId = t.leg === 'outbound' ? t.routeTo : t.routeFrom; // reflects any reroute just above
+      const destMarket = this._market(destId);
+      let net;
+      if (scoutVerdict === 'proven' && t.pencilPreviewHigh != null) {
+        // P0.4: the pencil LAND collapses to the high end of the stake-time
+        // preview, boosted by the player's current streak multiplier — the
+        // jackpot feel (§2.2/§3.2).
+        const multiplier = this.company.streakMultiplier || 1;
+        net = Math.round(t.pencilPreviewHigh * multiplier);
+        if (net >= 0) this.world.bookLedger({ debit: 'buyer', credit: this.companyId, amount: net, memo: `pencil LAND ${shipId} @ ${destId}` });
+        else this.world.bookLedger({ debit: this.companyId, credit: 'toll_authority', amount: -net, memo: `net loss ${shipId} @ ${destId}` });
       } else {
-        this.world.bookLedger({ debit: this.companyId, credit: 'toll_authority', amount: -net, memo: `net loss ${shipId} @ ${destId}` });
+        const sellPrice = economy.effectiveSellPrice(destMarket);
+        const revenue = tripRevenue({ teu: cls.capacityTeu, buyPrice: t.buyPrice, sellPrice });
+        net = revenue - t.tollTotal;
+        if (net >= 0) {
+          this.world.bookLedger({ debit: 'buyer', credit: this.companyId, amount: net, memo: `cargo delivered ${shipId} @ ${destId}` });
+        } else {
+          this.world.bookLedger({ debit: this.companyId, credit: 'toll_authority', amount: -net, memo: `net loss ${shipId} @ ${destId}` });
+        }
       }
       this._setCompany({ cash: this.company.cash + net });
-      this._setMarket(destId, { price: applyDeliverPressure(this._market(destId), cls.capacityTeu, cls.capacityTeu) });
+      this._setMarket(destId, {
+        price: applyDeliverPressure(destMarket, cls.capacityTeu, cls.capacityTeu),
+        deliverDebt: economy.bumpDeliverDebt(destMarket, cls.capacityTeu, cls.capacityTeu),
+      });
 
       if (t.usesPanama && this.panama.disrupted && net > 0) this._stormProfit = true;
 
-      this.world.book({ type: 'ship_arrived', ship_id: shipId, port_id: destId, net, uses_panama: t.usesPanama, chokepoints: t.chokepointsUsed });
+      this.world.book({ type: 'ship_arrived', ship_id: shipId, port_id: destId, route_id: t.routeId, net, uses_panama: t.usesPanama, chokepoints: t.chokepointsUsed });
       const chokeSuffix = (t.chokepointsUsed && t.chokepointsUsed.length)
         ? ` (via ${t.chokepointsUsed.map((id) => CHOKEPOINTS[id].name).join(' + ')}, $${t.tollTotal.toLocaleString()} toll/risk)`
         : '';
       this._log(`${cls.name} ${shipId} arrived at ${this._portName(destId)}: ${net >= 0 ? '+' : ''}$${net.toLocaleString()}${chokeSuffix}`);
 
-      const nextLeg = t.leg === 'outbound' ? 'inbound' : 'outbound';
-      this._startLeg(shipId, t.routeId, t.routeFrom, t.routeTo, nextLeg);
+      // P0.2 (M3): finite decaying contracts, not infinite auto-repeat.
+      // Judged at the ROUND-TRIP boundary (arrival back at the original
+      // origin) so a ship is never stranded mid-ocean by its own contract
+      // ending — it always idles at a port.
+      t.roundTripNet = (t.roundTripNet || 0) + net;
+      if (t.leg === 'inbound') {
+        t.tripsCompleted = (t.tripsCompleted || 0) + 1;
+        const totalOpsCost = opCost * t.roundTripTicks;
+        const marginTooThin = t.roundTripNet < totalOpsCost;
+        const tripCapReached = t.tripsCompleted >= CONTRACT_ROUND_TRIPS;
+        if (marginTooThin || tripCapReached) {
+          delete this.transit[shipId];
+          this.world.entities.put(shipId, makeShipCell({ ...ship, positionPortId: destId, cargoTeu: 0, routeId: null, needsReassignment: true }));
+          this.world.book({ type: 'contract_ended', ship_id: shipId, route_id: t.routeId, port_id: destId, trips_completed: t.tripsCompleted, reason: marginTooThin ? 'margin_below_ops' : 'trip_cap_reached', provenance: { source: 'player', trust: 1.0 } });
+          this._log(`${cls.name} ${shipId} — contract done at ${this._portName(destId)} (${t.tripsCompleted} round trip${t.tripsCompleted === 1 ? '' : 's'}), ${marginTooThin ? 'margin gone thin' : 'run its course'} — idling, pinging for reassignment.`);
+          return;
+        }
+        this._startLeg(shipId, t.routeId, t.routeFrom, t.routeTo, 'outbound', { tripsCompleted: t.tripsCompleted });
+        return;
+      }
+
+      // t.leg === 'outbound' here — always continue on to the inbound leg
+      // (a ship is never idled mid-route; only at a round-trip boundary).
+      this._startLeg(shipId, t.routeId, t.routeFrom, t.routeTo, 'inbound', { tripsCompleted: t.tripsCompleted, roundTripNet: t.roundTripNet, roundTripTicks: t.roundTripTicks });
+    }
+
+    // P0.3 (session goal + fail state + comeback): a run resolves exactly
+    // once — WON (cash target or charted-truth target reached, whichever
+    // the play style earns first) or FOLDED (genuine bankruptcy: cash
+    // negative with no ship currently earning). Once resolved, tick()
+    // freezes further simulation (see tick() below) — deterministically,
+    // so replay ≡ live holds through and past the resolution exactly like
+    // everything else here. A folded line's one comeback path this engine
+    // actually offers is real: riding a live chokepoint disruption (or a
+    // hot pencil streak) back above water BEFORE cash goes negative — see
+    // game/test/p0-fun.test.js for a scripted proof of both directions.
+    _checkGameEnd() {
+      if (this._gameOver) return;
+      const cash = this.company.cash;
+      if (cash >= WIN_CASH_TARGET || this.provenPencilCount >= WIN_PENCIL_PROVEN_TARGET) {
+        const reason = cash >= WIN_CASH_TARGET ? 'cash_target' : 'pencil_target';
+        this._gameOver = { result: 'won', tick: this.world.tick_no, reason };
+        this.world.book({ type: 'run_resolved', result: 'won', reason, cash, proven_pencil_count: this.provenPencilCount, provenance: { source: 'player', trust: 1.0 } });
+        this._log(`🏁 Chart complete — ${reason === 'cash_target' ? `banked $${cash.toLocaleString()}` : `${this.provenPencilCount} pencil ports charted true`}. The line made it. New chart, or keep sailing.`);
+        return;
+      }
+      const anyShipEarning = this.shipIds.some((id) => !!this.transit[id]);
+      if (cash < 0 && !anyShipEarning) {
+        this._gameOver = { result: 'bankrupt', tick: this.world.tick_no, reason: 'insolvent' };
+        this.world.book({ type: 'run_resolved', result: 'bankrupt', reason: 'insolvent', cash, provenance: { source: 'player', trust: 1.0 } });
+        this._log(`⚓ The line folds — $${cash.toLocaleString()} in the red, nothing earning. Chart's end.`);
+      }
     }
 
     _checkAchievements() {
@@ -738,16 +1001,24 @@
 
     tick() {
       this.world.tick(() => {
+        // P0.3: once a run has resolved (won or folded), freeze all further
+        // simulation — deterministically (same seed+history => same freeze
+        // tick), so this costs replay ≡ live nothing.
+        if (this._gameOver) return;
         this._tickPanamaEvent();
         this._tickChokepointEvents();
         this._tickRevealSchedule();
         for (const portId of this._allPortIds()) {
           const m = this._market(portId);
           const rng = this.world.rng.fork(`market:${portId}:${this.world.tick_no}`);
-          this._setMarket(portId, { price: driftPrice(m, rng) });
+          this._setMarket(portId, {
+            price: driftPrice(m, rng),
+            deliverDebt: economy.decayDeliverDebt(m), // P0.2 (M2): the persistent deliver-debt fatigue heals slowly, independent of price's own reversion
+          });
         }
         for (const shipId of this.shipIds) this._tickShip(shipId);
         this._checkAchievements();
+        this._checkGameEnd();
       });
       return this.getState();
     }
@@ -824,6 +1095,11 @@
         },
         achievements: [...this.achievements],
         log: this._eventLog.slice(-200),
+        // P0.3: the session goal/fail-state surface — null while the run is
+        // still live, else { result: 'won'|'bankrupt', tick, reason }.
+        gameOver: this._gameOver ? { ...this._gameOver } : null,
+        provenPencilCount: this.provenPencilCount,
+        winTargets: { cash: WIN_CASH_TARGET, provenPencil: WIN_PENCIL_PROVEN_TARGET },
       };
     }
 
