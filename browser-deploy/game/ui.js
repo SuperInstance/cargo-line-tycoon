@@ -185,14 +185,22 @@
   }
 
   // ── witness-log diff -> landings/animations/sound (Fable §3.4) ─────────
+  // P0.5 (§3.2): a batch pass first, so a `ship_arrived` can tell whether
+  // its OWN arrival tick also proved the port it just delivered at — that's
+  // a pencil LAND, which precedes the 380ms stamp beat with the existing
+  // 900ms pen-trace (see handleFactLanded/playLandingBeat below).
   function processNewWitnessEntries(xyOf) {
     const log = game.world.witness_log;
-    for (let i = lastWitnessLen; i < log.length; i++) {
-      const e = log[i];
-      if (e.type === 'fact_landed') handleFactLanded(e, xyOf);
-      else if (e.type === 'ship_arrived') handleShipArrived(e);
-    }
+    const newEntries = log.slice(lastWitnessLen);
     lastWitnessLen = log.length;
+    const provenPortsThisBatch = new Set();
+    for (const e of newEntries) {
+      if (e.type === 'fact_landed' && e.verdict === 'proven') provenPortsThisBatch.add(e.entity_id.replace(/^port:/, ''));
+    }
+    for (const e of newEntries) {
+      if (e.type === 'fact_landed') handleFactLanded(e, xyOf);
+      else if (e.type === 'ship_arrived') handleShipArrived(e, xyOf, provenPortsThisBatch.has(e.port_id));
+    }
   }
 
   function handleFactLanded(e, xyOf) {
@@ -223,12 +231,73 @@
     }
   }
 
-  function handleShipArrived(e) {
+  // P0.5 (§3.2): "big haul" gates the screen-shake — most deliveries don't
+  // shake the sheet at all; a genuinely large payout does.
+  const BIG_HAUL_THRESHOLD = 100000;
+
+  function handleShipArrived(e, xyOf, isPencilLand) {
     playSound('plup');
     playSound('bell');
-    const state = game.getState();
-    document.getElementById('chart-pane').classList.add('anim-paper-shake');
-    setTimeout(() => document.getElementById('chart-pane').classList.remove('anim-paper-shake'), 200);
+    const portXY = xyOf(e.port_id);
+    const beat = () => playLandingBeat({ shipId: e.ship_id, routeId: e.route_id, portXY, net: e.net });
+    // A pencil LAND precedes this beat with the existing 900ms pen-trace
+    // (already playing via handleFactLanded, same batch) — let it finish
+    // before the stamp slams down, per §3.2's ordering. Elements are
+    // looked up live INSIDE playLandingBeat (not captured here) because a
+    // 900ms delay comfortably outlasts the next 700ms autoplay tick, which
+    // rebuilds #static-under's DOM entirely — a reference captured now
+    // would be stale (detached) by the time it fires.
+    if (isPencilLand) setTimeout(beat, 900); else beat();
+  }
+
+  // P0.5 — the one juice beat to nail (§3.2), all in the existing SVG/CSS:
+  // ship squash -> lane flash to full red -> ink-seal slam (scale 1.6->1,
+  // overshoot) -> a pencil-dust puff -> the gold cash count-up with an
+  // underline wipe -> a 1px, 90ms screen-shake on big hauls only. ~380ms
+  // end to end (the dust puff trails a little past that, which is fine —
+  // it's a fade-out, not part of the timing predicate).
+  function playLandingBeat({ shipId, routeId, portXY, net }) {
+    const shipEl = shipId ? document.querySelector(`#ship-layer [data-ship="${shipId}"]`) : null;
+    const laneEl = routeId ? document.querySelector(`#static-under .chinagraph-lane[data-route="${routeId}"]`) : null;
+    if (shipEl) {
+      shipEl.classList.add('anim-ship-squash');
+      setTimeout(() => shipEl.classList.remove('anim-ship-squash'), 220);
+    }
+    if (laneEl) {
+      laneEl.classList.add('anim-lane-flash');
+      setTimeout(() => laneEl.classList.remove('anim-lane-flash'), 260);
+    }
+    if (portXY) {
+      setTimeout(() => {
+        playStamp();
+        const seal = svgEl('circle');
+        seal.setAttribute('cx', portXY.x); seal.setAttribute('cy', portXY.y); seal.setAttribute('r', 7);
+        seal.setAttribute('class', 'fx-land-seal anim-seal-slam');
+        fxLayer().appendChild(seal);
+        setTimeout(() => seal.remove(), 260);
+      }, 60);
+      setTimeout(() => {
+        const puff = svgEl('circle');
+        puff.setAttribute('cx', portXY.x); puff.setAttribute('cy', portXY.y); puff.setAttribute('r', 5);
+        puff.setAttribute('class', 'fx-dust-puff');
+        fxLayer().appendChild(puff);
+        setTimeout(() => puff.remove(), 320);
+      }, 120);
+    }
+    setTimeout(() => {
+      const underline = document.getElementById('cash-underline');
+      underline.classList.remove('wipe');
+      // eslint-disable-next-line no-unused-expressions
+      underline.offsetWidth; // force reflow so re-triggering the animation on a rapid second LAND actually restarts it
+      underline.classList.add('wipe');
+    }, 150);
+    if (Math.abs(net) >= BIG_HAUL_THRESHOLD) {
+      setTimeout(() => {
+        const pane = document.getElementById('chart-pane');
+        pane.classList.add('anim-paper-shake-90');
+        setTimeout(() => pane.classList.remove('anim-paper-shake-90'), 90);
+      }, 150);
+    }
   }
 
   // ── cash tween ───────────────────────────────────────────────────────
@@ -411,12 +480,23 @@
 
     const logEl = document.getElementById('log');
     logEl.innerHTML = state.log.slice(-60).map((e) => {
-      const cls = /🏆/.test(e.msg) ? 'achievement' : (/SCOUT ·/.test(e.msg) ? 'scout' : (/ghost —/.test(e.msg) ? 'ghost' : ''));
+      const cls = /🏆|🏁/.test(e.msg) ? 'achievement' : (/SCOUT ·/.test(e.msg) ? 'scout' : (/ghost —|⚓/.test(e.msg) ? 'ghost' : ''));
       return `<div class="entry ${cls}"><span class="t">d${e.tick}</span>${escapeHtml(e.msg)}</div>`;
     }).join('');
 
+    // P0.4: the streak multiplier, right next to the Tell line it powers.
+    const streakSuffix = state.company.streakMultiplier > 1
+      ? ` · streak ×${state.company.streakMultiplier.toFixed(2)} (${state.company.streak} running)`
+      : '';
     document.getElementById('tell-line').textContent =
-      `pencil stakes ${window.pencilStakesPlaced} · ink stakes ${window.inkStakesPlaced} — the pencil is where the money is.`;
+      `pencil stakes ${window.pencilStakesPlaced} · ink stakes ${window.inkStakesPlaced} — the pencil is where the money is.${streakSuffix}`;
+
+    // P0.3: once a run resolves, autoplay has nothing left to do — the
+    // engine itself already freezes simulation (tick() no-ops); stop the
+    // UI's own 700ms timer too rather than ticking forever into a frozen
+    // state. The resolution itself is already visible in the ship's log
+    // (the 🏁/⚓ lines above) — no separate modal for this first cut.
+    if (state.gameOver && !isPaused()) stopAutoplay();
   }
 
   // ── stake note / buy note ───────────────────────────────────────────────
@@ -507,12 +587,19 @@
   }
 
   // ── autoplay ─────────────────────────────────────────────────────────
+  // P0.5: refresh() FIRST, then process the witness-log diff — renderStatic/
+  // renderShips fully rebuild #static-under's innerHTML and reset every
+  // ship dot's `class` attribute each call, so a transient effect class
+  // (anim-ship-squash, anim-lane-flash) added BEFORE refresh() would be
+  // wiped out again before the browser ever painted a frame of it. Adding
+  // it AFTER refresh() means it survives until the NEXT tick's refresh
+  // (700ms later in autoplay — comfortably longer than the ~380ms beat).
   function tickOnce() {
     const xyOfBefore = allPortXY(game.getState());
     game.tick();
     const xyOfAfter = allPortXY(game.getState());
-    processNewWitnessEntries((id) => xyOfAfter[id] || xyOfBefore[id]);
     refresh();
+    processNewWitnessEntries((id) => xyOfAfter[id] || xyOfBefore[id]);
   }
   function startAutoplay() { if (!autoplayTimer) autoplayTimer = setInterval(tickOnce, 700); }
   function stopAutoplay() { if (autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; } }
@@ -582,11 +669,20 @@
     svg.setAttribute('id', 'chart');
     svg.setAttribute('viewBox', `0 0 ${MAP_W} ${MAP_H}`);
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    // P0.5's pencil-dust puff filter (§3.2: "a ring of pencil dust puffs
+    // out (feTurbulence displacement, fades 300ms)") — defined once, here,
+    // and referenced by .fx-dust-puff's `filter: url(#dust-turbulence)` in
+    // the stylesheet. Pure SVG, no raster/canvas.
+    const defs = svgEl('defs');
+    defs.innerHTML = `<filter id="dust-turbulence" x="-60%" y="-60%" width="220%" height="220%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="noise"></feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="6"></feDisplacementMap>
+    </filter>`;
     const staticUnder = svgEl('g'); staticUnder.id = 'static-under';
     const shipLayer = svgEl('g'); shipLayer.id = 'ship-layer';
     const staticOver = svgEl('g'); staticOver.id = 'static-over';
     const fx = svgEl('g'); fx.id = 'fx-layer';
-    svg.appendChild(staticUnder); svg.appendChild(shipLayer); svg.appendChild(staticOver); svg.appendChild(fx);
+    svg.appendChild(defs); svg.appendChild(staticUnder); svg.appendChild(shipLayer); svg.appendChild(staticOver); svg.appendChild(fx);
     document.getElementById('chart-pane').prepend(svg);
 
     // tap the sheet (not a ship/port/shipyard) -> pause/resume

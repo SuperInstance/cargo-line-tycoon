@@ -315,12 +315,19 @@
     const state = {};
     for (const id of Object.keys(PORTS_BY_ID)) {
       const base = basePriceForPort(id);
-      state[id] = { price: base, basePrice: base, demand: 1.0 };
+      state[id] = { price: base, basePrice: base, demand: 1.0, deliverDebt: 0 };
     }
     return state;
   }
 
-  const MEAN_REVERSION = 0.06;
+  // P0.2 (cost of commitment, M2): reversion slowed from a Phase-1 0.06 to
+  // 0.015 — a lane's price now heals back toward base an order of magnitude
+  // slower, so the one-shot load/deliver nudges below (and the persistent
+  // deliver-debt fatigue further below) actually LINGER for many ticks
+  // instead of washing out before the player's next visit. One-line
+  // constant change, large behavioral change (see arch/CARGO-LINE-FUN-AND-
+  // GRAPHICS.md §2.1 M2) — nothing else about driftPrice's shape changes.
+  const MEAN_REVERSION = 0.015;
   const NOISE_AMPLITUDE = 0.02; // ±2% of base per tick
   const MIN_PRICE_FRAC = 0.55;
   const MAX_PRICE_FRAC = 1.6;
@@ -337,7 +344,8 @@
   }
 
   // Player loaded `teu` units of cargo at this port: local supply drains,
-  // price nudges up (bounded).
+  // price nudges up (bounded). Untouched Phase 1 shape/signature — still a
+  // one-shot nudge to `price` itself, still returns a plain number.
   function applyLoadPressure(marketEntry, teu, capacityTeu) {
     const { basePrice } = marketEntry;
     const pressure = 0.15 * (teu / Math.max(1, capacityTeu)); // up to ~15% of base
@@ -346,12 +354,54 @@
   }
 
   // Player delivered `teu` units of cargo here: local supply floods, price
-  // nudges down (bounded).
+  // nudges down (bounded). Untouched Phase 1 shape/signature.
   function applyDeliverPressure(marketEntry, teu, capacityTeu) {
     const { basePrice } = marketEntry;
     const pressure = 0.15 * (teu / Math.max(1, capacityTeu));
     const next = clamp(marketEntry.price - basePrice * pressure, basePrice * MIN_PRICE_FRAC, basePrice * MAX_PRICE_FRAC);
     return Math.round(next);
+  }
+
+  // ── P0.2 (cost of commitment, M2): persistent "deliver debt" ──────────
+  // arch/CARGO-LINE-FUN-AND-GRAPHICS.md §2.1 M2 names the specific fix:
+  // "make applyDeliverPressure STICK: a lane you hammer stays depressed for
+  // many ticks." The one-shot applyDeliverPressure() nudge above washes out
+  // fast because a round-trip lane also LOADS at the same port on the
+  // alternating leg, which cancels it. deliverDebt is a SEPARATE persistent
+  // accumulator that only grows on delivery (never on load, so it can't be
+  // offset by the opposite action at the same port) and decays slowly — so
+  // a port you keep SELLING into (not buying from) keeps paying you less,
+  // trip over trip, until you rotate to a fresh lane. Deliberately NOT
+  // applied to loadPressure/buyPrice: the spec calls out deliver-pressure
+  // specifically, and a single debt channel is enough to make the 3rd
+  // round-trip on a lane earn visibly less than the 1st without collapsing
+  // the whole economy in 2-3 trips.
+  const DELIVER_DEBT_STEP = 0.05; // added to deliverDebt per full-capacity delivery
+  const DELIVER_DEBT_DECAY = 0.06; // fractional decay per tick (~11-tick half-life — slow relative to a short lane's round-trip cadence)
+  const DELIVER_DEBT_MAX = 0.5; // cap: a hammered port's effective sell price never drops below 50% of its own drifting price
+
+  // Called once per delivery, in addition to (not instead of)
+  // applyDeliverPressure(). Returns the new deliverDebt number.
+  function bumpDeliverDebt(marketEntry, teu, capacityTeu) {
+    const frac = teu / Math.max(1, capacityTeu);
+    return Math.min(DELIVER_DEBT_MAX, (marketEntry.deliverDebt || 0) + DELIVER_DEBT_STEP * frac);
+  }
+
+  // Called once per tick, for every port, alongside driftPrice() — the debt
+  // decays independently of (and slower than) the headline price's own
+  // mean-reversion, which is exactly what makes it "stick."
+  function decayDeliverDebt(marketEntry) {
+    return Math.max(0, (marketEntry.deliverDebt || 0) * (1 - DELIVER_DEBT_DECAY));
+  }
+
+  // What a ship ACTUALLY gets paid selling here right now: the drifting
+  // `price` (the world's own number), discounted by however hammered this
+  // port's deliver-debt currently is. previewStake() and the engine's own
+  // revenue calc both read prices through this — never `marketEntry.price`
+  // directly for a sale — so what the player sees previewed is what they
+  // actually get.
+  function effectiveSellPrice(marketEntry) {
+    return Math.round(marketEntry.price * (1 - (marketEntry.deliverDebt || 0)));
   }
 
   // Revenue for delivering `teu` units of cargo bought at `buyPrice` and
@@ -367,6 +417,8 @@
     PANAMA_DISRUPTION_TOLL_MULT, PANAMA_DISRUPTION_TRANSIT_MULT,
     basePriceForPort, initialMarketState, driftPrice,
     applyLoadPressure, applyDeliverPressure, tripRevenue,
+    bumpDeliverDebt, decayDeliverDebt, effectiveSellPrice,
+    DELIVER_DEBT_STEP, DELIVER_DEBT_DECAY, DELIVER_DEBT_MAX,
     // Phase 2 additions:
     CHOKEPOINTS, CORRIDORS, corridorKey, currentChokepointStatus,
     computeGlobalRouteLeg, adjustedDailyOpCost,

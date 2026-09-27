@@ -95,24 +95,59 @@
     return pencilPorts;
   }
 
-  // The seeded reveal schedule (arch/cargo-line-fact-landed.md §5.2): each
-  // pencil port is assigned a reveal_tick from a fork of `rng` + its index —
+  // The seeded AMBIENT reveal schedule (arch/cargo-line-fact-landed.md §5.2,
+  // tuned per arch/CARGO-LINE-FUN-AND-GRAPHICS.md §2.1 M1/P0.1): this only
+  // ever fires for UNSTAKED pencil ports — the world still breathes on its
+  // own at a low rate — while a STAKED port is retired from this schedule
+  // entirely and resolves only under the player's own keel (see engine.js
+  // _tickScoutRangeForShip / _tickRevealSchedule's staked-skip). Each pencil
+  // port is assigned a reveal_tick from a fork of `rng` + its index —
   // seeded, so replay ≡ live and the same seed reveals the same facts in the
-  // same order. Tuned so the first landing fires at ~tick 4 and successive
-  // reveals land roughly every 3 ticks, so an early pencil stake resolves
-  // within a small handful of ticks of being placed (Fable §7.2). One
-  // `snapshot` entry is appended: a `revised` landing on the first
-  // pool-backed port a few ticks after it inks, so all three verdicts
-  // (`proven`, `erased`, `revised`) are reachable inside a 60-tick window,
-  // fully offline.
+  // same order.
+  //
+  // Pool-backed ports and decoys are INTERLEAVED (not pool-facts-then-all-
+  // decoys) so an early decoy erasure is reachable within a short, fixed
+  // tick budget regardless of the overall schedule's pace — important
+  // because the pace itself was deliberately slowed (tick spacing 3 -> 5,
+  // "a low ambient rate") once M1 gave staked ports their own, much faster,
+  // scout-driven path; the ambient clock no longer needs to carry all the
+  // pressure. One `snapshot` entry is appended: a `revised` landing on the
+  // first pool-backed port a few ticks after it inks, so all three verdicts
+  // (`proven`, `erased`, `revised`) are still reachable inside a 60-tick
+  // window, fully offline, exactly as game/test/provenance.test.js expects.
+  const AMBIENT_TICK_SPACING = 5;
+  const AMBIENT_FIRST_TICK = 4;
+
+  function interleavePencilPorts(pencilPorts) {
+    const pools = pencilPorts.filter((p) => !p.isDecoy);
+    const decoys = pencilPorts.filter((p) => p.isDecoy);
+    const out = [];
+    let poolI = 0, decoyI = 0;
+    const total = pools.length + decoys.length;
+    for (let i = 0; i < total; i++) {
+      // How many decoys "should" have been placed by this position, spread
+      // proportionally across the whole order — deterministic, no RNG.
+      const targetDecoysSoFar = decoys.length ? Math.round(((i + 1) * decoys.length) / total) : 0;
+      if (decoyI < targetDecoysSoFar && decoyI < decoys.length) {
+        out.push(decoys[decoyI]); decoyI++;
+      } else if (poolI < pools.length) {
+        out.push(pools[poolI]); poolI++;
+      } else {
+        out.push(decoys[decoyI]); decoyI++;
+      }
+    }
+    return out;
+  }
+
   function buildRevealSchedule(rng, pencilPorts) {
+    const ordered = interleavePencilPorts(pencilPorts);
     const schedule = [];
-    let tick = 4;
-    for (const pp of pencilPorts) {
+    let tick = AMBIENT_FIRST_TICK;
+    for (const pp of ordered) {
       const jitter = rng.int(-1, 1);
       const revealTick = Math.max(1, tick + jitter);
       schedule.push({ tick: revealTick, pencilPortId: pp.id, kind: pp.isDecoy ? 'decoy' : 'pool' });
-      tick += 3;
+      tick += AMBIENT_TICK_SPACING;
     }
     const firstPool = pencilPorts.find((p) => !p.isDecoy);
     if (firstPool) {
