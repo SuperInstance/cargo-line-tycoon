@@ -1,0 +1,28 @@
+# .quilt/links.yml — the Reader's Fold manifest (jev-quilt Law 6).
+# This repo carries NO verdicts about its neighbors — only content-addressed
+# pointers each reader folds under its own weights. Edit this file; never edit
+# the generated block in README.md by hand.
+
+repo: cargo-line-tycoon
+family: quilt
+
+substrate:
+  - repo: jev-quilt
+    at: v0.3
+
+provides:
+  - id: opcode-canon
+    what: the 11-opcode substrate algebra, FNV-1a canary-pinned 0x024a555471370b18d
+  - id: memory-sandbox
+    what: 6-pattern x 5-authority defensive envelope (defends Leong 2605.08442)
+
+consumes:
+  - repo: jev-quilt
+    what: cell / hook / bookkeeper doctrine + q16 exact-rational codec
+    at: v0.3
+
+related:
+  - repo: qthe
+    why: shares the data-is-geometry framing
+  - repo: pong-quilt
+    why: sibling "ML you can watch think" teaching artifact

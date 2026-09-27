@@ -159,25 +159,33 @@ tests/stress/08_provenance_conflict.js     100%   ✓ beats FluctlightDB 18% by 
 
 ## In the broader fleet
 
-This is one of 17+ substrate-* packages in the SuperInstance fleet:
+This hand-written list used to live here. It has been replaced by the
+**generated** Cross-pollination section below — the machine-readable
+edition of the same claim, rendered from [`.quilt/links.yml`](.quilt/links.yml)
+by [`quilt-links.mjs`](https://github.com/SuperInstance/fleet-seeds/blob/main/quilt-links.mjs)
+rather than hand-maintained prose that rots the moment a repo is renamed.
+This repo is the **reference example** for the standard: see
+[CROSS-POLLINATION.md](https://github.com/SuperInstance/AI-Writings/blob/main/situations/arch/CROSS-POLLINATION.md)
+for why.
 
-- [`substrate-foundation`](https://github.com/SuperInstance/substrate-foundation) — 11 opcodes + canary
-- [`substrate-attest`](https://github.com/SuperInstance/substrate-attest) — ATTEST primitive
-- [`substrate-contest`](https://github.com/SuperInstance/substrate-contest) — CONTEST primitive
-- [`substrate-witness-log`](https://github.com/SuperInstance/substrate-witness-log) — prev_hash chain
-- [`substrate-revoke`](https://github.com/SuperInstance/substrate-revoke) — REVOKE primitive
-- [`substrate-canary-pin`](https://github.com/SuperInstance/substrate-canary-pin) — canary lock
-- [`substrate-delegate`](https://github.com/SuperInstance/substrate-delegate) — DELEGATE primitive
-- [`substrate-withdraw`](https://github.com/SuperInstance/substrate-withdraw) — WITHDRAW primitive
-- [`substrate-merger`](https://github.com/SuperInstance/substrate-merger) — MERGER primitive
-- [`substrate-bundle`](https://github.com/SuperInstance/substrate-bundle) — bundle primitive
-- [`substrate-membership`](https://github.com/SuperInstance/substrate-membership) — membership test
-- [`substrate-traverse`](https://github.com/SuperInstance/substrate-traverse) — graph walk
-- [`cell-doctrine`](https://github.com/SuperInstance/cell-doctrine) — R10 canon point
-- [`opcode-canon`](https://github.com/SuperInstance/opcode-canon) — 11-opcode canon
-- [`three-forms-of-forgetting`](https://github.com/SuperInstance/three-forms-of-forgetting) — R10
-- [`three-forms-of-evidence`](https://github.com/SuperInstance/three-forms-of-evidence) — R10
-- [`witness-is-prediction`](https://github.com/SuperInstance/witness-is-prediction) — R10
+## What a reader learns
+
+- **A hand-written cross-repo list is a liability, not documentation.** It
+  is one-directional, invisible to any tool, and rots silently on a rename.
+  A `.quilt/links.yml` manifest is the same claim made machine-readable and
+  regenerable.
+- **Content-addressing a doctrine pin (`@v0.3`) is different from asserting
+  it.** `consumes.at` names the evidence *this repo actually folded*, not a
+  live claim about what jev-quilt currently says — if jev-quilt changes, this
+  pin still names what was read.
+- **Two axes of polyformalism compose independently.** The same 11-opcode
+  algebra is both ported across 4 languages (byte-exact canary) and taught
+  through 5 cultural pedagogies — changing one axis never has to touch the
+  other.
+- **A canary hash is a portability contract, not a checksum.** The same
+  FNV-1a digest reproducing byte-for-byte across TypeScript, Rust, Python,
+  and C99 is the actual proof of "same substrate," verified by running
+  `tests/stress/01_fnv1a64_fuzz.js`, not asserted in prose.
 
 ## Adjacent research
 
@@ -185,6 +193,27 @@ This is one of 17+ substrate-* packages in the SuperInstance fleet:
 - [arXiv 2608.12365](https://arxiv.org/abs/2608.12365) — FluctlightDB: memory as distinct data model
 - [arXiv 2605.09764](https://arxiv.org/abs/2605.09764) — LEVI: stronger search architectures
 - [arXiv 2503.18808](https://arxiv.org/abs/2503.18808) — JEPA world models (LeCun)
+
+<!-- QUILT:LINKS:START — generated from .quilt/links.yml by quilt-links.mjs. Do not edit by hand. -->
+## Cross-pollination — the Reader's Fold
+
+*Part of the **quilt** family. Under [Law 6](https://github.com/SuperInstance/jev-quilt), this repo carries no verdicts about its neighbors — only content-addressed pointers you fold under your own weights.*
+
+**Grown on** — [jev-quilt](https://github.com/SuperInstance/jev-quilt) `@v0.3`
+
+**Provides** (fold these from here)
+- `opcode-canon` — the 11-opcode substrate algebra, FNV-1a canary-pinned 0x024a555471370b18d
+- `memory-sandbox` — 6-pattern x 5-authority defensive envelope (defends Leong 2605.08442)
+
+**Consumes** (folded from elsewhere)
+- [jev-quilt](https://github.com/SuperInstance/jev-quilt) `@v0.3` — cell / hook / bookkeeper doctrine + q16 exact-rational codec
+
+**Related** (1-hop siblings — Law 7)
+- [qthe](https://github.com/SuperInstance/qthe) — shares the data-is-geometry framing
+- [pong-quilt](https://github.com/SuperInstance/pong-quilt) — sibling "ML you can watch think" teaching artifact
+
+<sub>Regenerate: `node quilt-links.mjs` · Fleet map: [FLEET.md](https://github.com/SuperInstance/fleet-seeds/blob/main/FLEET.md)</sub>
+<!-- QUILT:LINKS:END -->
 
 ## License
 
