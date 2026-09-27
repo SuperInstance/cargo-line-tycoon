@@ -51,6 +51,22 @@ const classroom = new sub.LocaleClassroom({
 
 `examples/director_demo.js` shows a substrate-native Director loop (no LLM, pedagogical heuristics).
 
+## Phase 0 — world-model (`src/world.js`)
+
+The shared game kernel the tycoon toy (`../../game/`) runs on, built on top of
+`Cell` unchanged: a `SeededRNG` (deterministic mulberry32, seeded via `fnv1a64`),
+a booked append-only `World`/tick loop with a double-entry integer-minor-units
+ledger (`bookLedger` throws on a non-integer or negative amount — money never
+floats), and content-addressed game cell factories (`makeCompanyCell`,
+`makeShipCell`, `makeRouteCell`, `makePortCell`, `makeMarketCell`) tracked
+per-entity via `EntityStore` so nothing is ever overwritten in place.
+
+**The law this buys:** replay ≡ live. `node test-world.js` scripts a small run
+and asserts two independent runs from the same seed produce byte-identical
+witness-logs and `stateHash()`. Kept in sync with the standalone
+`cargo-line-tycoon-substrate-ts` package (same file, unmodified) — see that
+repo's `claude/phase0-worldmodel` branch.
+
 ## Polyformalism (cross-language parity)
 
 Same input → same FNV-1a hash, byte-for-byte across:

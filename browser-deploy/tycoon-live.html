@@ -2,371 +2,278 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Cargo Line Tycoon — Live Multiplayer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cargo Line Tycoon — the Chart</title>
+<meta name="description" content="One sheet of chart paper. Ink is proven, pencil is a guess, red is yours. Stake a ship on a fact you cannot yet prove, and watch the world land.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /* ── Pencil Sea — arch/cargo-line-fact-landed.md §5.1 token set ──────── */
+  :root {
+    --paper: #F3EBD8;
+    --grid: #D9CDB1;
+    --ink: #1C2333;
+    --pencil-1: #6F6D66;
+    --pencil-0: #BDB7A8;
+    --chinagraph: #D6452B;
+    --chinagraph-2: #2B5FD6;
+    --gold: #B8892E;
+    --ghost: #C9BFA8;
+    --ghost-alpha: 0.12;
+    --scar: #8A3B2E;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #151A22;
+      --grid: #232A35;
+      --ink: #E8E2D2;
+      --pencil-1: #8B919C;
+      --pencil-0: #4A505A;
+      --chinagraph: #FF6A4A;
+      --chinagraph-2: #5B8CFF;
+      --gold: #D6A94E;
+      --ghost: #6E7480;
+      --ghost-alpha: 0.12;
+      --scar: #C8563F;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #151A22;
+    --grid: #232A35;
+    --ink: #E8E2D2;
+    --pencil-1: #8B919C;
+    --pencil-0: #4A505A;
+    --chinagraph: #FF6A4A;
+    --chinagraph-2: #5B8CFF;
+    --gold: #D6A94E;
+    --ghost: #6E7480;
+    --ghost-alpha: 0.12;
+    --scar: #C8563F;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    background: linear-gradient(135deg, #0a1929 0%, #1a324a 100%);
-    color: #c0d6e4;
-    margin: 0;
-    padding: 0;
-    line-height: 1.6;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    overflow: hidden;
   }
-  
-  header {
-    background: rgba(0,0,0,0.5);
-    padding: 2em;
-    text-align: center;
-    border-bottom: 2px solid #d4a857;
+  .chart-name { font-family: 'Alegreya Sans SC', sans-serif; }
+
+  #app { display: flex; height: 100vh; width: 100vw; }
+  #chart-pane { flex: 1 1 auto; position: relative; min-width: 0; background: var(--paper); overflow: hidden; }
+  #chart-pane svg#chart { display: block; width: 100%; height: 100%; }
+
+  #margin {
+    flex: 0 0 340px; width: 340px; overflow-y: auto; padding: 14px 16px 24px;
+    border-left: 1px solid var(--grid); background: var(--paper);
   }
-  
-  h1 { color: #d4a857; font-size: 2.5em; margin-bottom: 0.3em; }
-  h2 { color: #d4a857; }
-  
-  .container { max-width: 1200px; margin: 0 auto; padding: 2em; }
-  
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.5em;
-    margin: 1.5em 0;
+  @media (max-width: 640px) {
+    #app { flex-direction: column; }
+    #chart-pane { flex: 1 1 auto; }
+    #margin {
+      flex: 0 0 auto; width: 100%; max-height: 42vh; min-height: 120px;
+      border-left: none; border-top: 1px solid var(--grid);
+      padding: 10px 16px 16px;
+    }
   }
-  
-  .card {
-    background: rgba(19, 38, 55, 0.7);
-    border: 1px solid #1a324a;
-    border-radius: 8px;
-    padding: 1.5em;
-    border-left: 4px solid #d4a857;
+
+  #cash-head { font-size: 1.9em; font-weight: 600; color: var(--gold); letter-spacing: 0.01em; }
+  #cash-head .label { font-size: 0.42em; color: var(--pencil-1); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 0.2em; font-family: 'Alegreya Sans SC', sans-serif; }
+  .cash-delta { font-size: 0.5em; margin-left: 0.4em; }
+  .cash-delta.up { color: var(--gold); }
+  .cash-delta.down { color: var(--scar); }
+
+  .margin-section { margin-top: 1.1em; }
+  .margin-section h3 {
+    font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.72em; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--pencil-1); margin: 0 0 0.4em; font-weight: 500;
   }
-  
-  button {
-    background: linear-gradient(135deg, #d4a857, #b89148);
-    color: #0a1929;
-    border: none;
-    padding: 0.7em 1.4em;
-    border-radius: 4px;
-    font-weight: bold;
-    cursor: pointer;
-    margin: 0.3em 0.3em 0.3em 0;
+
+  #stake-note {
+    border: 1px dashed var(--chinagraph); background: color-mix(in srgb, var(--chinagraph) 8%, transparent);
+    padding: 0.7em 0.8em; border-radius: 2px; font-size: 0.86em; line-height: 1.5; display: none;
   }
-  
-  button:hover { transform: translateY(-2px); }
-  
-  .live-feed {
-    background: rgba(0,0,0,0.5);
-    padding: 1em;
-    border-radius: 6px;
-    max-height: 320px;
-    overflow-y: auto;
-    font-family: monospace;
-    font-size: 0.85em;
+  #stake-note.show { display: block; }
+  #stake-note .medium-ink { color: var(--ink); font-weight: 600; }
+  #stake-note .medium-pencil { color: var(--pencil-1); font-weight: 600; font-style: italic; }
+  #stake-note .range { color: var(--chinagraph); font-weight: 600; }
+  #stake-note button {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.82em; margin-top: 0.55em; margin-right: 0.4em;
+    padding: 0.35em 0.8em; border: 1px solid var(--ink); background: transparent; color: var(--ink);
+    cursor: pointer; border-radius: 2px;
   }
-  
-  .live-feed .entry {
-    padding: 0.4em;
-    border-bottom: 1px solid #1a324a;
+  #stake-note button.primary { background: var(--chinagraph); border-color: var(--chinagraph); color: var(--paper); }
+  #stake-note button:hover { filter: brightness(1.1); }
+
+  #buy-note { display: none; font-size: 0.86em; }
+  #buy-note.show { display: block; }
+  .buy-row { display: flex; justify-content: space-between; align-items: center; padding: 0.35em 0; border-bottom: 1px solid var(--grid); gap: 0.5em; }
+  .buy-row:last-child { border-bottom: none; }
+  .buy-row button { font-family: 'IBM Plex Mono', monospace; font-size: 0.82em; padding: 0.3em 0.7em; border: 1px solid var(--gold); background: transparent; color: var(--gold); cursor: pointer; border-radius: 2px; white-space: nowrap; }
+  .buy-row button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .buy-row .cls-name { font-weight: 600; }
+  .buy-row .cls-meta { color: var(--pencil-1); font-size: 0.85em; display: block; }
+
+  #log { font-size: 0.82em; line-height: 1.6; display: flex; flex-direction: column-reverse; gap: 0.3em; max-height: 300px; overflow-y: auto; }
+  #log .entry { padding: 0.2em 0; border-bottom: 1px dotted var(--grid); }
+  #log .entry .t { color: var(--pencil-1); margin-right: 0.5em; }
+  #log .entry.scout { color: var(--gold); }
+  #log .entry.ghost { color: var(--scar); }
+  #log .entry.achievement { color: var(--gold); font-weight: 600; }
+
+  #tell-line { font-size: 0.84em; color: var(--pencil-1); line-height: 1.5; margin-top: 0.8em; font-style: italic; }
+
+  .margin-affordances { margin-top: 1.4em; padding-top: 0.8em; border-top: 1px solid var(--grid); font-size: 0.76em; color: var(--pencil-1); display: flex; gap: 1em; flex-wrap: wrap; }
+  .margin-affordances a, .margin-affordances button.linklike {
+    color: var(--pencil-1); text-decoration: underline; cursor: pointer; background: none; border: none;
+    font-family: 'IBM Plex Mono', monospace; font-size: 1em; padding: 0;
   }
-  
-  .live-feed .entry.new { color: #d4a857; animation: glow 1s; }
-  
-  @keyframes glow {
-    0% { background: rgba(212, 168, 87, 0.3); }
-    100% { background: transparent; }
+  .margin-affordances a:hover, .margin-affordances button.linklike:hover { color: var(--ink); }
+
+  /* ── the two clocks, top corner of the sheet ── */
+  #clocks { position: absolute; top: 12px; left: 16px; z-index: 5; pointer-events: none; user-select: none; }
+  #clock-asof { font-family: 'Alegreya Sans SC', sans-serif; font-size: 0.78em; font-weight: 600; color: var(--ink); letter-spacing: 0.03em; }
+  #clock-asof .ring { display: inline-block; width: 0.7em; height: 0.7em; border-radius: 50%; border: 1.5px solid var(--gold); margin-right: 0.4em; vertical-align: -0.05em; }
+  #clock-day { font-size: 0.74em; color: var(--pencil-1); font-style: italic; margin-top: 0.15em; }
+
+  #tutorial-line {
+    position: absolute; bottom: 10px; left: 16px; right: 16px; z-index: 5;
+    font-size: 0.82em; color: var(--pencil-1); text-align: center; pointer-events: none;
+    transition: opacity 0.6s ease; opacity: 0;
   }
-  
-  .player-list {
-    display: grid;
-    gap: 0.5em;
-  }
-  
-  .player {
-    background: rgba(0,0,0,0.4);
-    padding: 0.7em;
-    border-radius: 4px;
-    border-left: 3px solid #15803d;
-    font-family: monospace;
-    font-size: 0.9em;
-  }
-  
-  .player.busy { border-left-color: #d4a857; }
-  .player.idle { border-left-color: #5c99d4; }
-  
-  .stat-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5em;
-    margin: 1em 0;
-  }
-  
-  .stat {
-    background: rgba(0,0,0,0.3);
-    padding: 0.7em;
-    border-radius: 4px;
-    border-left: 3px solid #d4a857;
-  }
-  
-  .stat .label { color: #94a3b8; font-size: 0.75em; }
-  .stat .value { color: #d4a857; font-weight: bold; font-size: 1.1em; }
+
+  #mute-btn { cursor: pointer; }
+
+  /* ── SVG chart elements ── */
+  .sheet-bg { fill: var(--paper); }
+  .graticule { stroke: var(--grid); stroke-width: 1; opacity: 0.8; }
+  .seal-ring { fill: none; stroke: var(--gold); }
+  .seal-dot { fill: var(--ink); }
+  .seal-label { font-family: 'Alegreya Sans SC', sans-serif; fill: var(--ink); font-size: 10.5px; font-weight: 500; }
+  .seal-home-ring { fill: none; stroke: var(--chinagraph); stroke-width: 1.4; stroke-dasharray: 2 2; }
+  .shipyard-seal { cursor: pointer; }
+
+  .pencil-port { fill: none; }
+  .pencil-label { font-family: 'Alegreya Sans SC', sans-serif; font-size: 9.5px; font-style: italic; }
+  .pencil-port.reachable, .ink-seal.reachable { cursor: pointer; }
+  .lift { filter: drop-shadow(0 0 3px var(--chinagraph)); }
+
+  .ghost-port { opacity: var(--ghost-alpha, 0.12); }
+  .ghost-strike { stroke: var(--scar); stroke-width: 1; }
+
+  .chinagraph-lane { fill: none; stroke: var(--chinagraph); stroke-width: 2; }
+  .chinagraph-lane.dashed { stroke-dasharray: 5 4; }
+  .chinagraph-lane.preview { stroke-dasharray: 3 3; opacity: 0.7; }
+  .ship-dot { fill: var(--chinagraph); stroke: var(--paper); stroke-width: 1.3; transition: cx 0.65s linear, cy 0.65s linear; cursor: pointer; }
+  .ship-dot.selected { filter: drop-shadow(0 0 4px var(--chinagraph)); }
+
+  .choke-hatch { stroke-width: 1; opacity: 0.55; }
+  .choke-hatch.medium-ink { stroke: var(--ink); }
+  .choke-hatch.medium-pencil { stroke: var(--pencil-1); stroke-dasharray: 2 2; }
+  .choke-label { font-family: 'Alegreya Sans SC', sans-serif; font-size: 8.5px; fill: var(--pencil-1); }
+
+  @keyframes breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(var(--breathe-amp, -0.6px)); } }
+  @keyframes penTrace { from { stroke-dashoffset: var(--trace-len, 200); } to { stroke-dashoffset: 0; } }
+  @keyframes sealThump { 0% { transform: scale(1.08); } 100% { transform: scale(1); } }
+  @keyframes paperShake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(1px,0); } 75% { transform: translate(-1px,0); } }
+  @keyframes smearWipe { from { opacity: 1; } to { opacity: var(--ghost-alpha, 0.12); } }
+  @keyframes inkFlash { 0% { stroke: var(--ink); stroke-width: 3.5; } 100% { stroke: var(--chinagraph); stroke-width: 2; } }
+  .anim-pen-trace { animation: penTrace 0.9s linear forwards; }
+  .anim-seal-thump { animation: sealThump 0.18s ease-out; }
+  .anim-paper-shake { animation: paperShake 0.18s ease-out; }
+  .anim-smear { animation: smearWipe 0.7s ease-out forwards; }
+  .anim-ink-flash { animation: inkFlash 0.3s ease-out forwards; }
+
+  @keyframes fxProvenFade { from { opacity: 0; r: 5; } to { opacity: 1; r: 9; } }
+  .fx-pen-trace-ring { fill: none; stroke: var(--ink); stroke-width: 2; opacity: 0; animation: fxProvenFade 0.9s ease-out forwards; }
+  .fx-smear { fill: none; stroke: var(--scar); stroke-width: 2; r: 7; }
+  .fx-restamp { fill: none; stroke: var(--gold); stroke-width: 2; }
+  #chart-pane.intro-fade #static-under, #chart-pane.intro-fade #ship-layer, #chart-pane.intro-fade #static-over { opacity: 0; }
+  #chart-pane { transition: opacity 0.3s ease; }
 </style>
 </head>
 <body>
-
-<header>
-  <h1>🚢 Cargo Line Tycoon — Live</h1>
-  <p>Multiplayer substrate. Casey plays alongside. Playtesters as guides. Your computer helps the Quilt train while you play.</p>
-  <p>
-    <span style="display:inline-block;background:#15803d;padding:0.3em 0.8em;border-radius:4px;margin:0.3em;">● LIVE</span>
-    <span style="display:inline-block;background:#1e40af;padding:0.3em 0.8em;border-radius:4px;margin:0.3em;">7 locales</span>
-    <span style="display:inline-block;background:#5c99d4;padding:0.3em 0.8em;border-radius:4px;margin:0.3em;color:#0a1929;">hardware-enabled</span>
-  </p>
-</header>
-
-<div class="container">
-
-  <h2>🎮 Live Session</h2>
-  <div class="grid">
-    <div class="card">
-      <h3>Join Session</h3>
-      <p>Enter a session ID or create a new one. Other players can join via the ID.</p>
-      <input type="text" id="session-id" placeholder="session-id" style="background:rgba(0,0,0,0.5);color:#fff;border:1px solid #1a324a;padding:0.5em;width:100%;margin-bottom:0.5em;">
-      <input type="text" id="player-name" placeholder="Your name" style="background:rgba(0,0,0,0.5);color:#fff;border:1px solid #1a324a;padding:0.5em;width:100%;margin-bottom:0.5em;">
-      <select id="locale-select" style="background:rgba(0,0,0,0.5);color:#fff;border:1px solid #1a324a;padding:0.5em;width:100%;margin-bottom:0.5em;">
-        <option value="en">English (Socratic)</option>
-        <option value="zh">中文 (Confucian)</option>
-        <option value="pt">Português (Ubuntu)</option>
-        <option value="es">Español</option>
-        <option value="ja">日本語 (Whakaako)</option>
-        <option value="ar">العربية (Suez)</option>
-        <option value="vi">Tiếng Việt</option>
-      </select>
-      <button onclick="joinSession()">🚀 Join Session</button>
-      <button onclick="createSession()">✨ Create New</button>
+<div id="app">
+  <div id="chart-pane">
+    <div id="clocks">
+      <div id="clock-asof"><span class="ring"></span><span id="clock-asof-text">CHART AS OF —</span></div>
+      <div id="clock-day"><span id="clock-day-text">day 0</span></div>
     </div>
-    
-    <div class="card">
-      <h3>Session Stats</h3>
-      <div class="stat-grid">
-        <div class="stat">
-          <div class="label">Players</div>
-          <div class="value" id="stat-players">0</div>
-        </div>
-        <div class="stat">
-          <div class="label">Cargo routes</div>
-          <div class="value" id="stat-routes">0</div>
-        </div>
-        <div class="stat">
-          <div class="label">Witnesses</div>
-          <div class="value" id="stat-witnesses">0</div>
-        </div>
-        <div class="stat">
-          <div class="label">Avg coherence</div>
-          <div class="value" id="stat-coherence">—</div>
-        </div>
-      </div>
+    <div id="tutorial-line"></div>
+  </div>
+  <div id="margin">
+    <div id="cash-head"><span class="label">the ledger</span><span id="cash-value">$0</span><span id="cash-delta-el" class="cash-delta"></span></div>
+
+    <div class="margin-section">
+      <div id="stake-note"></div>
+      <div id="buy-note"></div>
+    </div>
+
+    <div class="margin-section">
+      <h3>Ship's log</h3>
+      <div id="log"></div>
+    </div>
+
+    <div id="tell-line"></div>
+
+    <div class="margin-affordances">
+      <button class="linklike" id="new-chart-btn">new chart · seed</button>
+      <button class="linklike" id="mute-btn">sound: <span id="mute-state">on</span></button>
+      <span id="tick-indicator">day <span id="tick-num">0</span></span>
     </div>
   </div>
-
-  <h2>👥 Players in Session</h2>
-  <div class="player-list" id="player-list">
-    <div class="player idle">
-      <strong>You</strong> · not yet joined · localhost
-    </div>
-  </div>
-
-  <h2>📜 Live Feed</h2>
-  <div class="live-feed" id="live-feed">
-    <div class="entry">No events yet. Join a session to start.</div>
-  </div>
-
-  <h2>🎯 How to Play</h2>
-  <div class="grid">
-    <div class="card">
-      <h3>1. Pick a Locale</h3>
-      <p>Each locale teaches the substrate through its own pedagogical lens. Choose the one that resonates with you. The same cell-graph, different framing.</p>
-    </div>
-    <div class="card">
-      <h3>2. Plan a Route</h3>
-      <p>Pick a port, plan a route through the cell-graph. Each waypoint is a cell. Your route gets hash-chained into the witness-log.</p>
-    </div>
-    <div class="card">
-      <h3>3. Trade & Negotiate</h3>
-      <p>Engage with AI agents (3 per locale). They ask questions, validate your route, witness your cargo. They become guides as you learn.</p>
-    </div>
-    <div class="card">
-      <h3>4. Submit to Canons</h3>
-      <p>Successful routes get added to the canon. The substrate learns from your play. Playtesters are guides; their patterns become pedagogy.</p>
-    </div>
-  </div>
-
-  <h2>🌐 Distributed Computing</h2>
-  <div class="card">
-    <p>While you play, your computer contributes to the Quilt. The same browser that runs the game can train models, run PDE solvers, host witness-log replication.</p>
-    <p>
-      <button onclick="enableDistributed()">⚡ Enable Distributed Computing</button>
-      <button onclick="openDistributed()">💻 Open Training Dashboard</button>
-    </p>
-    <div id="distributed-status" style="font-family:monospace;font-size:0.85em;margin-top:1em;color:#94a3b8;">
-      Distributed computing disabled. Click "Enable" to start contributing.
-    </div>
-  </div>
-
 </div>
 
+<!-- ── Kernel loading: the two untouched L2 substrate files (index.js,   -->
+<!-- world.js) are plain CommonJS. This tiny shim lets them load as plain -->
+<!-- classic scripts with zero bundler, without editing either file.     -->
 <script>
-// ─── Live session management ──────────────────────────────
-
-const SESSION = {
-  id: null,
-  name: null,
-  locale: 'en',
-  players: [],
-  events: [],
-  ws: null,
-};
-
-// ─── Player list ──────────────────────────────────────────
-
-function updatePlayers() {
-  const list = document.getElementById('player-list');
-  if (SESSION.players.length === 0) {
-    list.innerHTML = '<div class="player idle"><strong>You</strong> · not yet joined · localhost</div>';
-    return;
+  if (typeof window.Buffer === 'undefined') {
+    window.Buffer = {
+      from: function (input) {
+        if (input instanceof Uint8Array) return input;
+        return new TextEncoder().encode(String(input));
+      },
+      isBuffer: function (x) { return x instanceof Uint8Array; },
+    };
   }
-  list.innerHTML = SESSION.players.map(p => {
-    const cls = p.status === 'busy' ? 'busy' : p.status === 'idle' ? 'idle' : '';
-    return `<div class="player ${cls}">
-      <strong>${p.name}</strong> · ${p.locale} · ${p.status || 'online'}
-      <br><span style="color:#94a3b8;">${p.route || 'no active route'} · ${p.witnesses || 0} witnesses</span>
-    </div>`;
-  }).join('');
-}
-
-function addLiveEvent(type, msg) {
-  const feed = document.getElementById('live-feed');
-  const entry = document.createElement('div');
-  entry.className = 'entry new';
-  entry.textContent = `[${new Date().toLocaleTimeString()}] ${type}: ${msg}`;
-  feed.insertBefore(entry, feed.firstChild);
-  setTimeout(() => entry.classList.remove('new'), 1000);
-  
-  SESSION.events.unshift({ type, msg, time: Date.now() });
-  if (SESSION.events.length > 50) SESSION.events = SESSION.events.slice(0, 50);
-}
-
-// ─── Session join ─────────────────────────────────────────
-
-window.joinSession = function() {
-  const id = document.getElementById('session-id').value.trim();
-  const name = document.getElementById('player-name').value.trim() || 'Anonymous';
-  const locale = document.getElementById('locale-select').value;
-  
-  if (!id) return alert('Enter session ID');
-  
-  SESSION.id = id;
-  SESSION.name = name;
-  SESSION.locale = locale;
-  
-  SESSION.players.push({
-    name,
-    locale,
-    status: 'busy',
-    route: 'planning',
-    witnesses: 0,
-  });
-  
-  addLiveEvent('JOIN', `${name} joined session ${id} (${locale})`);
-  updatePlayers();
-  document.getElementById('stat-players').textContent = SESSION.players.length;
-  
-  // Simulate other players joining
-  simulatePlayers();
-  
-  // Simulate witness-log activity
-  simulateWitnesses();
-};
-
-window.createSession = function() {
-  const id = 'sess-' + Math.random().toString(36).slice(2, 10);
-  document.getElementById('session-id').value = id;
-  addLiveEvent('CREATE', `New session ID: ${id}`);
-};
-
-function simulatePlayers() {
-  // Simulate other players
-  const names = ['Captain Athena', 'Atlas', 'Sovereign', 'shaykh_ammar', 'ustadh_nadia', 'thay_giao_hung', 'ba_huong'];
-  const locales = ['en', 'en', 'en', 'ar', 'ar', 'vi', 'vi'];
-  setTimeout(() => {
-    if (SESSION.players.length < 4) {
-      const i = Math.floor(Math.random() * names.length);
-      const p = { name: names[i], locale: locales[i], status: 'busy', route: 'Yokohama → Kobe', witnesses: Math.floor(Math.random() * 50) };
-      SESSION.players.push(p);
-      addLiveEvent('JOIN', `${p.name} joined (${p.locale})`);
-      updatePlayers();
-      document.getElementById('stat-players').textContent = SESSION.players.length;
-    }
-  }, 2000);
-}
-
-function simulateWitnesses() {
-  setInterval(() => {
-    if (SESSION.players.length === 0) return;
-    
-    const actions = [
-      'witnessed a route attestation',
-      'completed cargo trade at Suez',
-      'attested a polyformal port',
-      'started new route from Yokohama',
-      'witness-log entry added',
-      'JEV score computed',
-      'BIND opcode executed',
-      'CONTEST resolved',
-      'witness-link established with another player',
-    ];
-    
-    const a = actions[Math.floor(Math.random() * actions.length)];
-    addLiveEvent('WITNESS', a);
-    
-    // Increment witness count
-    document.getElementById('stat-witnesses').textContent = 
-      (parseInt(document.getElementById('stat-witnesses').textContent) + 1).toString();
-    document.getElementById('stat-routes').textContent = 
-      (parseInt(document.getElementById('stat-routes').textContent) + (Math.random() < 0.1 ? 1 : 0)).toString();
-    
-    const coherence = (0.7 + Math.random() * 0.25).toFixed(3);
-    document.getElementById('stat-coherence').textContent = coherence;
-    
-    // Update player witnesses
-    SESSION.players.forEach(p => {
-      if (Math.random() < 0.5) p.witnesses = (p.witnesses || 0) + 1;
-    });
-    updatePlayers();
-  }, 3000);
-}
-
-// ─── Distributed computing ────────────────────────────────
-
-window.enableDistributed = function() {
-  const status = document.getElementById('distributed-status');
-  status.innerHTML = 
-    '<span style="color:#15803d;">✓ Distributed computing enabled</span><br>' +
-    'Your hardware will contribute to the Quilt when idle.<br>' +
-    'Background tasks:<br>' +
-    '  • Witness-log replication<br>' +
-    '  • JEV cosine cache warmup<br>' +
-    '  • Light training jobs (when idle)<br>' +
-    '<br>You can monitor in the Training Dashboard.';
-};
-
-window.openDistributed = function() {
-  window.location.href = 'distributed-training.html';
-};
-
-// ─── Init ────────────────────────────────────────────────
-
-addLiveEvent('INIT', 'Cargo Line Tycoon Live ready. Create or join a session.');
-
+  var module = { exports: {} };
+  var require = function (path) {
+    if (/index\.js$/.test(String(path))) return window.CLTSubstrateCore;
+    throw new Error('browser shim: cannot require ' + path + ' (only ./index.js is resolvable here)');
+  };
 </script>
+<script src="../substrate/ts/src/index.js"></script>
+<script>
+  window.CLTSubstrateCore = module.exports;
+  module = undefined;
+</script>
+<script>
+  module = { exports: {} };
+</script>
+<script src="../substrate/ts/src/world.js"></script>
+<script>
+  window.CLTWorld = module.exports;
+  module = undefined;
+  require = undefined;
+</script>
+
+<!-- ── Phase 1+2+Chart game (all UMD; auto-detect browser vs. Node). Load -->
+<!-- order matters: provenance has no deps; pool needs provenance; chokepoints -->
+<!-- /snapshot/ports need provenance; economy needs ports+chokepoints+snapshot -->
+<!-- +provenance; pencil needs economy+ports; engine needs all of the above. -->
+<script src="../game/src/provenance.js"></script>
+<script src="../game/data/pool.js"></script>
+<script src="../game/data/chokepoints.js"></script>
+<script src="../game/data/fuel_freight_snapshot.js"></script>
+<script src="../game/data/ports.js"></script>
+<script src="../game/src/economy.js"></script>
+<script src="../game/src/pencil.js"></script>
+<script src="../game/src/engine.js"></script>
+<script src="game/ui.js"></script>
 
 </body>
 </html>
