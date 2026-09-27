@@ -1,0 +1,14 @@
+{
+  "name": "cargo-line-tycoon",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cargo Line Tycoon — the Chart. An offline-first, deterministic single-player tycoon game.",
+  "scripts": {
+    "test": "node --test \"game/test/**/*.test.js\"",
+    "build": "node scripts/build-dist.mjs",
+    "serve:dist": "npx http-server dist -p 8080 -s"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
