@@ -4,3 +4,9 @@ shipwright/__pycache__/
 composite_jev/__pycache__/
 motif_quilt/agents/__pycache__/
 multi_model_iteration/__pycache__/
+
+# Repo-cleanliness hardening (2026-09-27): build artifacts and dependency
+# trees should never be tracked, in any subproject.
+**/target/
+node_modules/
+dist/
