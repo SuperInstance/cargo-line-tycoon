@@ -96,31 +96,63 @@
   // history is the ordered list of cell addresses booked for its entity id
   // (see EntityStore below), never a mutation in place.
 
+  // Phase 2 (Fable apex refinement): a world-fact cell must carry a
+  // provenance envelope, or cellFor refuses it outright — raise, never
+  // default (mirrors the substrate's own R2/G20a "refusal, not a silent
+  // default" discipline for revocable standing). A minimal shape check
+  // only (a real `source` string + numeric `trust`), not a dependency on
+  // game/src/provenance.js — this file stays the shared, game-agnostic
+  // kernel; the richer envelope (required source_url/seed_label per
+  // source, etc.) is enforced one level up, in provenance.attest() itself,
+  // before a cell is ever built. `ship`/`route`/`company` are player cells
+  // (not required to carry provenance, but default to a minimal
+  // {source:'player', trust:1.0} tag when the caller doesn't supply one).
+  const PROVENANCE_REQUIRED_CELL_TYPES = new Set(['port', 'market', 'event']);
+
+  function hasMinimalProvenance(provenance) {
+    return !!provenance && typeof provenance === 'object'
+      && typeof provenance.source === 'string' && provenance.source.length > 0
+      && typeof provenance.trust === 'number' && provenance.trust >= 0 && provenance.trust <= 1;
+  }
+
   function cellFor(type, state) {
+    if (PROVENANCE_REQUIRED_CELL_TYPES.has(type) && !hasMinimalProvenance(state && state.provenance)) {
+      throw new Error(`cellFor: '${type}' cells require a provenance envelope (state.provenance = {source, trust, ...}) — refused, not defaulted. See game/src/provenance.js.`);
+    }
     return new Cell({ type, state });
   }
 
-  function makeCompanyCell({ id, name, cashMinorUnits, reputation = 0, unlocks = [] }) {
-    return cellFor('company', { id, name, cash: cashMinorUnits, reputation, unlocks });
+  const PLAYER_PROVENANCE = { source: 'player', trust: 1.0 };
+
+  function makeCompanyCell({ id, name, cashMinorUnits, reputation = 0, unlocks = [], provenance = PLAYER_PROVENANCE }) {
+    return cellFor('company', { id, name, cash: cashMinorUnits, reputation, unlocks, provenance });
   }
 
-  function makeShipCell({ id, companyId, classId, capacityTeu, speedKn, canTransitPanama = true, cargoTeu = 0, positionPortId, condition = 100, routeId = null }) {
+  function makeShipCell({ id, companyId, classId, capacityTeu, speedKn, canTransitPanama = true, cargoTeu = 0, positionPortId, condition = 100, routeId = null, provenance = PLAYER_PROVENANCE }) {
     return cellFor('ship', {
       id, companyId, classId, capacityTeu, speedKn, canTransitPanama,
-      cargoTeu, positionPortId, condition, routeId,
+      cargoTeu, positionPortId, condition, routeId, provenance,
     });
   }
 
-  function makeRouteCell({ id, companyId, fromPortId, toPortId, distanceNm, legs = [], usesPanama = false, assignedShipIds = [] }) {
-    return cellFor('route', { id, companyId, fromPortId, toPortId, distanceNm, legs, usesPanama, assignedShipIds });
+  function makeRouteCell({ id, companyId, fromPortId, toPortId, distanceNm, legs = [], usesPanama = false, assignedShipIds = [], provenance = PLAYER_PROVENANCE }) {
+    return cellFor('route', { id, companyId, fromPortId, toPortId, distanceNm, legs, usesPanama, assignedShipIds, provenance });
   }
 
-  function makePortCell({ id, name, lat, lng, country, annualTeus, tier, provenance = { source: 'canon', trust: 1.0 } }) {
+  // No default here (unlike Phase 1): a port cell's provenance must be
+  // supplied by the caller — see game/data/ports.js's per-port `provenance`
+  // field, sourced through game/src/provenance.js. cellFor() refuses a
+  // missing one rather than silently assuming {source:'canon', trust:1.0}.
+  function makePortCell({ id, name, lat, lng, country, annualTeus, tier, provenance }) {
     return cellFor('port', { id, name, lat, lng, country, annualTeus, tier, provenance });
   }
 
-  function makeMarketCell({ portId, commodity, basePrice, price, demand }) {
-    return cellFor('market', { portId, commodity, basePrice, price, demand });
+  // Phase 2: market cells are procedurally-priced (BASE_PRICE_BY_COMMODITY is
+  // game flavor, not observed truth — see game/data/ports.js's own file-header
+  // caveat), so every caller must now pass a provenance envelope; cellFor()
+  // refuses a missing one. There is deliberately no default here either.
+  function makeMarketCell({ portId, commodity, basePrice, price, demand, provenance }) {
+    return cellFor('market', { portId, commodity, basePrice, price, demand, provenance });
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -181,7 +213,18 @@
 
     // Book an arbitrary event into the witness-log. `entry` must be JSON-safe
     // and must not embed wall-clock time or any other non-replayable value.
+    // Phase 2 (Fable apex refinement): any '*_start' event marks the
+    // beginning of something that will be narrated to the player (a
+    // disruption, a game starting) — refuse it outright if it carries no
+    // provenance, so a seeded fact can never enter the book already
+    // wearing the disguise of unattributed truth. Same minimal shape check
+    // as cellFor() above; not scoped to only 'port'/'market'/'event' types
+    // because an event *entry* (not a Cell) is exactly what a '*_start'
+    // booking is.
     book(entry) {
+      if (typeof entry.type === 'string' && entry.type.endsWith('_start') && !hasMinimalProvenance(entry.provenance)) {
+        throw new Error(`book: a '*_start' event ("${entry.type}") requires a provenance envelope (entry.provenance = {source, trust, ...}) — refused, not defaulted. See game/src/provenance.js.`);
+      }
       const booked = Object.freeze({ tick: this.tick_no, seq: this.witness_log.length, ...entry });
       this.witness_log.push(booked);
       return booked;

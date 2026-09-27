@@ -135,3 +135,170 @@ instead of `file://`.
   exact/integer per the ℚ₁₆ discipline ("identity never floats"), just a
   coarser minor unit, chosen for a more readable tycoon UI. `World.bookLedger`
   enforces non-negative integers regardless of the unit chosen.
+
+---
+
+## Phase 2 — Ground-truth + provenance layer
+
+Adds a provenance envelope over every world-fact, 5 new real chokepoints
+(Suez/Malacca/Hormuz/Bab-el-Mandeb/Gibraltar) alongside Panama, 3 new real
+international ports (Rotterdam/Singapore/Ras Tanura) so those chokepoints sit
+on real, playable corridors, a dated fuel/freight snapshot, and a real,
+currently-dated disruption (the 2026 Strait of Hormuz crisis) that measurably
+reshapes routing. See `CARGO-LINE-TYCOON.md` §2 L3/L4 and the Phase 2 entry
+in §5 for the design; this section is the honest record of how it was built
+and verified.
+
+### What's now provenance-backed
+
+Every world-fact is a `{value, source, source_url?, as_of?, trust,
+seed_label?, notes?}` envelope (`game/src/provenance.js`), refused (not
+defaulted) if incomplete — `source ∈ {canon, scout, procgen, player}`, and
+`cellFor()`/`book()` in `substrate/ts/src/world.js` throw rather than fill in
+a plausible-looking default for a `port`/`market` cell or a `*_start` event
+with no provenance:
+
+- **Ports** (13; `game/data/ports.js`) — the original 10 US/CA ports carry
+  `source:'canon'`, `source_url:'locales/en/canon/ports.json'`; the 3 new
+  international ports (Rotterdam, Singapore, Ras Tanura) carry `source:'canon'`
+  with real, web-verified citations (Port of Rotterdam Authority, PSA
+  Singapore, Wikipedia for Ras Tanura's terminal capacity).
+- **Chokepoints** (6; `game/data/chokepoints.js`) — toll, transit-time, size
+  limit, and status are each their own provenance cell.
+- **The dated fuel/freight snapshot** (`game/data/fuel_freight_snapshot.js`)
+  — real, cited, dated figures; the "typical year" baselines they're
+  compared against are honestly marked `source:'procgen'` (self-generated
+  judgment calls, not observed facts), so the multiplier's honesty is
+  auditable.
+- **Market prices** — game-flavor inventions (`BASE_PRICE_BY_COMMODITY`),
+  marked `source:'procgen'`, never confused with the real port/chokepoint/
+  snapshot cells sitting next to them.
+- **The Panama toy event** (Phase 1's stochastic disruption) — booked
+  `source:'procgen'` on both start and end, and re-worded into a "pencil"
+  register (`✎ Pencil weather: ... drawn from the 2023-24 precedent, not a
+  live report`) so a seeded fact is never narrated as news. The REAL, current
+  Panama canon fact (fully recovered as of mid-2025 per ACP reporting) sits
+  right next to the toy mechanic in `getState().chokepoints.panama`, legibly
+  distinct from it.
+- **In-game chokepoint status changes** (Hormuz de-escalation, Red Sea
+  recovery/relapse) — always re-attested `source:'procgen'` with a
+  `seed_label` naming the RNG fork that decided them
+  (`provenance.reattestSimulated`), never a `source_url`, never phrased as a
+  new real observation — `getState().chokepoints[id] = {real, current}`
+  keeps both readable side by side.
+
+`node game/test/provenance.test.js` walks a full 60-tick scripted run and
+asserts every `port`/`market` cell and every `*_start`/`*_end`/
+`chokepoint_status_change` witness-log entry carries valid provenance, and
+that replay ≡ live still holds with the law enforced.
+
+**Declared cost:** adding required `provenance` fields to `port`/`market`
+cells changes their content-addressed cell address, so a fixed seed's
+`stateHash()`/`replayHash()` changed exactly once. Measured directly (seed
+`declared-cost-check`, `buyShip('feeder')` + `assignShip(...,'los_angeles',
+'seattle')` + 10 ticks): **`20b5ed235642bdb8` (pre-Phase-2) →
+`6a88d43e2a4a1d4c` (post-Phase-2)**. No test in this repo asserts a literal
+pinned hash (both `replay.test.js` and `substrate/ts/test-world.js` only
+compare two live runs to each other), so there was nothing to re-pin as a
+source change — this note *is* the re-pin record.
+
+### Chokepoints added (with as_of/source)
+
+| Chokepoint | Status (canon) | as_of | Source |
+|---|---|---|---|
+| Panama (existing) | open (recovered) | 2026-08-01 | Kuehne+Nagel reporting on ACP data |
+| Suez | congested | 2025-12-25 | Logfret/industry reporting on Red Sea diversions |
+| Bab-el-Mandeb | congested | 2025-11-30 | US MARAD Maritime Advisory 2025-012 |
+| **Hormuz** | **disrupted (blocks transit)** | **2026-08-27** | **Al Jazeera, on the 2026 Strait of Hormuz crisis** |
+| Malacca | open (no crisis found) | 2025-06-01 | general reference (Wikipedia), honestly moderate trust |
+| Gibraltar | open (no crisis found) | 2025-06-01 | general reference (Wikipedia), honestly moderate trust |
+
+Dated snapshots: bunker fuel (VLSFO, Singapore) $470/tonne as of 2025-10-01
+(oilpriceapi.com); freight index (Drewry World Container Index composite)
+$2,213/40ft as of 2025-12-25 (compiled via ufreight.com's reporting of the
+Drewry index). Both explicitly note they predate the 2026 Hormuz crisis and
+are not fabricated forward to match it.
+
+### The disruption-reshapes-routing proof
+
+**Scripted (`game/test/chokepoints.test.js`):** with no override, Ras Tanura
+↔ Singapore (a real Persian Gulf ↔ Asia lane through Hormuz) is refused
+outright — `{ok:false, reason:"Strait of Hormuz is effectively closed..."}`
+— while the identical corridor with Hormuz forced open succeeds; a
+lane never touching Hormuz/Suez/Bab-el-Mandeb is byte-identical either way.
+Rotterdam ↔ Singapore's real "congested" Suez/Bab-el-Mandeb status raises
+total transit time vs. a counterfactual-open run of the same corridor, while
+Suez's own toll is actually *lower* (a real, documented nuance — the SCA
+discounted fees to compete with the Cape route even as war-risk premiums on
+the Bab-el-Mandeb approach rose) — asserted explicitly so the test can't pass
+on a naive "everything costs more" assumption.
+
+**In the browser (headless Chromium, Playwright, see below):** starting a
+fresh run and previewing Los Angeles → Ras Tanura shows the exact same real
+refusal reason as the scripted test, live in the assign-ship UI; the
+Chokepoints panel shows Hormuz `DISRUPTED` with an `INK` (real) badge from
+tick 0; previewing Rotterdam → Singapore shows `via Gibraltar + Suez +
+Bab-el-Mandeb + Malacca ($17,440 toll/risk)` — the real congestion, priced
+and named, not a hidden number.
+
+### Verified (headless Chromium, Playwright)
+
+```
+node game/test/economy.test.js       # 13 checks — Phase 1, byte-unchanged
+node game/test/loop.test.js          # 6 checks — Phase 1, byte-unchanged
+node game/test/replay.test.js        # 3 checks — Phase 1, byte-unchanged
+node game/test/provenance.test.js    # 17 checks — new
+node game/test/chokepoints.test.js   # 12 checks — new
+node substrate/ts/test.js            # kernel canary/Cell/SignalChain
+node substrate/ts/test-world.js      # 13 checks — incl. the new refusal law
+```
+
+All green — 64 checks total across the two new files plus every Phase 0/1
+file, none regressed. In a real headless browser:
+
+- Loaded `tycoon-live.html` cold, started a seeded run — zero console/page
+  errors.
+- Chokepoints panel and World Snapshot panel populate correctly (INK badges,
+  real descriptions, the fuel/freight multipliers).
+- The map now spans a world strip (13 ports, 5 new chokepoint markers colored
+  by live status) instead of just the US/CA window — the world visibly grew.
+- Previewing a Hormuz-blocked corridor shows the real refusal reason;
+  previewing a Suez/Bab-el-Mandeb corridor shows the real toll/risk
+  breakdown by name.
+- A normal coastal buy → assign → ship → profit → reinvest loop still
+  completes over a 200-tick autoplay session — zero errors throughout, the
+  "pencil weather" register appears in the log when the Phase 1 Panama toy
+  event fires, and the `First Profit Double` achievement still fires.
+- Same-seed determinism reconfirmed **in the browser itself** (two fresh
+  headless page loads, same seed, same scripted actions → identical final
+  cash), not just in the Node test suite.
+
+### Deviations / findings worth flagging
+
+- **3 new international ports were added**, beyond the letter of "extend
+  port canon" — without them, Suez/Malacca/Hormuz/Bab-el-Mandeb/Gibraltar
+  would have no real lane that actually transits them, failing "routing must
+  consider them." Rotterdam, Singapore, and Ras Tanura were chosen because
+  together they make every one of the 5 new chokepoints load-bearing on a
+  real, geographically-correct corridor (the classic Europe-Asia liner route
+  chains all four non-Panama canal/strait chokepoints in one lane).
+- **The Fable apex call's provenance-schema refinement was folded in
+  mid-build** (envelope shape `{value?, source, source_url?, as_of?, trust,
+  seed_label?}`, `source ∈ {canon,scout,procgen,player}`, refusal at
+  `cellFor()`/`book()`, and de-narrating the Panama log line into a pencil
+  register) — see the git log for the sequencing; it changed the schema
+  originally drafted (`REAL`/`CANON`/`DERIVED`) partway through, which is why
+  `source_url` is a repo-relative pointer for a few internal design-baseline
+  cells (e.g. Panama's Phase-1-baseline toll) rather than an external URL.
+- **Suez and Bab-el-Mandeb share one simulated "Red Sea" dynamic chain**
+  (`DYNAMIC_CHOKEPOINTS.red_sea` in `game/src/engine.js`) rather than
+  evolving independently — a deliberate simplification, since in reality
+  both move together (the same crisis, the same southern Red Sea risk zone).
+- **Malacca and Gibraltar never move at runtime** — no real, sourced crisis
+  was found for either at research time, and the honest choice was to leave
+  them statically "open" rather than invent a disruption to make the
+  mechanic feel busier.
+- **Hormuz's "no live route around it" is real, not a gameplay contrivance**
+  — the Strait of Hormuz is the *only* sea access to the Persian Gulf, so
+  `blocksTransit` refuses the corridor outright instead of just raising cost,
+  which is the honest modeling choice, not an engine limitation.

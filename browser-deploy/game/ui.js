@@ -6,15 +6,20 @@
 (function () {
   'use strict';
 
-  const { GameEngine, SHIP_CLASSES, PORTS, PORTS_BY_ID, STARTING_CASH, HOME_PORT_ID } = window.CLTEngine;
+  const { GameEngine, SHIP_CLASSES, PORTS, PORTS_BY_ID, STARTING_CASH, HOME_PORT_ID, CHOKEPOINTS } = window.CLTEngine;
   const { WEST_COAST, EAST_GULF_COAST } = window.CLT_PORTS;
+  const { describe: describeProvenance } = window.CLTProvenance;
 
   let game = null;
   let autoplayTimer = null;
 
   // ── projection: lat/lng -> a clean schematic, not literal cartography ──
-  const LNG_MIN = -126, LNG_MAX = -72, LAT_MIN = 23, LAT_MAX = 51;
-  const MAP_W = 900, MAP_H = 600, PAD = 60;
+  // Phase 2: widened from a US/CA-only window to a world strip (the map
+  // grows with the world, matching CARGO-LINE-TYCOON.md §3's "the world
+  // visibly grows" progression idea) — Rotterdam, Singapore, and Ras Tanura
+  // now fit alongside the original 10 ports.
+  const LNG_MIN = -130, LNG_MAX = 108, LAT_MIN = -4, LAT_MAX = 56;
+  const MAP_W = 1180, MAP_H = 560, PAD = 55;
 
   function project(lat, lng) {
     const x = PAD + ((lng - LNG_MIN) / (LNG_MAX - LNG_MIN)) * (MAP_W - 2 * PAD);
@@ -46,6 +51,40 @@
   const WEST_C = centroid(WEST_COAST);
   const EAST_C = centroid(EAST_GULF_COAST);
   const PANAMA_XY = { x: (WEST_C.x + EAST_C.x) / 2, y: Math.max(WEST_C.y, EAST_C.y) + 65 };
+
+  // Phase 2: the 5 new chokepoints, projected from their real lat/lng
+  // (game/data/chokepoints.js) — unlike PANAMA_XY above (a synthetic
+  // schematic point kept as-is so the existing coastal ship animation never
+  // changes), these use the same literal project() every port uses.
+  const CHOKEPOINT_XY = {};
+  for (const id of Object.keys(CHOKEPOINTS)) {
+    if (id === 'panama') continue; // panama keeps its own synthetic PANAMA_XY above
+    CHOKEPOINT_XY[id] = project(CHOKEPOINTS[id].lat, CHOKEPOINTS[id].lng);
+  }
+
+  // A leg's full waypoint path: origin -> each chokepoint it transits, in
+  // real travel order (game/src/economy.js already orders chokepointsUsed
+  // correctly per-direction) -> destination. Panama resolves to its own
+  // synthetic PANAMA_XY; every other chokepoint uses its real projected spot.
+  function waypointsForLeg(originId, destId, chokepointIds) {
+    const pts = [PORT_XY[originId]];
+    for (const cpId of (chokepointIds || [])) pts.push(cpId === 'panama' ? PANAMA_XY : CHOKEPOINT_XY[cpId]);
+    pts.push(PORT_XY[destId]);
+    return pts;
+  }
+
+  // Interpolate a point along an arbitrary N-waypoint polyline (equal-length
+  // segments — this is a schematic map, not literal cartography, so real
+  // per-leg distance weighting isn't needed for a legible ship-motion cue).
+  function pointAlongPath(pts, frac) {
+    const segs = pts.length - 1;
+    if (segs <= 0) return pts[0];
+    const t = Math.max(0, Math.min(1, frac)) * segs;
+    const i = Math.min(segs - 1, Math.floor(t));
+    const lf = t - i;
+    const a = pts[i], b = pts[i + 1];
+    return { x: a.x + (b.x - a.x) * lf, y: a.y + (b.y - a.y) * lf };
+  }
 
   function shortName(port) {
     return port.name.replace(/^Port of /, '').replace('PortMiami', 'Miami');
@@ -89,35 +128,26 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  function pointAlongLeg(originId, destId, usesPanama, frac) {
-    const a = PORT_XY[originId];
-    const b = PORT_XY[destId];
-    if (!usesPanama) {
-      return { x: a.x + (b.x - a.x) * frac, y: a.y + (b.y - a.y) * frac };
-    }
-    const m = PANAMA_XY;
-    if (frac < 0.5) {
-      const f2 = frac / 0.5;
-      return { x: a.x + (m.x - a.x) * f2, y: a.y + (m.y - a.y) * f2 };
-    }
-    const f2 = (frac - 0.5) / 0.5;
-    return { x: m.x + (b.x - m.x) * f2, y: m.y + (b.y - m.y) * f2 };
-  }
-
   // ── rendering ────────────────────────────────────────────────────
 
   function renderMap(state) {
     const disrupted = state.panama.disrupted;
+
     let routesSvg = '';
     for (const route of state.routes) {
-      const a = PORT_XY[route.fromPortId];
-      const b = PORT_XY[route.toPortId];
+      const shipId = route.assignedShipIds && route.assignedShipIds[0];
+      const ship = shipId && state.ships.find((s) => s.id === shipId);
+      // The route's own fixed corridor (outbound order fromPortId->toPortId),
+      // read via the same GameEngine method the UI's live preview uses —
+      // never a UI-side reimplementation of routing.
+      const preview = ship ? game.previewRoute(route.fromPortId, route.toPortId, ship.classId) : null;
+      const chokepointsUsed = preview && preview.ok ? preview.chokepointsUsed : (route.usesPanama ? ['panama'] : []);
+      const pts = waypointsForLeg(route.fromPortId, route.toPortId, chokepointsUsed);
+      const anyDisrupted = chokepointsUsed.some((id) => (state.chokepoints[id] ? state.chokepoints[id].status : (id === 'panama' && disrupted ? 'disrupted' : 'open')) !== 'open');
       const cls = ['route-line'];
-      if (route.usesPanama) cls.push('panama');
-      if (route.usesPanama && disrupted) cls.push('disrupted');
-      const d = route.usesPanama
-        ? `M ${a.x} ${a.y} L ${PANAMA_XY.x} ${PANAMA_XY.y} L ${b.x} ${b.y}`
-        : `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
+      if (chokepointsUsed.length) cls.push('panama');
+      if (anyDisrupted) cls.push('disrupted');
+      const d = `M ${pts.map((p) => `${p.x} ${p.y}`).join(' L ')}`;
       routesSvg += `<path class="${cls.join(' ')}" d="${d}"></path>`;
     }
 
@@ -128,7 +158,8 @@
       const originId = t.leg === 'outbound' ? t.routeFrom : t.routeTo;
       const destId = t.leg === 'outbound' ? t.routeTo : t.routeFrom;
       const frac = t.legTotalTicks ? 1 - t.ticksRemaining / t.legTotalTicks : 0;
-      const pos = pointAlongLeg(originId, destId, t.usesPanama, Math.max(0, Math.min(1, frac)));
+      const pts = waypointsForLeg(originId, destId, t.chokepointsUsed);
+      const pos = pointAlongPath(pts, frac);
       shipsSvg += `<circle class="ship-dot" cx="${pos.x.toFixed(1)}" cy="${pos.y.toFixed(1)}" r="5"><title>${escapeHtml(ship.id)}</title></circle>`;
     }
 
@@ -147,11 +178,27 @@
     const panamaSvg = `
       <path class="${panamaMarkerCls.join(' ')}" d="M ${WEST_C.x} ${WEST_C.y + 8} Q ${PANAMA_XY.x} ${PANAMA_XY.y} ${EAST_C.x} ${EAST_C.y + 8}"></path>
       <circle class="${panamaDotCls.join(' ')}" cx="${PANAMA_XY.x}" cy="${PANAMA_XY.y}" r="4"></circle>
-      <text class="${panamaLabelCls.join(' ')}" x="${PANAMA_XY.x}" y="${PANAMA_XY.y + 18}" text-anchor="middle">${disrupted ? '⚠ Panama Canal — disrupted' : 'Panama Canal'}</text>
+      <text class="${panamaLabelCls.join(' ')}" x="${PANAMA_XY.x}" y="${PANAMA_XY.y + 18}" text-anchor="middle">${disrupted ? '⚠ Panama Canal — seeded slowdown' : 'Panama Canal'}</text>
     `;
 
+    // Phase 2: the 5 new chokepoints, colored by their *current* status
+    // (real canon fact, or a simulated pencil update — either way, this is
+    // what routing actually reads; see the Chokepoints panel for which is
+    // which).
+    let chokeSvg = '';
+    for (const id of Object.keys(CHOKEPOINT_XY)) {
+      const xy = CHOKEPOINT_XY[id];
+      const status = state.chokepoints[id].status;
+      chokeSvg += `<circle class="choke-dot status-${status}" cx="${xy.x}" cy="${xy.y}" r="5"><title>${escapeHtml(CHOKEPOINTS[id].name)} — ${escapeHtml(status)}</title></circle>`;
+      chokeSvg += `<text class="choke-map-label status-${status}" x="${xy.x}" y="${xy.y - 9}" text-anchor="middle">${escapeHtml(shortChokeName(id))}</text>`;
+    }
+
     document.getElementById('map-wrap').innerHTML =
-      `<svg id="map" viewBox="0 0 ${MAP_W} ${MAP_H}" preserveAspectRatio="xMidYMid meet">${panamaSvg}${routesSvg}${portsSvg}${shipsSvg}</svg>`;
+      `<svg id="map" viewBox="0 0 ${MAP_W} ${MAP_H}" preserveAspectRatio="xMidYMid meet">${panamaSvg}${chokeSvg}${routesSvg}${portsSvg}${shipsSvg}</svg>`;
+  }
+
+  function shortChokeName(id) {
+    return { suez: 'Suez', bab_el_mandeb: 'Bab-el-Mandeb', hormuz: 'Hormuz', malacca: 'Malacca', gibraltar: 'Gibraltar' }[id] || id;
   }
 
   function renderHeaderAndCompany(state) {
@@ -179,10 +226,51 @@
     const banner = document.getElementById('panama-banner');
     if (state.panama.disrupted) {
       banner.className = 'banner show';
-      banner.textContent = `⚠ Panama Canal disruption in progress (~${state.panama.ticksRemaining} day(s) left) — trans-coast routes are slower and cost more. Same-coast lanes are unaffected.`;
+      banner.textContent = `✎ Pencil weather — Panama Canal: a seeded slowdown in progress (~${state.panama.ticksRemaining} day(s) left) — trans-coast routes are slower and cost more. Same-coast lanes are unaffected.`;
     } else {
       banner.className = 'banner';
     }
+  }
+
+  const CHOKE_STATUS_LABEL = { open: 'Open', congested: 'Congested', disrupted: 'Disrupted' };
+  function renderChokepoints(state) {
+    document.getElementById('chokepoint-list').innerHTML = Object.keys(state.chokepoints).map((id) => {
+      const c = state.chokepoints[id];
+      const medium = c.current.isSimulated
+        ? '<span class="choke-medium pencil" title="A seeded, in-game simulation of how the real situation might evolve — not new real news.">PENCIL</span>'
+        : '<span class="choke-medium ink" title="A researched, dated, sourced real-world fact.">INK</span>';
+      const desc = c.current.isSimulated
+        ? `${c.current.description}<br><span style="opacity:0.75;">Real, as researched: ${escapeHtml(c.real.description)}</span>`
+        : escapeHtml(c.current.description);
+      return `<div class="choke-row">
+        <div class="head">
+          <span class="name">${escapeHtml(c.name)}</span>
+          ${medium}
+          <span class="choke-status ${c.status}">${CHOKE_STATUS_LABEL[c.status] || c.status}</span>
+        </div>
+        <div class="desc">${desc}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderWorldFacts(state) {
+    const f = state.worldFacts;
+    document.getElementById('world-facts').innerHTML = `
+      <div class="fact-row">
+        <div class="label">Bunker fuel (VLSFO)</div>
+        <div class="val">${fmtMoney(f.bunkerFuelUsdPerTonne.value)}/tonne <span style="color:var(--ink-dim);font-weight:400;font-size:0.85em;">&times; ${f.fuelIndexMult.toFixed(2)} on daily ops</span></div>
+        <div class="desc">${escapeHtml(f.bunkerFuelUsdPerTonne.description)}</div>
+      </div>
+      <div class="fact-row">
+        <div class="label">Freight index (Drewry WCI)</div>
+        <div class="val">${fmtMoney(f.freightIndexUsdPer40ft.value)}/40ft <span style="color:var(--ink-dim);font-weight:400;font-size:0.85em;">&times; ${f.freightIndexMult.toFixed(2)} on base prices</span></div>
+        <div class="desc">${escapeHtml(f.freightIndexUsdPer40ft.description)}</div>
+      </div>
+      <div class="fact-row">
+        <div class="label">Panama Canal (real, current)</div>
+        <div class="desc">${escapeHtml(f.panamaCanon.description)}</div>
+      </div>
+    `;
   }
 
   function renderBuyGrid(state) {
@@ -272,9 +360,11 @@
       const updatePreview = () => {
         if (fromSel.value === toSel.value) { preview.textContent = 'Pick two different ports.'; return; }
         const r = game.previewRoute(fromSel.value, toSel.value, ship.classId);
-        preview.textContent = r.ok
-          ? `${Math.round(r.distanceNm)} nm · ${r.legDurationTicks} day(s)/leg${r.usesPanama ? ` · Panama toll ${fmtMoney(r.tollTotal)}` : ''}`
-          : r.reason;
+        if (!r.ok) { preview.textContent = r.reason; return; }
+        const chokeNote = (r.chokepointsUsed && r.chokepointsUsed.length)
+          ? ` · via ${r.chokepointsUsed.map((id) => (id === 'panama' ? 'Panama' : shortChokeName(id))).join(' + ')} (${fmtMoney(r.tollTotal)} toll/risk)`
+          : '';
+        preview.textContent = `${Math.round(r.distanceNm)} nm · ${r.legDurationTicks} day(s)/leg${chokeNote}`;
       };
       fromSel.addEventListener('change', updatePreview);
       toSel.addEventListener('change', updatePreview);
@@ -310,6 +400,8 @@
     renderBuyGrid(state);
     renderFleet(state);
     renderMarkets(state);
+    renderChokepoints(state);
+    renderWorldFacts(state);
     renderLog(state);
     renderMap(state);
   }
