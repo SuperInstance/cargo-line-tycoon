@@ -1,0 +1,48 @@
+name: Game CI (test + build gate)
+
+# P0-1 / P0-2: a red game test or a broken deploy bundle must fail CI, on
+# every push and every PR — not just on merge to main. This is a real gate,
+# not decoration: neither job below is allowed to be skipped or ignored.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run game tests (game/test/**/*.test.js)
+        # Playwright/Chromium are not installed in this runner, so the
+        # UI smoke test (game/test/ui.smoke.test.js) skips itself rather
+        # than failing — every other test is a hard gate.
+        run: node --test "game/test/**/*.test.js"
+
+      - name: Build the self-contained deploy dist/
+        # Fails (and fails this job) if any file tycoon-live.html
+        # references is missing, or if the manifest and the page have
+        # drifted apart. This IS the deploy artifact check.
+        run: node scripts/build-dist.mjs
+
+      - name: Verify dist/ has no dangling ../ script paths
+        run: |
+          if grep -n 'src="\.\./' dist/index.html; then
+            echo "dist/index.html still has an escaping script src — the bundle is not self-contained." >&2
+            exit 1
+          fi
+          echo "dist/index.html is self-contained (no ../ script paths)."
+
+      - name: Upload dist/ as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 14
