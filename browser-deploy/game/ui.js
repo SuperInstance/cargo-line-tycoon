@@ -212,6 +212,21 @@
   let cashDisplayed = 0;
   let cashTweenRaf = null;
   let introDone = false;
+  // ── M2 cold-open: the guided first interaction (arch/MOBILIZATION.md M2) ──
+  // hintShipId: the one ship renderShips() should pulse to teach STAKE ("tap
+  // the ship, then a port") to a cold visitor. Read every render rather than
+  // set once via classList, because renderShips() fully rewrites each ship
+  // dot's `class` attribute on every tick (autoplay retriggers refresh()
+  // every 700ms), which would otherwise wipe out a one-shot classList.add
+  // within a second of it appearing. hintDismissed flips true the moment the
+  // player's first-ever stake lands — the hint's whole job is done in that
+  // one move, so it never shows again this run.
+  let hintShipId = null;
+  let hintDismissed = false;
+  // introGen: bumped on every newChart() so setTimeout callbacks scheduled by
+  // a PREVIOUS playIntro() (e.g. if "new chart" is clicked mid-intro) become
+  // no-ops instead of reaching into the new game with a stale ship id.
+  let introGen = 0;
   // P1.2 (§3.1 bullet 3): route ids we've already drawn once, so a lane
   // that already exists doesn't replay its ~240ms draw-in animation every
   // 700ms redraw — only a genuinely NEW lane gets the stroke-dashoffset
@@ -572,7 +587,12 @@
         layer.appendChild(el);
       }
       const inTransit = !!ship.transit;
-      el.setAttribute('class', 'ship-dot' + (ship.id === selectedShipId ? ' selected' : '') + (inTransit ? ' transit' : ''));
+      // M2 cold-open: pulse the guided-hint ship while it's still unselected
+      // and un-staked — once the player taps it (selectedShipId is set) the
+      // red "selected" fill already carries the eye, so the pulse steps
+      // aside rather than competing with it.
+      const isHintShip = ship.id === hintShipId && ship.id !== selectedShipId;
+      el.setAttribute('class', 'ship-dot' + (ship.id === selectedShipId ? ' selected' : '') + (inTransit ? ' transit' : '') + (isHintShip ? ' hint-pulse-ship' : ''));
       el.setAttribute('cx', pos.x);
       el.setAttribute('cy', pos.y);
       el.onclick = (ev) => { ev.stopPropagation(); onShipClick(ship); };
@@ -663,19 +683,40 @@
   function confirmStake() {
     if (!pendingStake) return;
     const ship = game.world.entities.get(pendingStake.shipId).state;
+    const wasFirstStakeEver = !hintDismissed && (window.pencilStakesPlaced + window.inkStakesPlaced) === 0;
     const r = game.assignShip(pendingStake.shipId, ship.positionPortId, pendingStake.portId);
     if (r.ok) {
       if (r.medium === 'pencil') window.pencilStakesPlaced++; else window.inkStakesPlaced++;
       playSound('scratch');
+      // M2 cold-open: the guided hint's whole job — teach STAKE in one move
+      // — is done the instant the first stake ever lands. Retire the pulse,
+      // give one short confirmation line, then get out of the way for good.
+      if (wasFirstStakeEver) {
+        hintDismissed = true;
+        hintShipId = null;
+        const tut = document.getElementById('tutorial-line');
+        tut.textContent = r.medium === 'pencil'
+          ? 'Staked. Sail there and the guess either inks true or is erased.'
+          : 'Staked. Ink is already proven — this one just has to arrive.';
+        tut.style.opacity = '1';
+        setTimeout(() => { tut.style.opacity = '0'; }, 4000);
+      }
     }
     clearSelection();
     refresh();
   }
 
   function clearSelection() {
+    const wasHintShip = selectedShipId && selectedShipId === hintShipId;
     selectedShipId = null; pendingStake = null;
     document.getElementById('stake-note').className = '';
     document.getElementById('stake-note').innerHTML = '';
+    // M2 cold-open: cancelling out of the hint ship's stake (rather than
+    // completing it) resumes the pulse and the original instruction, so the
+    // guided move is still waiting rather than silently abandoned.
+    if (wasHintShip && !hintDismissed) {
+      document.getElementById('tutorial-line').textContent = 'Stake it — tap the ship, then a port.';
+    }
     refresh();
   }
 
@@ -691,6 +732,14 @@
     selectedShipId = ship.id;
     pendingStake = null;
     document.getElementById('stake-note').className = '';
+    // M2 cold-open: the guided hint's ship was just tapped — advance the
+    // one-line instruction to the next (and last) half of the move instead
+    // of leaving the now-stale "tap the ship" text up.
+    if (ship.id === hintShipId && !hintDismissed) {
+      const tut = document.getElementById('tutorial-line');
+      tut.textContent = 'Now tap a port to stake it.';
+      tut.style.opacity = '1';
+    }
     refresh();
   }
 
@@ -754,6 +803,7 @@
   // which is why an early fact_landed can land "on its own" while this
   // intro is still playing. ────────────────────────────────────────────
   function playIntro(state) {
+    const myGen = introGen; // see introGen's declaration for why this guards every timeout below
     document.getElementById('chart-pane').classList.add('intro-fade');
     setTimeout(() => document.getElementById('chart-pane').classList.remove('intro-fade'), 320);
     playSound('scratch');
@@ -766,19 +816,29 @@
     setTimeout(() => { playStamp(); }, 5000);
 
     setTimeout(() => {
+      if (introGen !== myGen) return;
       document.getElementById('tutorial-line').textContent = 'Ink is proven. Pencil is a guess. Ships pay out on both — pencil pays more, and pencil can be wrong.';
       document.getElementById('tutorial-line').style.opacity = '1';
       playSound('typewriter');
     }, 6000);
 
     setTimeout(() => {
+      if (introGen !== myGen || hintDismissed) return;
       document.getElementById('tutorial-line').textContent = 'Stake it — tap the ship, then a port.';
+      document.getElementById('tutorial-line').style.opacity = '1';
+      // M2 cold-open: the guided first interaction. Setting hintShipId (read
+      // every render by renderShips(), see above) rather than classList.add
+      // is what actually makes this survive past the next autoplay tick —
+      // see the field's own comment for why a one-shot class add doesn't.
       const s = game.getState();
       const firstShip = s.ships[0];
-      if (firstShip) { const el = document.querySelector(`[data-ship="${firstShip.id}"]`); if (el) el.classList.add('lift'); }
+      if (firstShip) { hintShipId = firstShip.id; refresh(); }
     }, 8000);
 
-    setTimeout(() => { document.getElementById('tutorial-line').style.opacity = '0'; }, 16000);
+    setTimeout(() => {
+      if (introGen !== myGen || hintDismissed) return;
+      document.getElementById('tutorial-line').style.opacity = '0';
+    }, 16000);
 
     introDone = true;
   }
@@ -788,6 +848,7 @@
     stopAutoplay();
     lastWitnessLen = 0; firstScarShown = false; selectedShipId = null; pendingStake = null;
     seenRouteIds = new Set();
+    hintShipId = null; hintDismissed = false; introGen++;
     game = new GameEngine({ seed: seed || ('run-' + Math.random().toString(36).slice(2, 10)) });
     window.pencilStakesPlaced = 0; window.inkStakesPlaced = 0;
     cashDisplayed = game.getState().company.cash;

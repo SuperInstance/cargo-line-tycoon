@@ -189,6 +189,20 @@
   #clock-asof .ring { display: inline-block; width: 0.7em; height: 0.7em; border-radius: 50%; border: 1.5px solid var(--gold); margin-right: 0.4em; vertical-align: -0.05em; }
   #clock-day { font-size: 0.74em; color: var(--pencil-1); font-style: italic; margin-top: 0.15em; }
 
+  /* ── M2 cold-open (arch/MOBILIZATION.md M2 / arch/TRAJECTORY.md H1): a
+     single unobtrusive, always-on "what am I looking at" line for a visitor
+     who has read no doctrine. Sits below the clocks (not beside — at phone
+     width the two would otherwise overlap), muted to match the clocks'
+     own chrome styling, pointer-events:none so it never steals a tap meant
+     for the chart underneath. Distinct from #tutorial-line below: this one
+     never disappears and never teaches the verb, it only names the scene;
+     the guided STAKE/LAND move stays #tutorial-line's job. ── */
+  #chart-caption {
+    position: absolute; top: 46px; left: 16px; right: 16px; z-index: 5;
+    max-width: 360px; pointer-events: none; user-select: none;
+    font-size: 0.74em; line-height: 1.4; color: var(--pencil-1); opacity: 0.82;
+  }
+
   #tutorial-line {
     position: absolute; bottom: 10px; left: 16px; right: 16px; z-index: 5;
     font-size: 0.82em; color: var(--pencil-1); text-align: center; pointer-events: none;
@@ -246,7 +260,19 @@
   .pencil-port { fill: none; }
   .pencil-label { font-family: 'Alegreya Sans SC', sans-serif; font-size: 9.5px; font-style: italic; }
   .pencil-port.reachable, .ink-seal.reachable { cursor: pointer; }
-  .lift { filter: drop-shadow(0 0 3px var(--chinagraph)); }
+
+  /* ── M2 cold-open — the guided first interaction ───────────────────────
+     Pulses the one ship a fresh visitor should tap first (ui.js sets
+     hintShipId; renderShips() reads it on every render rather than a
+     one-shot classList.add, which a 700ms autoplay tick would otherwise
+     wipe within a second — see ui.js's hintShipId comment). Retired the
+     moment that ship is selected (the red "selected" fill already carries
+     the eye) or the player's first-ever stake lands. ── */
+  @keyframes hintPulseShip {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px var(--chinagraph)); }
+    50% { transform: scale(1.6); filter: drop-shadow(0 0 6px var(--chinagraph)); }
+  }
+  .hint-pulse-ship { animation: hintPulseShip 1.1s ease-in-out infinite; }
 
   .ghost-port { opacity: var(--ghost-alpha, 0.12); }
   .ghost-strike { stroke: var(--scar); stroke-width: 1; }
@@ -336,6 +362,7 @@
       <div id="clock-asof"><span class="ring"></span><span id="clock-asof-text">CHART AS OF —</span></div>
       <div id="clock-day"><span id="clock-day-text">day 0</span></div>
     </div>
+    <div id="chart-caption">A shipping chart: ink is fact, pencil is a guess you can bet on.</div>
     <div id="tutorial-line"></div>
   </div>
   <div id="margin">
