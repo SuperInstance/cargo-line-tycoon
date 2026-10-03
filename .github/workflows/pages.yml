@@ -1,5 +1,16 @@
 name: Deploy to GitHub Pages
 
+# P0-5: this used to deploy ./substrate-bundle (the legacy substrate demos)
+# unconditionally on every push to main — not the Chart game, and with no
+# test or build gate, so a broken game could still "successfully deploy".
+# It now builds+tests the game first (failing the job, and therefore never
+# deploying, on any red) and publishes the self-contained dist/ bundle that
+# scripts/build-dist.mjs produces.
+#
+# Note: the live https://cargo-line-tycoon.pages.dev deploy is Cloudflare
+# Pages, managed separately from this GitHub Pages workflow. This workflow
+# is kept working and pointed at the right directory as a second, gated
+# deploy target; it is not what serves the Cloudflare URL.
 on:
   push:
     branches: [main]
@@ -15,25 +26,53 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run game tests (a red suite must never deploy)
+        run: node --test "game/test/**/*.test.js"
+
+      - name: Build the self-contained deploy dist/
+        run: node scripts/build-dist.mjs
+
+      - name: Upload dist/ for the deploy job
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-dist
+          path: dist/
+          retention-days: 1
+
   deploy:
+    needs: test-and-build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
+      - name: Download built dist/
+        uses: actions/download-artifact@v4
+        with:
+          name: pages-dist
+          path: dist
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
         with:
           enablement: true
-      
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./substrate-bundle
-      
+          path: ./dist
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
